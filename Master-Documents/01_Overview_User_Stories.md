@@ -1,8 +1,8 @@
-# Enterprise Social Network (ESN) v2.0 - Master Document
+# Enterprise Social Network (ESN) - Master Document
 ## Phần 1: Tổng quan & User Stories
 
 ### 1. Giới thiệu
-Hệ thống **ESN v2.0** là nền tảng quản trị doanh nghiệp kết hợp mạng xã hội nội bộ. Hệ thống tập trung vào việc số hóa quy trình quản lý nhân sự, công việc và truyền thông nội bộ theo mô hình phân cấp chặt chẽ (Founder -> Manager -> Employee).
+Hệ thống **ESN** là nền tảng quản trị doanh nghiệp kết hợp mạng xã hội nội bộ. Hệ thống tập trung vào việc số hóa quy trình quản lý nhân sự, công việc và truyền thông nội bộ theo mô hình phân cấp chặt chẽ (Founder -> Manager -> Employee).
 
 ### 2. Các nhóm người dùng (Actors)
 Hệ thống được thiết kế cho 3 nhóm đối tượng chính:

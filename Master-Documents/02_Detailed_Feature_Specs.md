@@ -1,4 +1,4 @@
-# Enterprise Social Network (ESN) v2.0 - Master Document
+# Enterprise Social Network (ESN) - Master Document
 ## Phần 2: Yêu cầu Chức năng & Nghiệp vụ Chi tiết
 
 ### 1. Phân hệ Xác thực & Cài đặt (Auth & Setup)

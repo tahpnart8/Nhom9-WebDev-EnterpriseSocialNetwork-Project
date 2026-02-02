@@ -1,4 +1,4 @@
-# Enterprise Social Network (ESN) v2.0 - Master Document
+# Enterprise Social Network (ESN) - Master Document
 ## Phần 3: Đặc tả Kỹ thuật Hệ thống (Architecture Specifications)
 
 Tài liệu này dùng để hướng dẫn đội ngũ phát triển xây dựng các sơ đồ kỹ thuật (UML Class, ERD, Functional).
