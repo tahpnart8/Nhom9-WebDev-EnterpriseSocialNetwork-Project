@@ -1,1 +1,0 @@
-Folder này dùng để thêm các ảnh Diagram
