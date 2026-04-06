@@ -7,8 +7,12 @@ $action = $_GET['action'] ?? 'dashboard';
 
 // Import Các Controller liên quan
 require_once 'controllers/AuthController.php';
+require_once 'controllers/DashboardController.php';
+require_once 'controllers/AdminController.php';
 
 $authController = new AuthController();
+$dashboardController = new DashboardController();
+$adminController = new AdminController();
 
 // Simple Router
 switch($action) {
@@ -22,14 +26,13 @@ switch($action) {
         $authController->logout();
         break;
     case 'dashboard':
-        // Middleware bảo vệ trang, yêu cầu đăng nhập
-        if(!isset($_SESSION['user_id'])) {
-            header("Location: index.php?action=login");
-            exit;
-        }
-        echo "<h1>Trang Dashboard (Sẽ được xây dựng ở Phiên 2)</h1>";
-        echo "<h3>Xin chào: " . htmlspecialchars($_SESSION['full_name']) . "</h3>";
-        echo "<hr><a href='index.php?action=logout'>Đăng xuất</a>";
+        $dashboardController->index();
+        break;
+    case 'admin_users':
+        $adminController->users();
+        break;
+    case 'admin_departments':
+        $adminController->departments();
         break;
     default:
         // 404 Route

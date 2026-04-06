@@ -40,5 +40,17 @@ class User {
         }
         return false;
     }
+
+    // Danh sách cho Admin sử dụng FETCH JOIN
+    public function getAllUsersWithDetails() {
+        $query = "SELECT u.id, u.username, u.full_name, u.email, d.dept_name, r.role_name, u.is_active 
+                  FROM " . $this->table_name . " u 
+                  LEFT JOIN departments d ON u.department_id = d.id 
+                  LEFT JOIN roles r ON u.role_id = r.id
+                  ORDER BY u.id DESC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt;
+    }
 }
 ?>

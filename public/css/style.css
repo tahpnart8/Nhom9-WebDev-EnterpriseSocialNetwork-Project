@@ -1,0 +1,195 @@
+/* Typography & Colors Based on User Reference UI */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    --primary-color: #0d6efd;
+    --primary-light: #eff6ff; /* For active states */
+    --bg-color: #f8f9fa; /* Very soft layout gray */
+    --card-bg: #ffffff;
+    --text-main: #1f2937;
+    --text-muted: #6b7280;
+    --border-soft: #e5e7eb;
+    --sidebar-width: 250px;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    overflow-x: hidden;
+}
+
+/* Master Layout Wrapper */
+#app-wrapper {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+}
+
+/* Sidebar Component */
+.sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--card-bg);
+    border-right: 1px solid var(--border-soft);
+    position: fixed;
+    height: 100vh;
+    z-index: 1040;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 1rem;
+    overflow-y: auto;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 4px;
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.brand-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--text-main);
+    text-decoration: none;
+    margin-bottom: 2rem;
+    padding-left: 0.5rem;
+}
+.brand-logo:hover {
+    color: var(--primary-color);
+}
+.brand-icon {
+    color: var(--primary-color);
+    font-size: 1.6rem;
+}
+
+/* Sidebar Menu navigation */
+.sidebar-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-grow: 1;
+}
+
+.menu-label {
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    padding-left: 0.75rem;
+}
+
+.menu-item {
+    margin-bottom: 0.2rem;
+}
+
+.menu-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0.7rem 0.8rem;
+    border-radius: 0.5rem;
+    color: var(--text-main);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: all 0.2s ease-in-out;
+}
+
+.menu-link i {
+    font-size: 1.1rem;
+    color: #9ca3af;
+    width: 20px;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.menu-link:hover {
+    background-color: #f3f4f6;
+    color: var(--text-main);
+}
+.menu-link:hover i {
+    color: var(--primary-color);
+}
+
+.menu-link.active {
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+    font-weight: 600;
+}
+.menu-link.active i {
+    color: var(--primary-color);
+}
+
+/* User Profile Mini Tab (Bottom of Sidebar) */
+.user-profile-tab {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-soft);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--text-main);
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    transition: background 0.2s;
+}
+.user-profile-tab:hover {
+    background-color: #f3f4f6;
+}
+
+.avatar-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.user-info-text {
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.user-name {
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.user-role {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Main Content Structure */
+#main-content {
+    flex-grow: 1;
+    margin-left: var(--sidebar-width);
+    padding: 2rem;
+    min-height: 100vh;
+}
+
+/* Helper utility for rounded clean cards */
+.relioo-card {
+    background: var(--card-bg);
+    border-radius: 1rem;
+    border: 1px solid var(--border-soft);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
