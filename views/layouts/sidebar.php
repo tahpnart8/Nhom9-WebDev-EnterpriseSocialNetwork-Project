@@ -26,6 +26,13 @@ $roleId = $_SESSION['role_id'] ?? 3; // Default to staff
                 Quản lý công việc
             </a>
         </li>
+        
+        <li class="menu-item">
+            <a href="index.php?action=chat" class="menu-link <?php echo $currentAction == 'chat' ? 'active' : ''; ?>">
+                <i class="bi bi-chat-dots"></i>
+                Tin nhắn
+            </a>
+        </li>
 
         <?php if($roleId == 1 || $roleId == 2): // CEO or Leader ?>
         <li class="menu-label">Phân tích (Leader)</li>

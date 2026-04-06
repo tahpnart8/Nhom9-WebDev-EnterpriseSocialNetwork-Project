@@ -11,12 +11,16 @@ require_once 'controllers/DashboardController.php';
 require_once 'controllers/AdminController.php';
 require_once 'controllers/SocialController.php';
 require_once 'controllers/TaskController.php';
+require_once 'controllers/NotificationController.php';
+require_once 'controllers/ChatController.php';
 
 $authController = new AuthController();
 $dashboardController = new DashboardController();
 $adminController = new AdminController();
 $socialController = new SocialController();
 $taskController = new TaskController();
+$notiController = new NotificationController();
+$chatController = new ChatController();
 
 // Simple Router
 switch($action) {
@@ -55,6 +59,21 @@ switch($action) {
         break;
     case 'api_update_subtask_status':
         $taskController->updateSubtaskStatus();
+        break;
+    case 'api_notifications':
+        $notiController->fetchUnread();
+        break;
+    case 'api_mark_all_read':
+        $notiController->markAllRead();
+        break;
+    case 'chat':
+        $chatController->index();
+        break;
+    case 'api_send_message':
+        $chatController->sendMessage();
+        break;
+    case 'api_fetch_messages':
+        $chatController->fetchMessages();
         break;
     default:
         // 404 Route
