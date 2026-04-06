@@ -9,10 +9,12 @@ $action = $_GET['action'] ?? 'dashboard';
 require_once 'controllers/AuthController.php';
 require_once 'controllers/DashboardController.php';
 require_once 'controllers/AdminController.php';
+require_once 'controllers/SocialController.php';
 
 $authController = new AuthController();
 $dashboardController = new DashboardController();
 $adminController = new AdminController();
+$socialController = new SocialController();
 
 // Simple Router
 switch($action) {
@@ -33,6 +35,12 @@ switch($action) {
         break;
     case 'admin_departments':
         $adminController->departments();
+        break;
+    case 'social':
+        $socialController->index();
+        break;
+    case 'api_create_post':
+        $socialController->createPost();
         break;
     default:
         // 404 Route
