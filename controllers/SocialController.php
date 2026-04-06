@@ -4,7 +4,6 @@ if(session_status() === PHP_SESSION_NONE) {
 }
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/Post.php';
-require_once __DIR__ . '/../models/DriveStorage.php';
 
 class SocialController {
     public function index() {
@@ -50,19 +49,18 @@ class SocialController {
         $postId = $postModel->create($author_id, $department_id, htmlspecialchars($content), $visibility);
         
         if ($postId) {
-            // 2. Upload hình ảnh lên Google Drive Storage (Nếu có)
+            // 2. Upload hình ảnh lên API ImgBB (Cloud Storage chính quy)
             if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
-                // Giới hạn chỉ nhận Image/Video MP4 nếu cần
-                $drive = new DriveStorage();
-                $uploadedMeta = $drive->uploadFile($_FILES['attachment']['tmp_name'], $_FILES['attachment']['type'], $_FILES['attachment']['name']);
+                require_once __DIR__ . '/../models/CloudStorage.php';
+                $cloudStorage = new CloudStorage();
                 
-                if ($uploadedMeta && isset($uploadedMeta['webViewLink'])) {
-                    $mediaUrl = $uploadedMeta['webViewLink'];
-                    // Chuyển link Preview của Google Drive sang dạng URL 
-                    $mediaUrl = str_replace('/view?usp=drivesdk', '/preview', $mediaUrl);
-                    $postModel->addMedia($postId, $mediaUrl);
+                $cloudUrl = $cloudStorage->uploadImage($_FILES['attachment']['tmp_name']);
+                
+                if ($cloudUrl !== false) {
+                    // Cập nhật đường link ảnh Cloud vào Database chung
+                    $postModel->addMedia($postId, $cloudUrl);
                 } else {
-                    echo json_encode(['success' => false, 'message' => 'Bài viết đã lưu nhưng Gdrive Error. Hãy xem lại JSON token.']);
+                    echo json_encode(['success' => false, 'message' => 'Tải ảnh lên Server Cloud thất bại! API Key lỗi.']);
                     exit;
                 }
             }

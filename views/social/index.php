@@ -66,9 +66,9 @@
                 </div> <!-- End Header Card -->
                 
                 <?php if($post['media_url']): ?>
-                <!-- Khu vực hiển thị iFrame ảnh Drive thông minh -->
-                <div class="bg-light w-100 position-relative border-top border-bottom" style="height: 350px;">
-                    <iframe src="<?php echo htmlspecialchars($post['media_url']); ?>" frameborder="0" width="100%" height="100%"></iframe>
+                <!-- Khu vực hiển thị Ảnh/Video -->
+                <div class="bg-light w-100 position-relative border-top border-bottom text-center">
+                    <img src="<?php echo htmlspecialchars($post['media_url']); ?>" alt="Attachment" class="img-fluid object-fit-contain" style="max-height: 400px;">
                 </div>
                 <?php endif; ?>
                 
@@ -165,7 +165,7 @@
                 location.reload(); 
             },
             error: function() {
-                alert("Đã xảy ra lỗi mạng hoặc thiết lập Google Drive JSON bị sai lệch.");
+                alert("Đã xảy ra lỗi tệp đính kèm. Vui lòng thử lại!");
             },
             complete: function() {
                 $btn.prop('disabled', false);
