@@ -17,11 +17,11 @@ class Database {
             }
         }
 
-        $host = $_ENV['DB_HOST'] ?? 'localhost';
-        $port = $_ENV['DB_PORT'] ?? '5432';
-        $db   = $_ENV['DB_DATABASE'] ?? 'postgres';
-        $user = $_ENV['DB_USERNAME'] ?? 'postgres';
-        $pass = $_ENV['DB_PASSWORD'] ?? '';
+        $host = getenv('DB_HOST') ?: ($_ENV['DB_HOST'] ?? 'localhost');
+        $port = getenv('DB_PORT') ?: ($_ENV['DB_PORT'] ?? '5432');
+        $db   = getenv('DB_DATABASE') ?: ($_ENV['DB_DATABASE'] ?? 'postgres');
+        $user = getenv('DB_USERNAME') ?: ($_ENV['DB_USERNAME'] ?? 'postgres');
+        $pass = getenv('DB_PASSWORD') ?: ($_ENV['DB_PASSWORD'] ?? '');
 
         try {
             $dsn = "pgsql:host=$host;port=$port;dbname=$db";
@@ -29,8 +29,8 @@ class Database {
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         } catch(PDOException $exception) {
-            error_log('DB Connection Error: ' . $exception->getMessage());
-            die('Lỗi kết nối CSDL. Vui lòng kiểm tra cấu hình.');
+            // In lỗi chi tiết để debug (Xóa dòng này sau khi chạy thành công)
+            die('Lỗi kết nối CSDL: ' . $exception->getMessage());
         }
 
         return $this->conn;
