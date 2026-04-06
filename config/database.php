@@ -24,7 +24,7 @@ class Database {
         $pass = getenv('DB_PASSWORD') ?: ($_ENV['DB_PASSWORD'] ?? '');
 
         try {
-            $dsn = "pgsql:host=$host;port=$port;dbname=$db";
+            $dsn = "pgsql:host=$host;port=$port;dbname=$db;sslmode=require";
             $this->conn = new PDO($dsn, $user, $pass);
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
