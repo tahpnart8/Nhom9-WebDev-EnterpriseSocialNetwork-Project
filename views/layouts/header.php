@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Relioo - Mạng xã hội doanh nghiệp</title>
+    <?php
+        // Tính toán base path động để CSS hoạt động cả trên XAMPP subfolder lẫn Vercel root
+        $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+        $basePath = ($scriptDir === '/' || $scriptDir === '.') ? '' : $scriptDir;
+    ?>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -11,7 +16,7 @@
     <!-- Toastr CSS (Popup thông báo góc màn hình) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="/public/css/style.css">
+    <link rel="stylesheet" href="<?php echo $basePath; ?>/public/css/style.css">
     <!-- JQuery -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <!-- Toastr JS -->
