@@ -28,6 +28,8 @@ class Database {
             $this->conn = new PDO($dsn, $user, $pass);
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+            $this->conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, true); // Quan trọng: Yêu cầu bắt buộc khi dùng Supabase Connection Pooler (Transaction Mode)
+            $this->conn->setAttribute(PDO::ATTR_PERSISTENT, true); // Giúp Vercel pool connection nhanh hơn
         } catch(PDOException $exception) {
             // In lỗi chi tiết để debug (Xóa dòng này sau khi chạy thành công)
             die('Lỗi kết nối CSDL: ' . $exception->getMessage());
