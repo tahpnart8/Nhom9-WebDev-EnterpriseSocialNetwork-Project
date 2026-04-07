@@ -57,5 +57,22 @@ class Post {
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    // Xóa bài viết (Chỉ tác giả hoặc CEO mới được xóa)
+    public function delete($post_id) {
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $post_id);
+        return $stmt->execute();
+    }
+
+    // Lấy bài viết theo ID
+    public function getById($post_id) {
+        $query = "SELECT * FROM " . $this->table_name . " WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $post_id);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 }
 ?>

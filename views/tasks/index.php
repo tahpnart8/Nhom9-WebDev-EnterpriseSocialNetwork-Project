@@ -204,7 +204,7 @@
         
         <div class="kanban-card-list" id="kanban-<?php echo str_replace(' ', '-', strtolower($status)); ?>" data-status="<?php echo $status; ?>">
             <?php foreach ($columns[$status] as $card): ?>
-            <div class="kanban-card" data-id="<?php echo $card['id']; ?>">
+            <div class="kanban-card" data-id="<?php echo $card['id']; ?>" onclick="openSubtaskDetail(<?php echo $card['id']; ?>)" style="cursor:pointer;">
                 <div class="card-task-label"><?php echo htmlspecialchars($card['task_title'] ?? 'TASK'); ?></div>
                 <div class="card-title"><?php echo htmlspecialchars($card['title']); ?></div>
                 <?php if(!empty($card['description'])): ?>
@@ -347,6 +347,27 @@
   </div>
 </div>
 
+<!-- ===== MODAL: CHI TIẾT SUBTASK ===== -->
+<div class="modal fade" id="subtaskDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h5 class="modal-title fw-bold"><i class="bi bi-card-checklist text-primary me-2"></i>Chi tiết Công việc</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-4" id="subtaskDetailBody">
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" role="status"></div>
+          <p class="mt-2 text-muted">Đang tải...</p>
+        </div>
+      </div>
+      <div class="modal-footer border-top-0">
+        <button class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 $(function() {
     // ===== SORTABLE.JS: Kéo thả thẻ giữa các cột =====
@@ -422,6 +443,53 @@ $(function() {
         }, 'json');
     });
 });
+
+// ===== Chi tiết Subtask: Mở Modal =====
+function openSubtaskDetail(subtaskId) {
+    event.stopPropagation();
+    var modal = new bootstrap.Modal(document.getElementById('subtaskDetailModal'));
+    modal.show();
+    
+    $('#subtaskDetailBody').html('<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Đang tải...</p></div>');
+    
+    $.getJSON('index.php?action=api_subtask_detail&id=' + subtaskId, function(res) {
+        if (res.success) {
+            var d = res.data;
+            var statusBadge = {'To Do':'secondary','In Progress':'primary','Pending':'warning','Done':'success'};
+            var deadlineStr = 'Chưa đặt';
+            if (d.deadline && d.deadline !== '0000-00-00 00:00:00') {
+                var parts = d.deadline.replace(/-/g, '/'); // Safari/Firefox compatible
+                var dt = new Date(parts);
+                deadlineStr = isNaN(dt.getTime()) ? d.deadline : dt.toLocaleDateString('vi-VN');
+            }
+            var html = `
+                <div class="row g-4">
+                    <div class="col-md-8">
+                        <h4 class="fw-bold mb-2">${d.title}</h4>
+                        <span class="badge bg-${statusBadge[d.status] || 'secondary'} rounded-pill mb-3">${d.status}</span>
+                        <p class="text-muted small mb-1 fw-bold text-uppercase">Thuộc Task</p>
+                        <p class="mb-3">${d.task_title || 'N/A'}</p>
+                        <p class="text-muted small mb-1 fw-bold text-uppercase">Mô tả chi tiết</p>
+                        <p class="mb-0" style="line-height:1.7">${d.description || '<em class="text-muted">Không có mô tả.</em>'}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="bg-light rounded-3 p-3">
+                            <p class="text-muted small mb-1 fw-bold text-uppercase">Người thực hiện</p>
+                            <p class="fw-semibold mb-3"><i class="bi bi-person-fill text-primary me-1"></i>${d.assignee_name}</p>
+                            <p class="text-muted small mb-1 fw-bold text-uppercase">Deadline</p>
+                            <p class="fw-semibold mb-3"><i class="bi bi-calendar3 text-danger me-1"></i>${deadlineStr}</p>
+                            <p class="text-muted small mb-1 fw-bold text-uppercase">Độ ưu tiên</p>
+                            <p class="fw-semibold mb-0"><span class="priority-dot priority-${(d.priority||'medium').toLowerCase()} me-1"></span>${d.priority || 'Medium'}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            $('#subtaskDetailBody').html(html);
+        } else {
+            $('#subtaskDetailBody').html('<p class="text-danger text-center">'+res.message+'</p>');
+        }
+    });
+}
 </script>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>

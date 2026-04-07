@@ -75,6 +75,12 @@ switch($action) {
     case 'api_fetch_messages':
         $chatController->fetchMessages();
         break;
+    case 'api_delete_post':
+        $socialController->deletePost();
+        break;
+    case 'api_subtask_detail':
+        $taskController->getSubtaskDetail();
+        break;
     default:
         // 404 Route
         echo "<h1>404 Not Found!</h1>";

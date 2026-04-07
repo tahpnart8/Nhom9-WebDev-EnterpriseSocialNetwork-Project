@@ -204,5 +204,22 @@ class TaskController {
             $taskModel->updateStatus($task_id, 'In Progress');
         }
     }
+
+    // API: Lấy chi tiết 1 subtask (dành cho Modal chi tiết khi click thẻ Kanban)
+    public function getSubtaskDetail() {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        $subtaskModel = new Subtask($this->db);
+        $subtaskId = $_GET['id'] ?? 0;
+        $subtask = $subtaskModel->getById($subtaskId);
+
+        if ($subtask) {
+            echo json_encode(['success' => true, 'data' => $subtask]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy subtask!']);
+        }
+        exit;
+    }
 }
 ?>

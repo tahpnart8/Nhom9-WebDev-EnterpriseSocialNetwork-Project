@@ -57,7 +57,16 @@
                                 </p>
                             </div>
                         </div>
+                        <?php if($post['author_id'] == $_SESSION['user_id'] || $_SESSION['role_id'] == 1): ?>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light border-0 text-muted" data-bs-toggle="dropdown"><i class="bi bi-three-dots fs-5"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border">
+                                <li><a class="dropdown-item text-danger btn-delete-post" href="#" data-id="<?php echo $post['id']; ?>"><i class="bi bi-trash me-2"></i>Xóa bài viết</a></li>
+                            </ul>
+                        </div>
+                        <?php else: ?>
                         <i class="bi bi-three-dots text-muted fs-5" style="cursor:pointer;"></i>
+                        <?php endif; ?>
                     </div>
                     
                     <p class="mb-3 text-dark" style="line-height: 1.6; font-size: 0.95rem;">
@@ -172,6 +181,23 @@
                 $('#post-spinner').addClass('d-none');
             }
         });
+    });
+
+    // ===== AJAX: Xóa bài viết =====
+    $(document).on('click', '.btn-delete-post', function(e) {
+        e.preventDefault();
+        if (!confirm('Bạn có chắc muốn xóa bài viết này?')) return;
+        var postId = $(this).data('id');
+        var $card = $(this).closest('.relioo-card');
+        
+        $.post('index.php?action=api_delete_post', { post_id: postId }, function(res) {
+            if (res.success) {
+                $card.fadeOut(300, function() { $(this).remove(); });
+                toastr.success('Đã xóa bài viết thành công!');
+            } else {
+                toastr.error(res.message);
+            }
+        }, 'json');
     });
 </script>
 

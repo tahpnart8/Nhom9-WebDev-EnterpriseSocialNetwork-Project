@@ -70,5 +70,39 @@ class SocialController {
         }
         exit;
     }
+
+    // API: Xóa bài viết
+    public function deletePost() {
+        if(!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'message' => 'Chưa đăng nhập']);
+            exit;
+        }
+
+        header('Content-Type: application/json');
+        $database = new Database();
+        $db = $database->getConnection();
+        $postModel = new Post($db);
+
+        $postId = $_POST['post_id'] ?? 0;
+        $post = $postModel->getById($postId);
+
+        if (!$post) {
+            echo json_encode(['success' => false, 'message' => 'Bài viết không tồn tại!']);
+            exit;
+        }
+        
+        // Chỉ tác giả hoặc CEO/Admin mới được xóa
+        if ($post['author_id'] != $_SESSION['user_id'] && $_SESSION['role_id'] != 1 && $_SESSION['role_id'] != 4) {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xóa bài viết này!']);
+            exit;
+        }
+
+        if ($postModel->delete($postId)) {
+            echo json_encode(['success' => true, 'message' => 'Đã xóa bài viết.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi CSDL!']);
+        }
+        exit;
+    }
 }
 ?>
