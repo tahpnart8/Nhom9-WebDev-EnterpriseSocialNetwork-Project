@@ -18,18 +18,16 @@ class Database {
         }
 
         $host = getenv('DB_HOST') ?: ($_ENV['DB_HOST'] ?? 'localhost');
-        $port = getenv('DB_PORT') ?: ($_ENV['DB_PORT'] ?? '5432');
-        $db   = getenv('DB_DATABASE') ?: ($_ENV['DB_DATABASE'] ?? 'postgres');
-        $user = getenv('DB_USERNAME') ?: ($_ENV['DB_USERNAME'] ?? 'postgres');
+        $port = getenv('DB_PORT') ?: ($_ENV['DB_PORT'] ?? '3306');
+        $db   = getenv('DB_DATABASE') ?: ($_ENV['DB_DATABASE'] ?? 'relioo_db');
+        $user = getenv('DB_USERNAME') ?: ($_ENV['DB_USERNAME'] ?? 'root');
         $pass = getenv('DB_PASSWORD') ?: ($_ENV['DB_PASSWORD'] ?? '');
 
         try {
-            $dsn = "pgsql:host=$host;port=$port;dbname=$db;sslmode=require";
+            $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
             $this->conn = new PDO($dsn, $user, $pass);
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-            $this->conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, true); // Quan trọng: Yêu cầu bắt buộc khi dùng Supabase Connection Pooler (Transaction Mode)
-            $this->conn->setAttribute(PDO::ATTR_PERSISTENT, true); // Giúp Vercel pool connection nhanh hơn
         } catch(PDOException $exception) {
             // In lỗi chi tiết để debug (Xóa dòng này sau khi chạy thành công)
             die('Lỗi kết nối CSDL: ' . $exception->getMessage());
