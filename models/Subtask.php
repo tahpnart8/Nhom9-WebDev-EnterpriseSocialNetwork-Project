@@ -112,5 +112,59 @@ class Subtask {
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    // Thống kê Subtask chung (Overdue, Total, Done, v.v...)
+    public function getSubtaskStats($department_id = null, $assignee_id = null) {
+        $query = "SELECT COUNT(s.id) as total_subtasks,
+                         SUM(CASE WHEN s.status = 'Done' THEN 1 ELSE 0 END) as done_subtasks,
+                         SUM(CASE WHEN s.deadline < NOW() AND s.status != 'Done' THEN 1 ELSE 0 END) as overdue_subtasks,
+                         SUM(CASE WHEN s.status = 'To Do' THEN 1 ELSE 0 END) as todo_subtasks,
+                         SUM(CASE WHEN s.status = 'In Progress' THEN 1 ELSE 0 END) as inprogress_subtasks,
+                         SUM(CASE WHEN s.status = 'Pending' THEN 1 ELSE 0 END) as pending_subtasks
+                  FROM " . $this->table_name . " s
+                  JOIN tasks t ON s.task_id = t.id";
+        
+        $conditions = [];
+        if ($department_id) { $conditions[] = "t.department_id = :dept_id"; }
+        if ($assignee_id) { $conditions[] = "s.assignee_id = :assignee_id"; }
+
+        if (count($conditions) > 0) {
+            $query .= " WHERE " . implode(" AND ", $conditions);
+        }
+
+        $stmt = $this->conn->prepare($query);
+        if ($department_id) { $stmt->bindParam(':dept_id', $department_id); }
+        if ($assignee_id) { $stmt->bindParam(':assignee_id', $assignee_id); }
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // Lấy dữ liệu Bar Chart cho CEO: Tổng lượng việc tải trên các phòng ban
+    public function getWorkloadByDepartment() {
+        $query = "SELECT d.dept_name, COUNT(s.id) as total_tasks
+                  FROM departments d
+                  LEFT JOIN tasks t ON t.department_id = d.id
+                  LEFT JOIN subtasks s ON s.task_id = t.id
+                  GROUP BY d.id
+                  ORDER BY total_tasks DESC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Lấy dữ liệu Bar Chart cho Leader: Lượng việc từng nhân viên trong phòng
+    public function getWorkloadByAssignee($department_id) {
+        $query = "SELECT u.full_name as assignee_name, COUNT(s.id) as total_tasks
+                  FROM users u
+                  JOIN subtasks s ON s.assignee_id = u.id
+                  JOIN tasks t ON s.task_id = t.id
+                  WHERE t.department_id = :dept_id
+                  GROUP BY u.id
+                  ORDER BY total_tasks DESC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':dept_id', $department_id);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
 ?>

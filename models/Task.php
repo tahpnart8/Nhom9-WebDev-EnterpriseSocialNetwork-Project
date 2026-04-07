@@ -75,5 +75,23 @@ class Task {
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+    // Lấy thống kê dự án (Active Projects)
+    public function getTaskStats($department_id = null) {
+        $query = "SELECT COUNT(id) as total_tasks, 
+                         SUM(CASE WHEN status != 'Done' THEN 1 ELSE 0 END) as active_projects
+                  FROM " . $this->table_name;
+        
+        if ($department_id) {
+            $query .= " WHERE department_id = :dept_id";
+        }
+        
+        $stmt = $this->conn->prepare($query);
+        if ($department_id) {
+            $stmt->bindParam(':dept_id', $department_id);
+        }
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 }
 ?>
