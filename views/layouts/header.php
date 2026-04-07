@@ -11,7 +11,7 @@
     <!-- Toastr CSS (Popup thông báo góc màn hình) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="public/css/style.css">
+    <link rel="stylesheet" href="/public/css/style.css">
     <!-- JQuery -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <!-- Toastr JS -->
@@ -93,7 +93,8 @@ function pollNotifications() {
     });
 }
 pollNotifications();
-setInterval(pollNotifications, 10000);
+// Tăng thời gian polling lên 60 giây (60000ms) để tránh quá tải Vercel Serverless & Supabase Connection
+setInterval(pollNotifications, 60000);
 
 $('#markAllRead').on('click', function() {
     $.post('index.php?action=api_mark_all_read', function() { pollNotifications(); });
