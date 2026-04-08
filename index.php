@@ -93,6 +93,30 @@ switch($action) {
     case 'api_edit_post':
         $socialController->editPost();
         break;
+    case 'api_toggle_post_reaction':
+        $socialController->togglePostReaction();
+        break;
+    case 'api_fetch_comments':
+        $socialController->fetchComments();
+        break;
+    case 'api_add_comment':
+        $socialController->addComment();
+        break;
+    case 'api_toggle_comment_reaction':
+        $socialController->toggleCommentReaction();
+        break;
+    case 'api_edit_comment':
+        $socialController->editComment();
+        break;
+    case 'api_delete_comment':
+        $socialController->deleteComment();
+        break;
+    case 'api_fetch_post_likers':
+        $socialController->fetchPostLikers();
+        break;
+    case 'api_fetch_comment_likers':
+        $socialController->fetchCommentLikers();
+        break;
     case 'api_subtask_detail':
         $taskController->getSubtaskDetail();
         break;

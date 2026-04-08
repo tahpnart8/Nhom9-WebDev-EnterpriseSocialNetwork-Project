@@ -1,270 +1,335 @@
 <?php include __DIR__ . '/../layouts/header.php'; ?>
 
+<style>
+    .post-actions .btn { transition: all 0.2s ease; }
+    .post-actions .btn.active { color: #ef4444 !important; }
+    .post-actions .btn.active i::before { content: "\f415"; }
+    .comment-section { background-color: #f8fafc; border-top: 1px solid #e2e8f0; }
+    .comment-item { margin-bottom: 1rem; }
+    .comment-avatar { width: 32px; height: 32px; font-size: 12px; }
+    .comment-bubble { background-color: white; padding: 0.6rem 1rem; border-radius: 1rem; border: 1px solid #e2e8f0; position: relative; }
+    .comment-actions { font-size: 0.75rem; margin-top: 0.25rem; padding-left: 0.5rem; }
+    .comment-actions a { color: #64748b; text-decoration: none; font-weight: 600; margin-right: 1rem; }
+    .comment-actions a:hover { color: #3b82f6; }
+    .comment-actions a.active { color: #ef4444; }
+    .reply-list { margin-left: 3rem; margin-top: 0.5rem; border-left: 2px solid #e2e8f0; padding-left: 1rem; }
+    .liker-list-item:hover { background-color: #f8fafc; }
+    .cursor-pointer { cursor: pointer; }
+    .cursor-pointer:hover { text-decoration: underline; }
+</style>
+
 <div class="row g-4 position-relative">
-    <!-- Cột 8: Feed List Chính -->
     <div class="col-lg-8" style="padding-bottom: 50px;">
-        <!-- Khung Đăng Bài (Post box) -->
+        <!-- Khung Đăng Bài -->
         <div class="relioo-card p-4 mb-4 border-top border-3 border-primary shadow-sm" style="background: linear-gradient(180deg, #fdfdff 0%, #ffffff 100%);">
             <form id="createPostForm" enctype="multipart/form-data">
                 <div class="d-flex gap-3 mb-3">
                     <div class="avatar-circle shadow-sm flex-shrink-0" style="width: 44px; height: 44px; font-size: 14px;">
                         <?php echo mb_substr(trim($_SESSION['full_name'] ?? 'User'), 0, 1, 'UTF-8'); ?>
                     </div>
-                    <textarea class="form-control bg-light border-0 px-3 py-3 rounded-3" id="postContent" name="content" rows="3" placeholder="Chia sẻ một ý tưởng, thông báo hoặc gửi ảnh..." required style="resize: none;"></textarea>
+                    <textarea class="form-control bg-light border-0 px-3 py-3 rounded-3" id="postContent" name="content" rows="3" placeholder="Chia sẻ một ý tưởng..." required style="resize: none;"></textarea>
                 </div>
-                
                 <div class="d-flex justify-content-between align-items-center mt-3">
                     <div class="d-flex gap-2">
                         <label class="btn btn-sm btn-light text-primary border rounded-pill px-3 shadow-sm" style="cursor: pointer;">
                             <i class="bi bi-images me-1"></i> Ảnh/Video
                             <input type="file" name="attachment" accept="image/*,video/mp4" class="d-none" id="attachmentFile">
                         </label>
-                        <select name="visibility" class="form-select form-select-sm border bg-light rounded-pill px-3" style="width: auto; cursor:pointer;">
+                        <select name="visibility" class="form-select form-select-sm border bg-light rounded-pill px-3" style="width: auto;">
                             <option value="Public">🌍 Công khai</option>
                             <option value="Department">🏢 Trong phòng ban</option>
                         </select>
                     </div>
                     <button type="submit" class="btn btn-primary rounded-pill px-4 fw-medium shadow-sm" id="btn-submit-post">
-                        <span class="spinner-border spinner-border-sm d-none me-1" id="post-spinner"></span>
-                        Đăng bài
+                        <span class="spinner-border spinner-border-sm d-none me-1" id="post-spinner"></span> Đăng bài
                     </button>
                 </div>
-                <div id="fileNameDisplay" class="small text-muted mt-2 ps-2 d-none">
-                    <i class="bi bi-paperclip text-primary"></i> <span class="fw-medium text-dark"></span>
-                </div>
+                <div id="fileNameDisplay" class="small text-muted mt-2 ps-2 d-none"><i class="bi bi-paperclip text-primary"></i> <span></span></div>
             </form>
         </div>
 
-        <!-- Timeline Bảng Tin -->
+        <!-- Feed Container -->
         <div id="feedContainer">
             <?php foreach($feed as $post): ?>
             <div class="relioo-card p-0 mb-4 bg-white overflow-hidden shadow-sm border" data-post-id="<?php echo $post['id']; ?>">
-                <!-- Header Card -->
                 <div class="p-4 pb-2">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="d-flex align-items-center gap-3">
-                            <div class="avatar-circle shadow-sm">
-                                <?php echo mb_substr(trim($post['full_name']), 0, 1, 'UTF-8'); ?>
-                            </div>
+                            <div class="avatar-circle shadow-sm"><?php echo mb_substr(trim($post['full_name']), 0, 1, 'UTF-8'); ?></div>
                             <div>
                                 <h6 class="mb-0 fw-bold text-dark"><?php echo htmlspecialchars($post['full_name']); ?></h6>
                                 <p class="text-muted small mb-0 d-flex gap-2 align-items-center">
-                                    <span class="fw-medium"><?php echo htmlspecialchars($post['role_name']); ?></span>
-                                    <span>•</span>
-                                    <span><?php echo date('H:i d/m/Y', strtotime($post['created_at'])); ?></span>
-                                    <span>•</span>
-                                    <?php echo $post['visibility'] == 'Public' ? '<i class="bi bi-globe" title="Công khai"></i>' : '<i class="bi bi-building" title="Nội bộ"></i>'; ?>
+                                    <span><?php echo htmlspecialchars($post['role_name']); ?></span> • <span><?php echo date('H:i d/m/Y', strtotime($post['created_at'])); ?></span> •
+                                    <?php echo $post['visibility'] == 'Public' ? '<i class="bi bi-globe"></i>' : '<i class="bi bi-building"></i>'; ?>
                                 </p>
                             </div>
                         </div>
-                        
                         <?php 
                         $isAuthor = ($post['author_id'] == $_SESSION['user_id']);
                         $isAdminOrCEO = ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 4);
-                        ?>
-
-                        <?php if($isAuthor || $isAdminOrCEO): ?>
+                        if($isAuthor || $isAdminOrCEO): ?>
                         <div class="dropdown">
                             <button class="btn btn-sm btn-light border-0 text-muted" data-bs-toggle="dropdown"><i class="bi bi-three-dots fs-5"></i></button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm border">
-                                <?php if($isAuthor): ?>
-                                <li><a class="dropdown-item btn-edit-post" href="#" data-id="<?php echo $post['id']; ?>" data-content="<?php echo htmlspecialchars($post['content_html']); ?>"><i class="bi bi-pencil me-2"></i>Chỉnh sửa</a></li>
-                                <?php endif; ?>
+                                <?php if($isAuthor): ?><li><a class="dropdown-item btn-edit-post" href="#" data-id="<?php echo $post['id']; ?>"><i class="bi bi-pencil me-2"></i>Chỉnh sửa</a></li><?php endif; ?>
                                 <li><a class="dropdown-item text-danger btn-delete-post" href="#" data-id="<?php echo $post['id']; ?>"><i class="bi bi-trash me-2"></i>Xóa bài viết</a></li>
                             </ul>
                         </div>
                         <?php endif; ?>
                     </div>
-                    
-                    <p class="mb-3 text-dark post-content-text" style="line-height: 1.6; font-size: 0.95rem;">
-                        <?php echo nl2br(htmlspecialchars($post['content_html'])); ?>
-                    </p>
-                </div> <!-- End Header Card -->
-                
-                <?php if($post['media_url']): ?>
-                <!-- Khu vực hiển thị Ảnh/Video -->
-                <div class="bg-light w-100 position-relative border-top border-bottom text-center">
-                    <img src="<?php echo htmlspecialchars($post['media_url']); ?>" alt="Attachment" class="img-fluid object-fit-contain" style="max-height: 400px;">
+                    <p class="mb-3 text-dark post-content-text" style="line-height: 1.6;"><?php echo nl2br(htmlspecialchars($post['content_html'])); ?></p>
                 </div>
-                <?php endif; ?>
+                <?php if($post['media_url']): ?><div class="bg-light text-center border-top border-bottom"><img src="<?php echo htmlspecialchars($post['media_url']); ?>" class="img-fluid" style="max-height: 400px;"></div><?php endif; ?>
                 
-                <!-- Card Footer Interactive -->
-                <div class="p-2 px-4 bg-white">
+                <div class="p-2 px-4 bg-white post-actions">
                     <div class="d-flex justify-content-between border-top pt-2">
-                        <button class="btn btn-sm btn-light border-0 text-muted fw-medium rounded py-2 px-3 flex-fill d-flex justify-content-center align-items-center gap-2">
-                            <i class="bi bi-heart fs-6"></i> Tuyệt
+                        <div class="d-flex align-items-center gap-1 flex-fill justify-content-center">
+                            <button class="btn btn-sm btn-light border-0 text-muted fw-medium rounded py-2 btn-toggle-react <?php echo $post['is_liked'] ? 'active' : ''; ?>" data-id="<?php echo $post['id']; ?>">
+                                <i class="bi bi-heart fs-6"></i> Tim
+                            </button>
+                            <span class="small text-muted cursor-pointer btn-view-post-likers" data-id="<?php echo $post['id']; ?>"><span class="like-count"><?php echo $post['like_count'] ?: ''; ?></span></span>
+                        </div>
+                        <button class="btn btn-sm btn-light border-0 text-muted fw-medium rounded py-2 px-3 flex-fill d-flex justify-content-center align-items-center gap-2 btn-show-comments" data-id="<?php echo $post['id']; ?>">
+                            <i class="bi bi-chat fs-6"></i> <span class="comment-count"><?php echo $post['comment_count'] ?: ''; ?></span> Bình luận
                         </button>
-                        <button class="btn btn-sm btn-light border-0 text-muted fw-medium rounded py-2 px-3 flex-fill d-flex justify-content-center align-items-center gap-2">
-                            <i class="bi bi-chat fs-6"></i> Bình luận
-                        </button>
-                        <button class="btn btn-sm btn-light border-0 text-muted fw-medium rounded py-2 px-3 flex-fill d-flex justify-content-center align-items-center gap-2">
-                            <i class="bi bi-share fs-6"></i> Chia sẻ
-                        </button>
+                    </div>
+                </div>
+
+                <div class="comment-section p-4 d-none" id="comment-section-<?php echo $post['id']; ?>">
+                    <div class="comment-list mb-4"></div>
+                    <div class="d-flex gap-2">
+                        <div class="avatar-circle shadow-sm flex-shrink-0 comment-avatar"><?php echo mb_substr(trim($_SESSION['full_name'] ?? 'U'), 0, 1, 'UTF-8'); ?></div>
+                        <div class="flex-grow-1 position-relative">
+                            <input type="text" class="form-control form-control-sm rounded-pill border-0 bg-white shadow-sm px-3 input-comment" placeholder="Viết bình luận..." data-post-id="<?php echo $post['id']; ?>">
+                            <button class="btn btn-link btn-sm position-absolute end-0 top-50 translate-middle-y text-primary btn-send-comment" style="padding-right: 15px;"><i class="bi bi-send-fill"></i></button>
+                        </div>
                     </div>
                 </div>
             </div>
             <?php endforeach; ?>
-            
-            <?php if(empty($feed)): ?>
-            <div class="relioo-card p-5 text-center bg-transparent border-0 opacity-50">
-                <i class="bi bi-mailbox" style="font-size: 4rem;"></i>
-                <h5 class="mt-3 fw-bold">Chưa có bản tin nào</h5>
-                <p>Hãy là người lên tiếng đầu tiên khơi dậy phong trào!</p>
-            </div>
-            <?php endif; ?>
         </div>
     </div>
-
-    <!-- Cột 4: Analytics Trending Component -->
+    
     <div class="col-lg-4 d-none d-lg-block">
-        <div class="relioo-card p-4 sticky-top mb-4 shadow-sm" style="top: 2rem;">
-            <h6 class="fw-bold mb-4 text-muted small text-uppercase tracking-wider">Cộng đồng Nổi bật</h6>
-            <div class="d-flex align-items-center gap-3 mb-4 cursor-pointer hover-bg-light p-2 rounded transition">
-                <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                    <i class="bi bi-hash fs-5"></i>
-                </div>
-                <div>
-                    <h6 class="mb-0 fw-bold">DuLichHe2026</h6>
-                    <p class="text-muted small mb-0">142 bài thảo luận</p>
-                </div>
-            </div>
-            <div class="d-flex align-items-center gap-3 mb-4 cursor-pointer hover-bg-light p-2 rounded transition">
-                <div class="bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                    <i class="bi bi-hash fs-5"></i>
-                </div>
-                <div>
-                    <h6 class="mb-0 fw-bold">ThaoLuanChuyenMon</h6>
-                    <p class="text-muted small mb-0">89 bài viết</p>
-                </div>
-            </div>
-            
-            <hr class="opacity-10">
-            <h6 class="fw-bold my-4 text-muted small text-uppercase tracking-wider">Quy định mạng nội bộ</h6>
+        <div class="relioo-card p-4 sticky-top shadow-sm" style="top: 2rem;">
+            <h6 class="fw-bold mb-4 text-muted small text-uppercase">Quy định mạng nội bộ</h6>
             <ul class="text-muted small ps-3 mb-0" style="line-height: 1.8;">
                 <li>Tôn trọng đồng nghiệp.</li>
-                <li>Hạn chế ngôn từ gây thù ghét.</li>
-                <li>Chia sẻ tài liệu bảo mật nằm vùng đúng Department.</li>
+                <li>Chia sẻ tài liệu đúng phòng ban.</li>
             </ul>
         </div>
     </div>
 </div>
 
 <!-- Modal Chỉnh sửa bài viết -->
-<div class="modal fade" id="editPostModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="editPostModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 1.2rem;">
-            <div class="modal-header border-0 pb-0">
-                <h6 class="modal-title fw-bold text-primary">CHỈNH SỬA BÀI VIẾT</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header border-0 pb-0"><h6 class="modal-title fw-bold text-primary">CHỈNH SỬA BÀI VIẾT</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body pt-3"><input type="hidden" id="editPostId"><textarea class="form-control bg-light border-0 px-3 py-3 rounded-3" id="editPostContent" rows="5" style="resize: none;"></textarea></div>
+            <div class="modal-footer border-0"><button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Hủy</button><button type="button" class="btn btn-primary rounded-pill px-4 fw-medium" id="btn-save-edit-post">Lưu thay đổi</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Chỉnh sửa bình luận -->
+<div class="modal fade" id="editCommentModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+            <div class="modal-header border-0 pb-0"><h6 class="modal-title fw-bold text-primary">CHỈNH SỬA BÌNH LUẬN</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body pt-3"><input type="hidden" id="editCommentId"><input type="hidden" id="editCommentPostId"><textarea class="form-control bg-light border-0 px-3 py-2 rounded-3" id="editCommentContent" rows="3" style="resize: none;"></textarea></div>
+            <div class="modal-footer border-0"><button type="button" class="btn btn-primary rounded-pill px-4 btn-sm" id="btn-save-edit-comment">Cập nhật</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Danh sách người thích -->
+<div class="modal fade" id="likersModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h6 class="modal-title fw-bold text-dark mx-auto">Người đã thích</h6>
+                <button type="button" class="btn-close ms-0" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body pt-3">
-                <input type="hidden" id="editPostId">
-                <textarea class="form-control bg-light border-0 px-3 py-3 rounded-3" id="editPostContent" rows="5" style="resize: none;"></textarea>
-            </div>
-            <div class="modal-footer border-0">
-                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
-                <button type="button" class="btn btn-primary rounded-pill px-4 fw-medium" id="btn-save-edit-post">Lưu thay đổi</button>
+            <div class="modal-body likers-container p-0" style="max-height: 400px; overflow-y: auto;">
+                <!-- List will be loaded here -->
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // JS Logic Lắng nghe upload
-    $('#attachmentFile').on('change', function() {
-        if(this.files.length > 0) {
-            $('#fileNameDisplay span').text(this.files[0].name);
-            $('#fileNameDisplay').removeClass('d-none');
-        } else {
-            $('#fileNameDisplay').addClass('d-none');
-        }
-    });
+    const currentUserId = <?php echo $_SESSION['user_id']; ?>;
+    const isAdminOrCEO = <?php echo ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 4) ? 'true' : 'false'; ?>;
 
-    // AJAX Call to Google Drive Backend
+    // Logic Đăng/Sửa bài viết (Giữ nguyên)
+    $('#attachmentFile').on('change', function() { if(this.files.length > 0) $('#fileNameDisplay span').text(this.files[0].name).parent().removeClass('d-none'); });
     $('#createPostForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        let formData = new FormData(this);
-        let $btn = $('#btn-submit-post');
-        
-        $btn.prop('disabled', true);
-        $('#post-spinner').removeClass('d-none');
-        
-        $.ajax({
-            url: 'index.php?action=api_create_post',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(res) {
-                location.reload(); 
-            },
-            error: function() {
-                alert("Đã xảy ra lỗi tệp đính kèm. Vui lòng thử lại!");
-            },
-            complete: function() {
-                $btn.prop('disabled', false);
-                $('#post-spinner').addClass('d-none');
-            }
-        });
+        e.preventDefault(); let formData = new FormData(this);
+        $.ajax({ url: 'index.php?action=api_create_post', type: 'POST', data: formData, processData: false, contentType: false, success: function() { location.reload(); } });
+    });
+    $(document).on('click', '.btn-delete-post', function(e) {
+        e.preventDefault(); if (!confirm('Xóa bài viết này?')) return;
+        $.post('index.php?action=api_delete_post', { post_id: $(this).data('id') }, function(res) { if(res.success) location.reload(); });
+    });
+    $(document).on('click', '.btn-edit-post', function(e) {
+        e.preventDefault(); let id = $(this).data('id'); let content = $(this).closest('.relioo-card').find('.post-content-text').text().trim();
+        $('#editPostId').val(id); $('#editPostContent').val(content); $('#editPostModal').modal('show');
+    });
+    $('#btn-save-edit-post').on('click', function() {
+        $.post('index.php?action=api_edit_post', { post_id: $('#editPostId').val(), content: $('#editPostContent').val() }, function(res) { if(res.success) location.reload(); });
     });
 
-    // ===== AJAX: Xóa bài viết =====
-    $(document).on('click', '.btn-delete-post', function(e) {
-        e.preventDefault();
-        if (!confirm('Bạn có chắc muốn xóa bài viết này?')) return;
-        var postId = $(this).data('id');
-        var $card = $(this).closest('.relioo-card');
-        
-        $.post('index.php?action=api_delete_post', { post_id: postId }, function(res) {
+    // Logic Tim bài viết
+    $(document).on('click', '.btn-toggle-react', function() {
+        let $btn = $(this); let postId = $btn.data('id'); let $count = $btn.siblings('.btn-view-post-likers').find('.like-count');
+        $.post('index.php?action=api_toggle_post_reaction', { post_id: postId }, function(res) {
             if (res.success) {
-                $card.fadeOut(300, function() { $(this).remove(); });
-                toastr.success('Đã xóa bài viết thành công!');
-            } else {
-                toastr.error(res.message);
+                let c = parseInt($count.text() || 0);
+                if ($btn.hasClass('active')) { $btn.removeClass('active'); $count.text(c > 1 ? c - 1 : ''); }
+                else { $btn.addClass('active'); $count.text(c + 1); }
             }
         }, 'json');
     });
 
-    // ===== UI & AJAX: Chỉnh sửa bài viết =====
-    $(document).on('click', '.btn-edit-post', function(e) {
-        e.preventDefault();
-        var postId = $(this).data('id');
-        var content = $(this).closest('.relioo-card').find('.post-content-text').text().trim();
-        
-        $('#editPostId').val(postId);
-        $('#editPostContent').val(content);
-        $('#editPostModal').modal('show');
+    // Logic Bình luận
+    $(document).on('click', '.btn-show-comments', function() {
+        let postId = $(this).data('id'); let $section = $('#comment-section-' + postId);
+        $section.toggleClass('d-none'); if (!$section.hasClass('d-none')) loadComments(postId);
     });
 
-    $('#btn-save-edit-post').on('click', function() {
-        var postId = $('#editPostId').val();
-        var content = $('#editPostContent').val();
-        var $btn = $(this);
-        
-        if (content.trim() === '') {
-            toastr.warning('Nội dung không được để trống!');
-            return;
-        }
-
-        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
-
-        $.post('index.php?action=api_edit_post', { post_id: postId, content: content }, function(res) {
+    function loadComments(postId) {
+        let $list = $('#comment-section-' + postId + ' .comment-list');
+        $.getJSON('index.php?action=api_fetch_comments&post_id=' + postId, function(res) {
             if (res.success) {
-                // Cập nhật nội dung trên giao diện mà ko cần reload
-                var $card = $('.relioo-card[data-post-id="' + postId + '"]');
-                $card.find('.post-content-text').html(content.replace(/\n/g, "<br>"));
-                
-                // Cập nhật lại thuộc tính data-content của nút edit (nếu cần dùng)
-                $card.find('.btn-edit-post').data('content', content);
-                
-                $('#editPostModal').modal('hide');
-                toastr.success('Cập nhật bài viết thành công!');
-            } else {
-                toastr.error(res.message);
+                $list.empty(); if (res.data.length === 0) $list.html('<p class="text-center text-muted small py-2">Chưa có bình luận.</p>');
+                res.data.forEach(c => $list.append(renderComment(c, postId)));
             }
-        }, 'json').always(function() {
-            $btn.prop('disabled', false).text('Lưu thay đổi');
+        });
+    }
+
+    function renderComment(c, postId) {
+        let isOwner = (c.user_id == currentUserId);
+        let canDelete = (isOwner || isAdminOrCEO);
+        let actions = `
+            <a href="#" class="btn-comment-react ${parseInt(c.is_liked) == 1 ? 'active' : ''}" data-id="${c.id}">${parseInt(c.is_liked) == 1 ? 'Đã thích' : 'Thích'}</a>
+            <a href="#" class="btn-comment-reply" data-id="${c.id}" data-name="${c.full_name}" data-post-id="${postId}">Trả lời</a>
+            ${isOwner ? `<a href="#" class="btn-edit-comment text-primary" data-id="${c.id}" data-post-id="${postId}">Sửa</a>` : ''}
+            ${canDelete ? `<a href="#" class="btn-delete-comment text-danger" data-id="${c.id}" data-post-id="${postId}">Xóa</a>` : ''}
+            <span class="text-muted" style="font-size: 0.65rem;">${c.created_at}</span>
+        `;
+
+        return `
+            <div class="comment-item" id="comment-${c.id}">
+                <div class="d-flex gap-2">
+                    <div class="avatar-circle comment-avatar shadow-sm">${c.full_name.charAt(0)}</div>
+                    <div class="flex-grow-1">
+                        <div class="comment-bubble shadow-sm">
+                            <div class="fw-bold small">${c.full_name}</div>
+                            <div class="small comment-text">${c.content}</div>
+                            ${parseInt(c.like_count) > 0 ? `<div class="position-absolute bottom-0 end-0 translate-middle-y me-2 bg-white shadow-sm rounded-pill px-1 small cursor-pointer btn-view-comment-likers" data-id="${c.id}" style="font-size: 0.65rem;"><i class="bi bi-heart-fill text-danger"></i> ${c.like_count}</div>` : ''}
+                        </div>
+                        <div class="comment-actions">${actions}</div>
+                        <div class="reply-list">
+                            ${c.replies.map(r => {
+                                let rIsOwner = (r.user_id == currentUserId);
+                                let rCanDelete = (rIsOwner || isAdminOrCEO);
+                                return `
+                                <div class="comment-item mt-2" id="comment-${r.id}">
+                                    <div class="d-flex gap-2">
+                                        <div class="avatar-circle comment-avatar shadow-sm" style="width: 24px; height: 24px; font-size: 10px;">${r.full_name.charAt(0)}</div>
+                                        <div class="flex-grow-1">
+                                            <div class="comment-bubble py-1 px-3 shadow-sm">
+                                                <div class="fw-bold small" style="font-size: 0.75rem;">${r.full_name}</div>
+                                                <div class="small comment-text" style="font-size: 0.8rem;">${r.content}</div>
+                                                ${parseInt(r.like_count) > 0 ? `<div class="position-absolute bottom-0 end-0 translate-middle-y me-2 bg-white shadow-sm rounded-pill px-1 small cursor-pointer btn-view-comment-likers" data-id="${r.id}" style="font-size: 0.6rem;"><i class="bi bi-heart-fill text-danger"></i> ${r.like_count}</div>` : ''}
+                                            </div>
+                                            <div class="comment-actions">
+                                                <a href="#" class="btn-comment-react ${parseInt(r.is_liked) == 1 ? 'active' : ''}" data-id="${r.id}">${parseInt(r.is_liked) == 1 ? 'Đã thích' : 'Thích'}</a>
+                                                ${rIsOwner ? `<a href="#" class="btn-edit-comment text-primary" data-id="${r.id}" data-post-id="${postId}">Sửa</a>` : ''}
+                                                ${rCanDelete ? `<a href="#" class="btn-delete-comment text-danger" data-id="${r.id}" data-post-id="${postId}">Xóa</a>` : ''}
+                                                <span class="text-muted" style="font-size: 0.6rem;">${r.created_at}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    $(document).on('keypress', '.input-comment', function(e) {
+        if (e.which == 13) {
+            let $in = $(this); let pid = $in.data('post-id'); let content = $in.val();
+            if (!content.trim()) return;
+            $.post('index.php?action=api_add_comment', { post_id: pid, content: content, parent_id: $in.data('parent-id') || null }, function() {
+                $in.val('').data('parent-id', null).attr('placeholder', 'Viết bình luận...'); loadComments(pid);
+            });
+        }
+    });
+
+    $(document).on('click', '.btn-comment-reply', function(e) {
+        e.preventDefault(); let pid = $(this).data('post-id');
+        $('#comment-section-' + pid + ' .input-comment').data('parent-id', $(this).data('id')).attr('placeholder', 'Trả lời ' + $(this).data('name') + '...').focus();
+    });
+
+    $(document).on('click', '.btn-comment-react', function(e) {
+        e.preventDefault(); let pid = $(this).closest('.comment-section').attr('id').split('-').pop();
+        $.post('index.php?action=api_toggle_comment_reaction', { comment_id: $(this).data('id') }, function() { loadComments(pid); });
+    });
+
+    $(document).on('click', '.btn-delete-comment', function(e) {
+        e.preventDefault(); if(!confirm('Xóa bình luận này?')) return;
+        let pid = $(this).data('post-id');
+        $.post('index.php?action=api_delete_comment', { comment_id: $(this).data('id') }, function() { loadComments(pid); });
+    });
+
+    $(document).on('click', '.btn-edit-comment', function(e) {
+        e.preventDefault();
+        let id = $(this).data('id'); let pid = $(this).data('post-id');
+        let content = $(this).closest('.flex-grow-1').find('.comment-text').first().text();
+        $('#editCommentId').val(id); $('#editCommentPostId').val(pid); $('#editCommentContent').val(content);
+        $('#editCommentModal').modal('show');
+    });
+
+    $('#btn-save-edit-comment').on('click', function() {
+        let id = $('#editCommentId').val(); let pid = $('#editCommentPostId').val(); let content = $('#editCommentContent').val();
+        $.post('index.php?action=api_edit_comment', { comment_id: id, content: content }, function() {
+            $('#editCommentModal').modal('hide'); loadComments(pid);
+        });
+    });
+
+    // MỚI: Xem danh sách người thích
+    $(document).on('click', '.btn-view-post-likers, .btn-view-comment-likers', function() {
+        let id = $(this).data('id');
+        let isPost = $(this).hasClass('btn-view-post-likers');
+        let url = isPost ? 'index.php?action=api_fetch_post_likers&post_id=' + id : 'index.php?action=api_fetch_comment_likers&comment_id=' + id;
+        
+        let $container = $('.likers-container');
+        $container.html('<div class="text-center py-4"><span class="spinner-border spinner-border-sm text-muted"></span></div>');
+        $('#likersModal').modal('show');
+
+        $.getJSON(url, function(res) {
+            if (res.success) {
+                $container.empty();
+                if (res.data.length === 0) {
+                    $container.html('<div class="p-4 text-center text-muted">Chưa có ai thích.</div>');
+                    return;
+                }
+                res.data.forEach(u => {
+                    $container.append(`
+                        <div class="d-flex align-items-center gap-3 p-3 liker-list-item">
+                            <div class="avatar-circle shadow-sm" style="width: 36px; height: 32px; font-size: 14px;">${u.full_name.charAt(0)}</div>
+                            <div>
+                                <div class="fw-bold small text-dark">${u.full_name}</div>
+                                <div class="text-muted" style="font-size: 0.7rem;">${u.role_name}</div>
+                            </div>
+                        </div>
+                    `);
+                });
+            }
         });
     });
 </script>

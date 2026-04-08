@@ -37,7 +37,7 @@ class Post {
         return $stmt->execute();
     }
 
-    public function getFeed($role_id, $department_id) {
+    public function getFeed($role_id, $department_id, $current_user_id) {
         // Build conditions based on role (Public OR Own Department)
         $deptCondition = "";
         if ($department_id) {
@@ -45,7 +45,10 @@ class Post {
         }
         $where = " p.visibility = 'Public' " . $deptCondition;
         
-        $query = "SELECT p.*, u.full_name, u.avatar_url, m.media_url, m.media_type, r.role_name
+        $query = "SELECT p.*, u.full_name, u.avatar_url, m.media_url, m.media_type, r.role_name,
+                  (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.id) as like_count,
+                  (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.id AND user_id = :current_user) as is_liked,
+                  (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count
                   FROM " . $this->table_name . " p
                   JOIN users u ON p.author_id = u.id
                   LEFT JOIN roles r ON u.role_id = r.id
@@ -54,6 +57,37 @@ class Post {
                   ORDER BY p.created_at DESC LIMIT 50";
                   
         $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':current_user', $current_user_id);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Toggle Reaction cho Bài viết
+    public function toggleReaction($post_id, $user_id) {
+        $check = "SELECT id FROM post_reactions WHERE post_id = :pid AND user_id = :uid";
+        $stmt = $this->conn->prepare($check);
+        $stmt->execute([':pid' => $post_id, ':uid' => $user_id]);
+        
+        if ($stmt->rowCount() > 0) {
+            $query = "DELETE FROM post_reactions WHERE post_id = :pid AND user_id = :uid";
+        } else {
+            $query = "INSERT INTO post_reactions (post_id, user_id, type) VALUES (:pid, :uid, 'Heart')";
+        }
+        
+        $stmt = $this->conn->prepare($query);
+        return $stmt->execute([':pid' => $post_id, ':uid' => $user_id]);
+    }
+
+    // Lấy danh sách người đã thích bài viết
+    public function getReactions($post_id) {
+        $query = "SELECT u.full_name, u.avatar_url, r.role_name
+                  FROM post_reactions pr
+                  JOIN users u ON pr.user_id = u.id
+                  LEFT JOIN roles r ON u.role_id = r.id
+                  WHERE pr.post_id = :pid
+                  ORDER BY pr.created_at DESC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':pid', $post_id);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
