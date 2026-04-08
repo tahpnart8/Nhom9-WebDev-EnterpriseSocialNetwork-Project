@@ -91,14 +91,56 @@ class SocialController {
             exit;
         }
         
-        // Chỉ tác giả hoặc CEO/Admin mới được xóa
-        if ($post['author_id'] != $_SESSION['user_id'] && $_SESSION['role_id'] != 1 && $_SESSION['role_id'] != 4) {
+        // PHÂN QUYỀN XÓA: Tác giả bài viết HOẶC (CEO/Admin xóa bài người khác)
+        $isAuthor = ($post['author_id'] == $_SESSION['user_id']);
+        $isAdminOrCEO = ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 4);
+
+        if ($isAuthor || $isAdminOrCEO) {
+            if ($postModel->delete($postId)) {
+                echo json_encode(['success' => true, 'message' => 'Đã xóa bài viết.']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Lỗi CSDL!']);
+            }
+        } else {
             echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xóa bài viết này!']);
+        }
+        exit;
+    }
+
+    // API: Chỉnh sửa bài viết
+    public function editPost() {
+        if(!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'message' => 'Chưa đăng nhập']);
             exit;
         }
 
-        if ($postModel->delete($postId)) {
-            echo json_encode(['success' => true, 'message' => 'Đã xóa bài viết.']);
+        header('Content-Type: application/json');
+        $database = new Database();
+        $db = $database->getConnection();
+        $postModel = new Post($db);
+
+        $postId = $_POST['post_id'] ?? 0;
+        $content = $_POST['content'] ?? '';
+
+        $post = $postModel->getById($postId);
+        if (!$post) {
+            echo json_encode(['success' => false, 'message' => 'Bài viết không tồn tại!']);
+            exit;
+        }
+
+        // CHỈ TÁC GIẢ MỚI ĐƯỢC SỬA
+        if ($post['author_id'] != $_SESSION['user_id']) {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền chỉnh sửa bài viết này!']);
+            exit;
+        }
+
+        if (empty(trim($content))) {
+            echo json_encode(['success' => false, 'message' => 'Nội dung không được để trống!']);
+            exit;
+        }
+
+        if ($postModel->update($postId, htmlspecialchars($content))) {
+            echo json_encode(['success' => true, 'message' => 'Đã cập nhật bài viết.']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi CSDL!']);
         }

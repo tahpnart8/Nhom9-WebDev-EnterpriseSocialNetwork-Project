@@ -74,5 +74,14 @@ class Post {
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+    // Cập nhật nội dung bài viết
+    public function update($post_id, $content) {
+        $query = "UPDATE " . $this->table_name . " SET content_html = :content, updated_at = CURRENT_TIMESTAMP WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':content', $content);
+        $stmt->bindParam(':id', $post_id);
+        return $stmt->execute();
+    }
 }
 ?>

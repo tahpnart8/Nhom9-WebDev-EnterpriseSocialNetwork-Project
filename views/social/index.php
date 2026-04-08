@@ -38,7 +38,7 @@
         <!-- Timeline Bảng Tin -->
         <div id="feedContainer">
             <?php foreach($feed as $post): ?>
-            <div class="relioo-card p-0 mb-4 bg-white overflow-hidden shadow-sm border">
+            <div class="relioo-card p-0 mb-4 bg-white overflow-hidden shadow-sm border" data-post-id="<?php echo $post['id']; ?>">
                 <!-- Header Card -->
                 <div class="p-4 pb-2">
                     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -57,19 +57,26 @@
                                 </p>
                             </div>
                         </div>
-                        <?php if($post['author_id'] == $_SESSION['user_id'] || $_SESSION['role_id'] == 1): ?>
+                        
+                        <?php 
+                        $isAuthor = ($post['author_id'] == $_SESSION['user_id']);
+                        $isAdminOrCEO = ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 4);
+                        ?>
+
+                        <?php if($isAuthor || $isAdminOrCEO): ?>
                         <div class="dropdown">
                             <button class="btn btn-sm btn-light border-0 text-muted" data-bs-toggle="dropdown"><i class="bi bi-three-dots fs-5"></i></button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm border">
+                                <?php if($isAuthor): ?>
+                                <li><a class="dropdown-item btn-edit-post" href="#" data-id="<?php echo $post['id']; ?>" data-content="<?php echo htmlspecialchars($post['content_html']); ?>"><i class="bi bi-pencil me-2"></i>Chỉnh sửa</a></li>
+                                <?php endif; ?>
                                 <li><a class="dropdown-item text-danger btn-delete-post" href="#" data-id="<?php echo $post['id']; ?>"><i class="bi bi-trash me-2"></i>Xóa bài viết</a></li>
                             </ul>
                         </div>
-                        <?php else: ?>
-                        <i class="bi bi-three-dots text-muted fs-5" style="cursor:pointer;"></i>
                         <?php endif; ?>
                     </div>
                     
-                    <p class="mb-3 text-dark" style="line-height: 1.6; font-size: 0.95rem;">
+                    <p class="mb-3 text-dark post-content-text" style="line-height: 1.6; font-size: 0.95rem;">
                         <?php echo nl2br(htmlspecialchars($post['content_html'])); ?>
                     </p>
                 </div> <!-- End Header Card -->
@@ -142,6 +149,26 @@
     </div>
 </div>
 
+<!-- Modal Chỉnh sửa bài viết -->
+<div class="modal fade" id="editPostModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.2rem;">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-bold text-primary">CHỈNH SỬA BÀI VIẾT</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <input type="hidden" id="editPostId">
+                <textarea class="form-control bg-light border-0 px-3 py-3 rounded-3" id="editPostContent" rows="5" style="resize: none;"></textarea>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4 fw-medium" id="btn-save-edit-post">Lưu thay đổi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     // JS Logic Lắng nghe upload
     $('#attachmentFile').on('change', function() {
@@ -170,7 +197,6 @@
             processData: false,
             contentType: false,
             success: function(res) {
-                // Do chúng ta ko xài framework như Vue/React nên reload là cách an toàn.
                 location.reload(); 
             },
             error: function() {
@@ -198,6 +224,48 @@
                 toastr.error(res.message);
             }
         }, 'json');
+    });
+
+    // ===== UI & AJAX: Chỉnh sửa bài viết =====
+    $(document).on('click', '.btn-edit-post', function(e) {
+        e.preventDefault();
+        var postId = $(this).data('id');
+        var content = $(this).closest('.relioo-card').find('.post-content-text').text().trim();
+        
+        $('#editPostId').val(postId);
+        $('#editPostContent').val(content);
+        $('#editPostModal').modal('show');
+    });
+
+    $('#btn-save-edit-post').on('click', function() {
+        var postId = $('#editPostId').val();
+        var content = $('#editPostContent').val();
+        var $btn = $(this);
+        
+        if (content.trim() === '') {
+            toastr.warning('Nội dung không được để trống!');
+            return;
+        }
+
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+
+        $.post('index.php?action=api_edit_post', { post_id: postId, content: content }, function(res) {
+            if (res.success) {
+                // Cập nhật nội dung trên giao diện mà ko cần reload
+                var $card = $('.relioo-card[data-post-id="' + postId + '"]');
+                $card.find('.post-content-text').html(content.replace(/\n/g, "<br>"));
+                
+                // Cập nhật lại thuộc tính data-content của nút edit (nếu cần dùng)
+                $card.find('.btn-edit-post').data('content', content);
+                
+                $('#editPostModal').modal('hide');
+                toastr.success('Cập nhật bài viết thành công!');
+            } else {
+                toastr.error(res.message);
+            }
+        }, 'json').always(function() {
+            $btn.prop('disabled', false).text('Lưu thay đổi');
+        });
     });
 </script>
 

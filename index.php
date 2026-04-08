@@ -60,6 +60,18 @@ switch($action) {
     case 'api_update_subtask_status':
         $taskController->updateSubtaskStatus();
         break;
+    case 'api_submit_evidence':
+        $taskController->submitEvidence();
+        break;
+    case 'api_approve_subtask':
+        $taskController->approveSubtask();
+        break;
+    case 'api_reject_subtask':
+        $taskController->rejectSubtask();
+        break;
+    case 'api_complete_subtask':
+        $taskController->completeSubtask();
+        break;
     case 'api_notifications':
         $notiController->fetchUnread();
         break;
@@ -77,6 +89,9 @@ switch($action) {
         break;
     case 'api_delete_post':
         $socialController->deletePost();
+        break;
+    case 'api_edit_post':
+        $socialController->editPost();
         break;
     case 'api_subtask_detail':
         $taskController->getSubtaskDetail();

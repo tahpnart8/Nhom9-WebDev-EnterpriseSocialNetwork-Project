@@ -52,10 +52,52 @@ class Subtask {
     }
 
     // Cập nhật trạng thái subtask (kéo thả hoặc nút bấm)
-    public function updateStatus($subtask_id, $status) {
-        $query = "UPDATE " . $this->table_name . " SET status = :status WHERE id = :id";
+    public function updateStatus($subtask_id, $status, $is_rejected = 0) {
+        $query = "UPDATE " . $this->table_name . " SET status = :status, is_rejected = :is_rejected WHERE id = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':status', $status);
+        $stmt->bindParam(':is_rejected', $is_rejected, PDO::PARAM_INT);
+        $stmt->bindParam(':id', $subtask_id);
+        return $stmt->execute();
+    }
+
+    // Gửi minh chứng (Evidence)
+    public function submitEvidence($subtask_id, $notes, $file_url = null) {
+        $this->conn->beginTransaction();
+        try {
+            // Cập nhật trạng thái sang Pending (Chờ duyệt)
+            $query = "UPDATE " . $this->table_name . " SET status = 'Pending', is_rejected = 0 WHERE id = :id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':id', $subtask_id);
+            $stmt->execute();
+
+            // Lưu minh chứng vào bảng attachments
+            if ($notes || $file_url) {
+                $q2 = "INSERT INTO subtask_attachments (subtask_id, file_name, file_url, notes) 
+                       VALUES (:sid, :fname, :furl, :notes)";
+                $s2 = $this->conn->prepare($q2);
+                $fname = $file_url ? basename($file_url) : 'Note/Link';
+                $s2->execute([
+                    ':sid' => $subtask_id,
+                    ':fname' => $fname,
+                    ':furl' => $file_url ?? '',
+                    ':notes' => $notes
+                ]);
+            }
+
+            $this->conn->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->conn->rollBack();
+            return false;
+        }
+    }
+
+    // Nộp báo cáo cuối cùng để hoàn thành (Done)
+    public function submitReport($subtask_id, $report_content) {
+        $query = "UPDATE " . $this->table_name . " SET status = 'Done', report_content = :content, is_rejected = 0 WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':content', $report_content);
         $stmt->bindParam(':id', $subtask_id);
         return $stmt->execute();
     }
