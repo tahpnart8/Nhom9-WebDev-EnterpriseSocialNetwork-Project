@@ -63,6 +63,9 @@ CREATE TABLE IF NOT EXISTS subtasks (
     deadline DATETIME,
     status ENUM('To Do', 'In Progress', 'Pending', 'Done') DEFAULT 'To Do',
     completion_rating FLOAT DEFAULT NULL,
+    is_rejected TINYINT(1) DEFAULT 0,
+    report_content TEXT,
+    feedback TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
@@ -74,6 +77,7 @@ CREATE TABLE IF NOT EXISTS subtask_attachments (
     subtask_id INT NOT NULL,
     file_name VARCHAR(255) NOT NULL,
     file_url VARCHAR(500) NOT NULL,
+    notes TEXT,
     uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (subtask_id) REFERENCES subtasks(id) ON DELETE CASCADE
 );

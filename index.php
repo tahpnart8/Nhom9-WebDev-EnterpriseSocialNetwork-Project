@@ -22,107 +22,50 @@ $taskController = new TaskController();
 $notiController = new NotificationController();
 $chatController = new ChatController();
 
-// Simple Router
-switch($action) {
-    case 'login':
-        $authController->showLogin();
-        break;
-    case 'login_submit':
-        $authController->login();
-        break;
-    case 'logout':
-        $authController->logout();
-        break;
-    case 'dashboard':
-        $dashboardController->index();
-        break;
-    case 'admin_users':
-        $adminController->users();
-        break;
-    case 'admin_departments':
-        $adminController->departments();
-        break;
-    case 'social':
-        $socialController->index();
-        break;
-    case 'api_create_post':
-        $socialController->createPost();
-        break;
-    case 'tasks':
-        $taskController->index();
-        break;
-    case 'api_create_task':
-        $taskController->createTask();
-        break;
-    case 'api_create_subtask':
-        $taskController->createSubtask();
-        break;
-    case 'api_update_subtask_status':
-        $taskController->updateSubtaskStatus();
-        break;
-    case 'api_submit_evidence':
-        $taskController->submitEvidence();
-        break;
-    case 'api_approve_subtask':
-        $taskController->approveSubtask();
-        break;
-    case 'api_reject_subtask':
-        $taskController->rejectSubtask();
-        break;
-    case 'api_complete_subtask':
-        $taskController->completeSubtask();
-        break;
-    case 'api_notifications':
-        $notiController->fetchUnread();
-        break;
-    case 'api_mark_all_read':
-        $notiController->markAllRead();
-        break;
-    case 'chat':
-        $chatController->index();
-        break;
-    case 'api_send_message':
-        $chatController->sendMessage();
-        break;
-    case 'api_fetch_messages':
-        $chatController->fetchMessages();
-        break;
-    case 'api_delete_post':
-        $socialController->deletePost();
-        break;
-    case 'api_edit_post':
-        $socialController->editPost();
-        break;
-    case 'api_toggle_post_reaction':
-        $socialController->togglePostReaction();
-        break;
-    case 'api_fetch_comments':
-        $socialController->fetchComments();
-        break;
-    case 'api_add_comment':
-        $socialController->addComment();
-        break;
-    case 'api_toggle_comment_reaction':
-        $socialController->toggleCommentReaction();
-        break;
-    case 'api_edit_comment':
-        $socialController->editComment();
-        break;
-    case 'api_delete_comment':
-        $socialController->deleteComment();
-        break;
-    case 'api_fetch_post_likers':
-        $socialController->fetchPostLikers();
-        break;
-    case 'api_fetch_comment_likers':
-        $socialController->fetchCommentLikers();
-        break;
-    case 'api_subtask_detail':
-        $taskController->getSubtaskDetail();
-        break;
-    default:
-        // 404 Route
-        echo "<h1>404 Not Found!</h1>";
-        break;
+$routes = [
+    'login' => [$authController, 'showLogin'],
+    'login_submit' => [$authController, 'login'],
+    'logout' => [$authController, 'logout'],
+    'dashboard' => [$dashboardController, 'index'],
+    
+    'admin_users' => [$adminController, 'users'],
+    'admin_departments' => [$adminController, 'departments'],
+    
+    'social' => [$socialController, 'index'],
+    'api_create_post' => [$socialController, 'createPost'],
+    'api_delete_post' => [$socialController, 'deletePost'],
+    'api_edit_post' => [$socialController, 'editPost'],
+    'api_toggle_post_reaction' => [$socialController, 'togglePostReaction'],
+    'api_fetch_comments' => [$socialController, 'fetchComments'],
+    'api_add_comment' => [$socialController, 'addComment'],
+    'api_toggle_comment_reaction' => [$socialController, 'toggleCommentReaction'],
+    'api_edit_comment' => [$socialController, 'editComment'],
+    'api_delete_comment' => [$socialController, 'deleteComment'],
+    'api_fetch_post_likers' => [$socialController, 'fetchPostLikers'],
+    'api_fetch_comment_likers' => [$socialController, 'fetchCommentLikers'],
+    
+    'tasks' => [$taskController, 'index'],
+    'api_create_task' => [$taskController, 'createTask'],
+    'api_create_subtask' => [$taskController, 'createSubtask'],
+    'api_update_subtask_status' => [$taskController, 'updateSubtaskStatus'],
+    'api_submit_evidence' => [$taskController, 'submitEvidence'],
+    'api_approve_subtask' => [$taskController, 'approveSubtask'],
+    'api_reject_subtask' => [$taskController, 'rejectSubtask'],
+    'api_complete_subtask' => [$taskController, 'completeSubtask'],
+    'api_subtask_detail' => [$taskController, 'getSubtaskDetail'],
+    
+    'api_notifications' => [$notiController, 'fetchUnread'],
+    'api_mark_all_read' => [$notiController, 'markAllRead'],
+    
+    'chat' => [$chatController, 'index'],
+    'api_send_message' => [$chatController, 'sendMessage'],
+    'api_fetch_messages' => [$chatController, 'fetchMessages'],
+];
+
+if (array_key_exists($action, $routes)) {
+    call_user_func($routes[$action]);
+} else {
+    // 404 Route
+    echo "<h1>404 Not Found!</h1>";
 }
 ?>
