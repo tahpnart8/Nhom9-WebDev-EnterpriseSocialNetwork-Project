@@ -93,11 +93,27 @@ class Subtask {
         }
     }
 
-    // Nộp báo cáo cuối cùng để hoàn thành (Done)
-    public function submitReport($subtask_id, $report_content) {
-        $query = "UPDATE " . $this->table_name . " SET status = 'Done', report_content = :content, is_rejected = 0 WHERE id = :id";
+    // Duyệt Subtask -> Hoàn thành (DONE)
+    public function approve($subtask_id) {
+        $query = "UPDATE " . $this->table_name . " SET status = 'Done', is_rejected = 0 WHERE id = :id";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':content', $report_content);
+        $stmt->bindParam(':id', $subtask_id);
+        return $stmt->execute();
+    }
+
+    // Từ chối Subtask -> Về lại Cần làm (To Do)
+    public function reject($subtask_id, $feedback) {
+        $query = "UPDATE " . $this->table_name . " SET status = 'To Do', feedback = :feedback, is_rejected = 1 WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':feedback', $feedback);
+        $stmt->bindParam(':id', $subtask_id);
+        return $stmt->execute();
+    }
+
+    // Xóa Subtask
+    public function delete($subtask_id) {
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $subtask_id);
         return $stmt->execute();
     }

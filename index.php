@@ -51,7 +51,7 @@ $routes = [
     'api_submit_evidence' => [$taskController, 'submitEvidence'],
     'api_approve_subtask' => [$taskController, 'approveSubtask'],
     'api_reject_subtask' => [$taskController, 'rejectSubtask'],
-    'api_complete_subtask' => [$taskController, 'completeSubtask'],
+    'api_delete_subtask' => [$taskController, 'deleteSubtask'],
     'api_subtask_detail' => [$taskController, 'getSubtaskDetail'],
     
     'api_notifications' => [$notiController, 'fetchUnread'],

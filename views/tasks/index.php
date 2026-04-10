@@ -329,14 +329,41 @@ function openSubtaskDetail(id) {
     $.getJSON('index.php?action=api_subtask_detail&id='+id, function(res) {
         if(res.success) {
             let s = res.data;
+            let feedbackHtml = '';
+            if (s.is_rejected == 1 && s.feedback) {
+                feedbackHtml = `<div class="alert alert-danger py-2 small fw-bold"><i class="bi bi-info-circle me-1"></i>Lý do từ chối: ${s.feedback}</div>`;
+            }
+            
+            let attachmentsHtml = '';
+            if (s.attachments && s.attachments.length > 0) {
+                attachmentsHtml = '<div class="mb-3"><h6 class="extra-small fw-bold text-muted mb-2 uppercase">Minh chứng đính kèm</h6>';
+                s.attachments.forEach(att => {
+                    attachmentsHtml += `<div class="p-2 border rounded-3 bg-light mb-2 small">`;
+                    if (att.file_url) {
+                        attachmentsHtml += `<div class="mb-2"><img src="${att.file_url}" alt="Attachment" class="img-fluid rounded" style="max-height: 150px;"></div>`;
+                    }
+                    if (att.notes) {
+                        attachmentsHtml += `<div>Ghi chú: <span class="fw-bold">${att.notes}</span></div>`;
+                    }
+                    attachmentsHtml += `</div>`;
+                });
+                attachmentsHtml += '</div>';
+            }
+            
             $('#subtaskBody').html(`
                 <h5 class="fw-bold mb-1">${s.title}</h5>
                 <p class="text-muted small mb-3">${s.task_title}</p>
+                ${feedbackHtml}
                 <div class="bg-light p-3 rounded-3 mb-3 small">
                     <div class="d-flex justify-content-between mb-2"><span>Người làm:</span><span class="fw-bold">${s.assignee_name}</span></div>
-                    <div class="d-flex justify-content-between"><span>Trạng thái:</span><span class="badge bg-primary">${s.status}</span></div>
+                    <div class="d-flex justify-content-between mb-2"><span>Trạng thái:</span><span class="badge bg-primary">${s.status}</span></div>
+                    <div class="d-flex justify-content-between">
+                        <span>Hạn chót:</span>
+                        <span class="fw-bold text-danger">${s.deadline ? s.deadline : 'Không có'}</span>
+                    </div>
                 </div>
                 <div class="mb-4 small" style="white-space: pre-wrap;">${s.description || 'Không có mô tả.'}</div>
+                ${attachmentsHtml}
                 <div id="sub-actions">${renderSubActions(s)}</div>
             `);
         }
@@ -348,12 +375,21 @@ function renderSubActions(s) {
     let rid = <?php echo $_SESSION['role_id']; ?>;
     if(s.assignee_id == uid) {
         if(s.status == 'To Do') return `<button class="btn btn-primary w-100 rounded-pill fw-bold" onclick="doStatus(${s.id}, 'In Progress')">BẮT ĐẦU LÀM</button>`;
-        if(s.status == 'In Progress') return `<textarea id="evid" class="form-control mb-2" placeholder="Link minh chứng..."></textarea><button class="btn btn-warning w-100 rounded-pill fw-bold" onclick="submitEv(${s.id})">GỬI DUYỆT</button>`;
+        if(s.status == 'In Progress') {
+            return `
+                <form id="evidForm" onsubmit="submitEv(event, ${s.id})">
+                    <label class="small fw-bold mb-1">Gửi thông tin minh chứng</label>
+                    <textarea name="notes" class="form-control mb-2" placeholder="Nhập Link hoặc Ghi chú..."></textarea>
+                    <input type="file" name="evidence_file" class="form-control mb-3" accept="image/*">
+                    <button type="submit" class="btn btn-warning w-100 rounded-pill fw-bold">GỬI DUYỆT</button>
+                </form>
+            `;
+        }
     }
-    if((rid == 1 || rid == 2) && s.status == 'Pending') {
-        return `<div class="d-flex gap-2"><button class="btn btn-success flex-fill rounded-pill fw-bold" onclick="approve(${s.id})">DUYỆT</button><button class="btn btn-danger flex-fill rounded-pill fw-bold" onclick="reject(${s.id})">TỪ CHỐI</button></div>`;
+    if((rid == 1 || rid == 2 || rid == 4) && s.status == 'Pending') {
+        return `<div class="d-flex gap-2"><button type="button" class="btn btn-success flex-fill rounded-pill fw-bold" onclick="approve(${s.id})">DUYỆT</button><button type="button" class="btn btn-danger flex-fill rounded-pill fw-bold" onclick="reject(${s.id})">TỪ CHỐI</button></div>`;
     }
-    return s.status == 'Done' ? `<div class="alert alert-success py-2 text-center fw-bold">Hoàn thành!</div>` : '';
+    return s.status == 'Done' ? `<div class="alert alert-success py-2 text-center fw-bold">Đã hoàn thành!</div>` : '';
 }
 
 function openTaskDetail(tid) {
@@ -363,7 +399,10 @@ function openTaskDetail(tid) {
     let task = tasks.find(t => t.id == tid);
     let staff = <?php echo json_encode($staffList); ?>;
 
-    let list = task.subtasks.map(s => `<div class="p-2 border-bottom small d-flex justify-content-between"><span>${s.title}</span><span class="text-muted">${s.assignee_name}</span></div>`).join('');
+    let list = task.subtasks.map(s => {
+        let delBtn = (<?php echo $_SESSION['role_id']; ?> <= 2 || <?php echo $_SESSION['role_id']; ?> == 4) ? `<i class="bi bi-trash text-danger ms-2 pointer" onclick="deleteSub(${s.id})" title="Xóa"></i>` : '';
+        return `<div class="p-2 border-bottom small d-flex justify-content-between align-items-center"><span>${s.title}</span><div class="text-muted">${s.assignee_name} ${delBtn}</div></div>`;
+    }).join('');
 
     $('#taskBody').html(`
         <div class="row">
@@ -394,12 +433,30 @@ function openTaskDetail(tid) {
 }
 
 function quickSub() { $.post('index.php?action=api_create_subtask', $('#quickS').serialize(), function(r) { if(r.success) location.reload(); }); }
-function doStatus(id, s) { $.post('index.php?action=api_update_subtask_status', {subtask_id: id, status: s}, function() { location.reload(); }); }
-function submitEv(id) { $.post('index.php?action=api_submit_evidence', {subtask_id: id, notes: $('#evid').val()}, function() { location.reload(); }); }
-function approve(id) { $.post('index.php?action=api_approve_subtask', {subtask_id: id}, function() { location.reload(); }); }
+function doStatus(id, s) { $.post('index.php?action=api_update_subtask_status', {subtask_id: id, status: s}, function(res) { if(!res.success) alert(res.message); else location.reload(); }, 'json'); }
+function submitEv(e, id) { 
+    e.preventDefault();
+    let fd = new FormData(document.getElementById('evidForm'));
+    fd.append('subtask_id', id);
+    $.ajax({
+        url: 'index.php?action=api_submit_evidence',
+        type: 'POST', data: fd, processData: false, contentType: false,
+        success: function(res) {
+            if(res.success) location.reload(); else alert(res.message);
+        }
+    });
+}
+function approve(id) { $.post('index.php?action=api_approve_subtask', {subtask_id: id}, function(res) { if(res.success) location.reload(); else alert(res.message); }, 'json'); }
 function reject(id) { 
     let r = prompt('Lý do từ chối:');
-    if(r) $.post('index.php?action=api_reject_subtask', {subtask_id: id, reason: r}, function() { location.reload(); }); 
+    if(r) $.post('index.php?action=api_reject_subtask', {subtask_id: id, reason: r}, function(res) { if(res.success) location.reload(); else alert(res.message); }, 'json'); 
+}
+function deleteSub(id) {
+    if(confirm('Bạn có chắc muốn xóa công việc con này không? Mọi thông tin minh chứng sẽ bị mất.')) {
+        $.post('index.php?action=api_delete_subtask', {subtask_id: id}, function(res) {
+            if(res.success) location.reload(); else alert(res.message);
+        }, 'json');
+    }
 }
 </script>
 
