@@ -53,6 +53,8 @@ $routes = [
     'api_reject_subtask' => [$taskController, 'rejectSubtask'],
     'api_delete_subtask' => [$taskController, 'deleteSubtask'],
     'api_subtask_detail' => [$taskController, 'getSubtaskDetail'],
+    'api_check_evidence' => [$taskController, 'checkEvidence'],
+    'api_task_detail'    => [$taskController, 'getTaskDetail'],
     
     'api_notifications' => [$notiController, 'fetchUnread'],
     'api_mark_all_read' => [$notiController, 'markAllRead'],

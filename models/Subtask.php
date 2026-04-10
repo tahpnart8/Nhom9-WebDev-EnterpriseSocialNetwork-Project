@@ -20,6 +20,16 @@ class Subtask {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    // Kiểm tra subtask đã có minh chứng chưa
+    public function hasEvidence($subtask_id) {
+        $query = "SELECT COUNT(*) as cnt FROM subtask_attachments WHERE subtask_id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $subtask_id);
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return ($row['cnt'] > 0);
+    }
+
     // Lấy subtask được giao cho nhân viên cụ thể (Staff view)
     public function getByAssignee($user_id) {
         $query = "SELECT s.*, t.title as task_title, t.priority, u.full_name as assignee_name
@@ -35,16 +45,17 @@ class Subtask {
     }
 
     // Tạo subtask mới (Leader gán cho Staff)
-    public function create($task_id, $assignee_id, $title, $description, $deadline) {
+    public function create($task_id, $assignee_id, $title, $description, $deadline, $priority = 'Medium') {
         $query = "INSERT INTO " . $this->table_name . " 
-                  (task_id, assignee_id, title, description, deadline)
-                  VALUES (:task_id, :assignee_id, :title, :desc, :deadline)";
+                  (task_id, assignee_id, title, description, deadline, priority)
+                  VALUES (:task_id, :assignee_id, :title, :desc, :deadline, :priority)";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':task_id', $task_id);
         $stmt->bindParam(':assignee_id', $assignee_id);
         $stmt->bindParam(':title', $title);
         $stmt->bindParam(':desc', $description);
         $stmt->bindParam(':deadline', $deadline);
+        $stmt->bindParam(':priority', $priority);
         if ($stmt->execute()) {
             return $this->conn->lastInsertId();
         }

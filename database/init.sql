@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS subtasks (
     title VARCHAR(255) NOT NULL,
     description TEXT,
     deadline DATETIME,
+    priority ENUM('Low', 'Medium', 'High') DEFAULT 'Medium',
     status ENUM('To Do', 'In Progress', 'Pending', 'Done') DEFAULT 'To Do',
     completion_rating FLOAT DEFAULT NULL,
     is_rejected TINYINT(1) DEFAULT 0,
