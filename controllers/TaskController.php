@@ -669,7 +669,7 @@ class TaskController {
                     . "Hãy viết bài báo cáo ngắn gọn gọn nhẹ.";
 
         $postData = [
-            'model' => 'llama3-8b-8192',
+            'model' => 'llama-3.3-70b-versatile',
             'messages' => [
                 ['role' => 'system', 'content' => $systemPrompt],
                 ['role' => 'user', 'content' => $userPrompt]
@@ -686,13 +686,26 @@ class TaskController {
             'Authorization: Bearer ' . $apiKey,
             'Content-Type: application/json'
         ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        // Bypass SSL verification on Windows/XAMPP (no CA bundle)
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
 
         $response = curl_exec($ch);
+        $curlError = curl_error($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
+        if ($response === false) {
+            echo json_encode(['success' => false, 'message' => 'Lỗi kết nối Groq API: ' . $curlError]);
+            exit;
+        }
+
         if ($httpCode !== 200) {
-            echo json_encode(['success' => false, 'message' => 'Lỗi gọi API Groq. Xin thử lại.']);
+            $errBody = json_decode($response, true);
+            $errMsg = $errBody['error']['message'] ?? ('HTTP ' . $httpCode);
+            echo json_encode(['success' => false, 'message' => 'Lỗi Groq API: ' . $errMsg]);
             exit;
         }
 
@@ -745,14 +758,11 @@ class TaskController {
         $postContentHtml = "<div class='ai-post'><h6 class='fw-bold text-primary mb-2'>🚀 Báo cáo tiến độ: " . htmlspecialchars($subtask['title']) . "</h6>" . nl2br(htmlspecialchars($aiContent)) . "</div>";
         
         $postId = $postModel->create($_SESSION['user_id'], $_SESSION['department_id'], $postContentHtml, 'Department');
-        
-        $task = $taskModel->getById($taskId);
-        if (!$task) { echo json_encode(['success' => false, 'message' => 'Không tìm thấy Task!']); exit; }
-        $subtasks = $subtaskModel->getByTaskId($taskId);
-        $task['subtasks'] = $subtasks;
-        $task['subtask_count'] = count($subtasks);
-        $task['done_count'] = count(array_filter($subtasks, function($s) { return $s['status'] == 'Done'; }));
-        echo json_encode(['success' => true, 'data' => $task]);
+        if ($postId) {
+            $this->db->prepare("UPDATE posts SET is_ai_generated = 1, task_report_id = ? WHERE id = ?")->execute([$reportId, $postId]);
+        }
+
+        echo json_encode(['success' => true, 'message' => 'Đã hoàn thành công việc và đăng bài báo cáo!']);
         exit;
     }
 
@@ -798,7 +808,7 @@ class TaskController {
         $userPrompt = "Tên dự án: " . $task['title'] . "\n\nDữ liệu báo cáo chi tiết:\n" . $context;
 
         $postData = [
-            'model' => 'llama3-8b-8192',
+            'model' => 'llama-3.3-70b-versatile',
             'messages' => [
                 ['role' => 'system', 'content' => $systemPrompt],
                 ['role' => 'user', 'content' => $userPrompt]
@@ -815,13 +825,26 @@ class TaskController {
             'Authorization: Bearer ' . $apiKey,
             'Content-Type: application/json'
         ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        // Bypass SSL verification on Windows/XAMPP
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
 
         $response = curl_exec($ch);
+        $curlError = curl_error($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
+        if ($response === false) {
+            echo json_encode(['success' => false, 'message' => 'Lỗi kết nối Groq API: ' . $curlError]);
+            exit;
+        }
+
         if ($httpCode !== 200) {
-            echo json_encode(['success' => false, 'message' => 'Lỗi gọi API Groq. Xin thử lại.']);
+            $errBody = json_decode($response, true);
+            $errMsg = $errBody['error']['message'] ?? ('HTTP ' . $httpCode);
+            echo json_encode(['success' => false, 'message' => 'Lỗi Groq API: ' . $errMsg]);
             exit;
         }
 

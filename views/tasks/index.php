@@ -575,7 +575,12 @@ function submitAiReport() {
             btn.html('<i class="bi bi-send-check me-2"></i>Xác nhận hoàn thành & Đăng bài').prop('disabled', false);
             Swal.fire({title:'Lỗi API!', text:res.message, icon:'error'});
         }
-    }, 'json');
+    }, 'json').fail(function(xhr) {
+        btn.html('<i class="bi bi-send-check me-2"></i>Xác nhận hoàn thành &amp; Đăng bài').prop('disabled', false);
+        let errMsg = 'Không thể kết nối đến server.';
+        try { let r = JSON.parse(xhr.responseText); if(r.message) errMsg = r.message; } catch(e) {}
+        Swal.fire({title:'Lỗi hệ thống!', text: errMsg, icon:'error'});
+    });
 }
 
 function openAiTaskSummaryModal(taskId, title) {
