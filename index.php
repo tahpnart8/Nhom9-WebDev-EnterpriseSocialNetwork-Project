@@ -58,6 +58,10 @@ $routes = [
     'api_delete_task' => [$taskController, 'deleteTask'],
     'api_extend_subtask' => [$taskController, 'extendSubtask'],
     'api_save_evidence' => [$taskController, 'saveEvidence'],
+    'api_generate_subtask_report' => [$taskController, 'generateSubtaskReport'],
+    'api_save_subtask_report' => [$taskController, 'saveSubtaskReport'],
+    'api_generate_task_summary' => [$taskController, 'generateTaskSummary'],
+    'api_save_task_summary' => [$taskController, 'saveTaskSummary'],
 
     'api_notifications' => [$notiController, 'fetchUnread'],
     'api_mark_all_read' => [$notiController, 'markAllRead'],

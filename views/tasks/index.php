@@ -197,6 +197,9 @@
                     <div class="task-card <?php echo (($c['is_rejected'] ?? 0) && ($c['status'] ?? '') == 'To Do') ? 'rejected' : ''; ?> <?php echo $isExtended ? 'extended' : ''; ?> <?php echo $isDone ? 'locked-card' : ''; ?>"
                          data-id="<?php echo $c['id']; ?>"
                          onclick="openSubtaskDetail(<?php echo $c['id']; ?>)">
+                        <?php if(($c['is_approved'] ?? 0)): ?>
+                        <div class="badge bg-success d-inline-flex align-items-center mb-1" style="font-size:0.6rem"><i class="bi bi-check-circle-fill me-1"></i> Đã duyệt</div>
+                        <?php endif; ?>
                         <div class="card-label text-truncate"><?php echo htmlspecialchars($c['task_title']); ?></div>
                         <div class="card-name"><?php echo htmlspecialchars($c['title']); ?></div>
                         <?php if(!empty($c['description'])): ?>
@@ -353,6 +356,91 @@
     </div>
 </div>
 
+<!-- MODAL BÁO CÁO CÔNG VIỆC BẰNG AI -->
+<div class="modal fade" id="subtaskReportModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-gradient-primary text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-robot me-2"></i>Báo Cáo Công Việc (Relioo AI)</h5>
+                <!-- Nút close để user tắt modal, khi tắt sẽ reset drag -->
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="cancelSubtaskReport()"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <input type="hidden" id="reportSubtaskId">
+                <div class="bg-white p-3 rounded shadow-sm border mb-3">
+                    <h6 id="reportTaskTitle" class="fw-bold text-primary mb-1">...</h6>
+                </div>
+                
+                <div id="reportFormArea">
+                    <p class="text-muted small fw-bold mb-3">Trả lời 3 câu hỏi để AI sinh báo cáo tự động:</p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold extra-small">1. Bạn đã hoàn thành công việc này như thế nào?</label>
+                        <textarea id="ai_q1" class="form-control" rows="2" placeholder="Ví dụ: Tôi đã dùng công nghệ X, hoàn thành module Y..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold extra-small">2. Kinh nghiệm rút ra?</label>
+                        <textarea id="ai_q2" class="form-control" rows="2" placeholder="Ví dụ: Rút kinh nghiệm tối ưu truy vấn SQL..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold extra-small">3. Lưu ý cho lần sau?</label>
+                        <textarea id="ai_q3" class="form-control" rows="2" placeholder="Ví dụ: Cần check kỹ đầu vào API..."></textarea>
+                    </div>
+                    <button class="btn btn-primary w-100 fw-bold" onclick="generateAiReport()" id="btnGenerateAi">
+                        <i class="bi bi-stars me-2"></i>Tạo báo cáo bằng AI
+                    </button>
+                </div>
+
+                <div id="aiPreviewArea" class="d-none">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> AI đã phác thảo xong</span>
+                        <small class="text-muted">Bạn có thể chỉnh sửa lại nội dung bên dưới</small>
+                    </div>
+                    <textarea id="aiGeneratedContent" class="form-control mb-3" rows="8"></textarea>
+                    <button class="btn btn-success w-100 fw-bold" onclick="submitAiReport()" id="btnSubmitAi">
+                        <i class="bi bi-send-check me-2"></i>Xác nhận hoàn thành & Đăng bài
+                    </button>
+                    <button class="btn btn-outline-secondary w-100 mt-2 fw-bold" onclick="resetAiForm()">Làm lại</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL TỔNG KẾT DỰ ÁN BẰNG AI (Cho Trưởng phòng) -->
+<div class="modal fade" id="taskSummaryModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-gradient-success text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-robot me-2"></i>Tổng Kết Dự Án (Relioo AI)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <input type="hidden" id="summaryTaskId">
+                <div class="text-center mb-4 mt-2" id="summaryLoadingArea">
+                    <p class="text-muted fw-bold mb-3" id="summaryTaskTitle">...</p>
+                    <div class="spinner-border text-success mb-2" role="status"></div>
+                    <p class="small text-muted">AI đang thu thập toàn bộ báo cáo từ các công việc con và soạn thảo tổng kết...</p>
+                </div>
+                
+                <div id="summaryPreviewArea" class="d-none">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> Dự thảo bài đăng hoàn tất</span>
+                        <small class="text-muted">Bạn có thể chỉnh sửa lại nội dung trước khi xuất bản</small>
+                    </div>
+                    <textarea id="aiSummaryContent" class="form-control mb-3" rows="12"></textarea>
+                    
+                    <div class="alert alert-info py-2 small mb-3">
+                        <i class="bi bi-info-circle me-1"></i> Bài viết sẽ được tự động đăng lên cả <b>Kênh Công Khai</b> và <b>Kênh Phòng Ban</b>.
+                    </div>
+                    <button class="btn btn-success w-100 fw-bold" onclick="submitTaskSummary()" id="btnSubmitSummary">
+                        <i class="bi bi-send-check me-2"></i>Xuất bản bài Tổng kết
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 var STAFF_LIST = <?php echo json_encode($staffList); ?>;
 var USER_ID = <?php echo $_SESSION['user_id']; ?>;
@@ -387,15 +475,26 @@ $(function() {
             filter: isDoneCol || isOverdueCol ? '.task-card' : '',
             onMove: function(evt) {
                 let toStatus = evt.to.dataset.status;
-                // Chặn thả vào Done, Overdue
-                if (toStatus === 'Done' || toStatus === '') return false;
+                if (toStatus === '') return false;
                 if (evt.dragged.classList.contains('locked-card')) return false;
             },
             onEnd: function(evt) {
                 let id = evt.item.dataset.id;
                 let status = evt.to.dataset.status;
-                if(!id || !status) { location.reload(); return; }
+                let oldStatus = evt.from.dataset.status;
+                if(!id || !status || status === oldStatus) { location.reload(); return; }
                 if (status === 'Pending') { handleDragToPending(id, evt); return; }
+                if (status === 'Done') {
+                    // Check if it's approved pending before allowing drag to Done
+                    if (oldStatus !== 'Pending') {
+                        Swal.fire({title:'Không hợp lệ!', text:'Chỉ công việc đang ở "Chờ duyệt" (và đã được duyệt) mới có thể chuyển sang Hoàn thành!', icon:'error'}).then(()=>location.reload());
+                        return;
+                    }
+                    // Trigger modal form, without doing DB update yet
+                    openAiReportModal(id, evt.item.querySelector('.card-name').innerText);
+                    return;
+                }
+                
                 $.post('index.php?action=api_update_subtask_status', {subtask_id: id, status: status}, function(res) {
                     if(!res.success) { handleDragError(res.message); location.reload(); }
                 }, 'json').fail(() => location.reload());
@@ -403,6 +502,128 @@ $(function() {
         });
     });
 });
+
+function openAiReportModal(id, title) {
+    document.getElementById('reportSubtaskId').value = id;
+    document.getElementById('reportTaskTitle').innerText = title;
+    resetAiForm();
+    new bootstrap.Modal(document.getElementById('subtaskReportModal')).show();
+}
+
+function resetAiForm() {
+    $('#reportFormArea').removeClass('d-none');
+    $('#aiPreviewArea').addClass('d-none');
+    $('#ai_q1').val('');
+    $('#ai_q2').val('');
+    $('#ai_q3').val('');
+    $('#aiGeneratedContent').val('');
+}
+
+function cancelSubtaskReport() {
+    // Nếu huỷ form thì reload trang để thẻ quay về lại cột gốc
+    location.reload();
+}
+
+function generateAiReport() {
+    let q1 = $('#ai_q1').val().trim();
+    let q2 = $('#ai_q2').val().trim();
+    let q3 = $('#ai_q3').val().trim();
+    
+    if(!q1 || !q2 || !q3) {
+        Swal.fire({title:'Thiếu thông tin!', text:'Vui lòng nhập đủ 3 câu trả lời!', icon:'warning'});
+        return;
+    }
+    
+    let btn = $('#btnGenerateAi');
+    btn.html('<span class="spinner-border spinner-border-sm me-2"></span>Đang phân tích dữ liệu...').prop('disabled', true);
+    
+    $.post('index.php?action=api_generate_subtask_report', {
+        subtask_id: $('#reportSubtaskId').val(), q1: q1, q2: q2, q3: q3
+    }, function(res) {
+        btn.html('<i class="bi bi-stars me-2"></i>Tạo báo cáo bằng AI').prop('disabled', false);
+        if(res.success) {
+            $('#aiGeneratedContent').val(res.data);
+            $('#reportFormArea').addClass('d-none');
+            $('#aiPreviewArea').removeClass('d-none');
+        } else {
+            Swal.fire({title:'Lỗi AI!', text:res.message, icon:'error'});
+        }
+    }, 'json').fail(() => {
+        btn.html('<i class="bi bi-stars me-2"></i>Tạo báo cáo bằng AI').prop('disabled', false);
+        Swal.fire({title:'Lỗi hệ thống!', text:'Không thể kết nối đến server.', icon:'error'});
+    });
+}
+
+function submitAiReport() {
+    let aiContent = $('#aiGeneratedContent').val().trim();
+    if(!aiContent) return;
+    
+    let btn = $('#btnSubmitAi');
+    btn.html('<span class="spinner-border spinner-border-sm me-2"></span>Đang xử lý...').prop('disabled', true);
+    
+    $.post('index.php?action=api_save_subtask_report', {
+        subtask_id: $('#reportSubtaskId').val(),
+        q1: $('#ai_q1').val(),
+        q2: $('#ai_q2').val(),
+        q3: $('#ai_q3').val(),
+        ai_content: aiContent
+    }, function(res) {
+        if(res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('subtaskReportModal')).hide();
+            Swal.fire({title:'Tuyệt vời!', text:res.message, icon:'success', timer:2000, showConfirmButton:false}).then(()=>location.reload());
+        } else {
+            btn.html('<i class="bi bi-send-check me-2"></i>Xác nhận hoàn thành & Đăng bài').prop('disabled', false);
+            Swal.fire({title:'Lỗi API!', text:res.message, icon:'error'});
+        }
+    }, 'json');
+}
+
+function openAiTaskSummaryModal(taskId, title) {
+    document.getElementById('summaryTaskId').value = taskId;
+    document.getElementById('summaryTaskTitle').innerText = 'Dự án: ' + title;
+    
+    $('#summaryLoadingArea').removeClass('d-none');
+    $('#summaryPreviewArea').addClass('d-none');
+    $('#aiSummaryContent').val('');
+    
+    new bootstrap.Modal(document.getElementById('taskSummaryModal')).show();
+    
+    // Call API generate
+    $.post('index.php?action=api_generate_task_summary', { task_id: taskId }, function(res) {
+        if (res.success) {
+            $('#summaryLoadingArea').addClass('d-none');
+            $('#summaryPreviewArea').removeClass('d-none');
+            $('#aiSummaryContent').val(res.data);
+        } else {
+            bootstrap.Modal.getInstance(document.getElementById('taskSummaryModal')).hide();
+            Swal.fire({title:'Lỗi tổng hợp dữ liệu!', text:res.message, icon:'error'});
+        }
+    }, 'json').fail(() => {
+        bootstrap.Modal.getInstance(document.getElementById('taskSummaryModal')).hide();
+        Swal.fire({title:'Lỗi hệ thống!', text:'Không thể kết nối API AI.', icon:'error'});
+    });
+}
+
+function submitTaskSummary() {
+    let aiContent = $('#aiSummaryContent').val().trim();
+    if (!aiContent) return;
+    
+    let btn = $('#btnSubmitSummary');
+    btn.html('<span class="spinner-border spinner-border-sm me-2"></span>Đang đăng bài...').prop('disabled', true);
+    
+    $.post('index.php?action=api_save_task_summary', {
+        task_id: $('#summaryTaskId').val(),
+        ai_content: aiContent
+    }, function(res) {
+        if(res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('taskSummaryModal')).hide();
+            Swal.fire({title:'Xuất bản thành công!', text:res.message, icon:'success', timer:2000, showConfirmButton:false}).then(()=>location.reload());
+        } else {
+            btn.html('<i class="bi bi-send-check me-2"></i>Xuất bản bài Tổng kết').prop('disabled', false);
+            Swal.fire({title:'Lỗi đăng bài!', text:res.message, icon:'error'});
+        }
+    }, 'json');
+}
 
 function handleDragToPending(subtaskId) {
     $.getJSON('index.php?action=api_check_evidence&id=' + subtaskId, function(res) {
@@ -606,10 +827,22 @@ function openTaskDetail(tid) {
 
         let btns = '';
         if (ROLE_ID != 3) {
-            btns = `<div class="mt-3 d-flex gap-2">
+            let rowBtns = `<div class="mt-3 d-flex gap-2">
                 <button class="btn btn-outline-primary btn-sm flex-fill rounded-pill fw-bold" onclick="bootstrap.Modal.getInstance(document.getElementById('taskDetailModal')).hide();setTimeout(()=>openAddSubtaskModal(${task.id}),300);"><i class="bi bi-plus-lg me-1"></i>Thêm việc con</button>
                 <button class="btn btn-outline-danger btn-sm rounded-pill fw-bold px-3" onclick="deleteTask(${task.id})"><i class="bi bi-trash me-1"></i>Xóa Task</button>
             </div>`;
+            
+            if (pct == 100 && sCount > 0) {
+                btns = `
+                <div class="mt-3">
+                    <button class="btn btn-success w-100 rounded-pill fw-bold mb-2 shadow-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('taskDetailModal')).hide();setTimeout(()=>openAiTaskSummaryModal(${task.id}, '${task.title.replace(/'/g, "\\'")}'),300);">
+                        <i class="bi bi-stars me-2"></i>Tổng kết & Đăng bài dự án (AI)
+                    </button>
+                    ${rowBtns}
+                </div>`;
+            } else {
+                btns = rowBtns;
+            }
         }
 
         $('#taskBody').html(`<div class="row"><div class="col-md-5 border-end">

@@ -120,10 +120,13 @@
                                 <p class="text-muted small mb-0 d-flex gap-2 align-items-center">
                                     <span><?php echo htmlspecialchars($post['role_name']); ?></span> • <span><?php echo date('H:i d/m/Y', strtotime($post['created_at'])); ?></span> •
                                     <?php 
-                                    if ($post['visibility'] == 'Public') echo '<i class="bi bi-globe"></i>';
-                                    elseif ($post['visibility'] == 'Department') echo '<i class="bi bi-building"></i>';
-                                    elseif ($post['visibility'] == 'Announcement') echo '<i class="bi bi-megaphone-fill text-danger"></i>';
+                                    if ($post['visibility'] == 'Public') echo '<i class="bi bi-globe" title="Công khai"></i>';
+                                    elseif ($post['visibility'] == 'Department') echo '<i class="bi bi-building" title="Nội bộ phòng ban"></i>';
+                                    elseif ($post['visibility'] == 'Announcement') echo '<i class="bi bi-megaphone-fill text-danger" title="Thông báo"></i>';
                                     ?>
+                                    <?php if(($post['is_ai_generated'] ?? 0)): ?>
+                                    <span class="badge rounded-pill ml-2" style="background-color: #8b5cf6; font-size: 0.65rem;"><i class="bi bi-stars"></i> Viết bởi Relioo AI</span>
+                                    <?php endif; ?>
                                 </p>
                             </div>
                         </div>

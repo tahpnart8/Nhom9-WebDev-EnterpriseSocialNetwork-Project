@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS subtasks (
     status ENUM('To Do', 'In Progress', 'Pending', 'Done') DEFAULT 'To Do',
     completion_rating FLOAT DEFAULT NULL,
     is_rejected TINYINT(1) DEFAULT 0,
+    is_approved TINYINT(1) DEFAULT 0,
     report_content TEXT,
     feedback TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -88,6 +89,10 @@ CREATE TABLE IF NOT EXISTS task_reports (
     subtask_id INT NULL,
     task_id INT NULL,
     content TEXT NOT NULL,
+    q1_answer TEXT NULL,
+    q2_answer TEXT NULL,
+    q3_answer TEXT NULL,
+    ai_generated_content TEXT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (subtask_id) REFERENCES subtasks(id) ON DELETE CASCADE,
     FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE

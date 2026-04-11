@@ -104,9 +104,9 @@ class Subtask {
         }
     }
 
-    // Duyệt Subtask -> Hoàn thành (DONE)
+    // Duyệt Subtask -> Đánh dấu is_approved = 1 (Vẫn giữ ở Pending để nhân viên tự kéo sang Done)
     public function approve($subtask_id) {
-        $query = "UPDATE " . $this->table_name . " SET status = 'Done', is_rejected = 0 WHERE id = :id";
+        $query = "UPDATE " . $this->table_name . " SET is_approved = 1, is_rejected = 0 WHERE id = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $subtask_id);
         return $stmt->execute();

@@ -286,11 +286,10 @@ class TaskController {
 
         if ($subtaskModel->approve($subtaskId)) {
             NotificationController::pushNotification($this->db, 'task_approved', $_SESSION['user_id'],
-                "Subtask '" . $subtask['title'] . "' đã được DUYỆT và Hoàn thành!",
-                "index.php?action=tasks&subtask_id=" . $subtaskId,
+                "Subtask '" . $subtask['title'] . "' đã được DUYỆT! Vui lòng kéo subtask sang cột Hoàn thành và viết báo cáo AI.",
+                "index.php?action=tasks",
                 [$subtask['assignee_id']]);
-            $this->syncTaskStatus($subtask['task_id']);
-            echo json_encode(['success' => true, 'message' => 'Đã duyệt!']);
+            echo json_encode(['success' => true, 'message' => 'Đã duyệt! (Chờ nhân viên viết báo cáo)']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi!']);
         }
@@ -619,6 +618,265 @@ class TaskController {
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi lưu!']);
         }
+        exit;
+    }
+
+    // ========== HELPER: LẤY BIẾN MÔI TRƯỜNG ==========
+    private function getEnvVar($key) {
+        $envFile = __DIR__ . '/../.env';
+        if (file_exists($envFile)) {
+            $content = file_get_contents($envFile);
+            // Regex tìm Key=Value, bỏ qua khoảng trắng và dấu ngoặc kép
+            if (preg_match("/^" . preg_quote($key, '/') . "\s*=\s*(.*)$/m", $content, $matches)) {
+                return trim($matches[1], " \t\n\r\0\x0B\"'");
+            }
+        }
+        return getenv($key) ?: ($_ENV[$key] ?? '');
+    }
+
+    // ========== API: GENERATE REPORT BẰNG AI (LLaMA via Groq) ==========
+    public function generateSubtaskReport() {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        $subtaskId = $_POST['subtask_id'] ?? 0;
+        $q1 = $_POST['q1'] ?? '';
+        $q2 = $_POST['q2'] ?? '';
+        $q3 = $_POST['q3'] ?? '';
+
+        $subtaskModel = new Subtask($this->db);
+        $subtask = $subtaskModel->getById($subtaskId);
+
+        if (!$subtask) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy subtask!']);
+            exit;
+        }
+
+        $apiKey = $this->getEnvVar('GROQ_API_KEY');
+        if (empty($apiKey)) {
+            echo json_encode(['success' => false, 'message' => 'Chưa cấu hình GROQ_API_KEY!']);
+            exit;
+        }
+
+        $systemPrompt = "Bạn là nhân viên chuyên nghiệp tại công ty. Dựa vào mô tả công việc và câu trả lời của nhân viên, hãy viết lại thành một bài báo cáo tiến độ thật ngắn gọn, mạch lạc, văn phong chuyên nghiệp để đăng mạng xã hội công ty. CHỈ TRẢ VỀ nội dung bài đăng, không trả lời lan man.";
+        
+        $userPrompt = "Tiêu đề công việc: " . $subtask['title'] . "\n"
+                    . "Mô tả: " . $subtask['description'] . "\n\n"
+                    . "Câu trả lời của tôi (người thực hiện):\n"
+                    . "- Cách thực hiện: " . $q1 . "\n"
+                    . "- Kinh nghiệm rút ra: " . $q2 . "\n"
+                    . "- Lưu ý lần sau: " . $q3 . "\n\n"
+                    . "Hãy viết bài báo cáo ngắn gọn gọn nhẹ.";
+
+        $postData = [
+            'model' => 'llama3-8b-8192',
+            'messages' => [
+                ['role' => 'system', 'content' => $systemPrompt],
+                ['role' => 'user', 'content' => $userPrompt]
+            ],
+            'temperature' => 0.7,
+            'max_tokens' => 500
+        ];
+
+        $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $apiKey,
+            'Content-Type: application/json'
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200) {
+            echo json_encode(['success' => false, 'message' => 'Lỗi gọi API Groq. Xin thử lại.']);
+            exit;
+        }
+
+        $result = json_decode($response, true);
+        $aiContent = $result['choices'][0]['message']['content'] ?? 'Không thể tạo nội dung.';
+        
+        echo json_encode(['success' => true, 'data' => $aiContent]);
+        exit;
+    }
+
+    // ========== API: LƯU BÁO CÁO VÀ CHUYỂN SANG DONE, ĐĂNG SOCIAL ==========
+    public function saveSubtaskReport() {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        $subtaskId = $_POST['subtask_id'] ?? 0;
+        $q1 = $_POST['q1'] ?? '';
+        $q2 = $_POST['q2'] ?? '';
+        $q3 = $_POST['q3'] ?? '';
+        $aiContent = $_POST['ai_content'] ?? '';
+
+        $subtaskModel = new Subtask($this->db);
+        $subtask = $subtaskModel->getById($subtaskId);
+
+        if (!$subtask) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy subtask!']);
+            exit;
+        }
+
+        // Lưu vào task_reports
+        $stmt = $this->db->prepare("INSERT INTO task_reports (subtask_id, task_id, content, q1_answer, q2_answer, q3_answer, ai_generated_content) VALUES (:sid, :tid, :content, :q1, :q2, :q3, :ai)");
+        $stmt->execute([
+            ':sid' => $subtaskId,
+            ':tid' => $subtask['task_id'],
+            ':content' => $subtask['title'] . ' Report',
+            ':q1' => $q1,
+            ':q2' => $q2,
+            ':q3' => $q3,
+            ':ai' => $aiContent
+        ]);
+        $reportId = $this->db->lastInsertId();
+
+        // Đổi trạng thái subtask sang DONE
+        $this->db->prepare("UPDATE subtasks SET status = 'Done' WHERE id = ?")->execute([$subtaskId]);
+        $this->syncTaskStatus($subtask['task_id']);
+
+        // Đăng mạng xã hội (vào Department)
+        require_once __DIR__ . '/../models/Post.php';
+        $postModel = new Post($this->db);
+        $postContentHtml = "<div class='ai-post'><h6 class='fw-bold text-primary mb-2'>🚀 Báo cáo tiến độ: " . htmlspecialchars($subtask['title']) . "</h6>" . nl2br(htmlspecialchars($aiContent)) . "</div>";
+        
+        $postId = $postModel->create($_SESSION['user_id'], $_SESSION['department_id'], $postContentHtml, 'Department');
+        
+        $task = $taskModel->getById($taskId);
+        if (!$task) { echo json_encode(['success' => false, 'message' => 'Không tìm thấy Task!']); exit; }
+        $subtasks = $subtaskModel->getByTaskId($taskId);
+        $task['subtasks'] = $subtasks;
+        $task['subtask_count'] = count($subtasks);
+        $task['done_count'] = count(array_filter($subtasks, function($s) { return $s['status'] == 'Done'; }));
+        echo json_encode(['success' => true, 'data' => $task]);
+        exit;
+    }
+
+    // ========== API: GENERATE TASK SUMMARY BẰNG AI (LLaMA via Groq) ==========
+    public function generateTaskSummary() {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        if ($_SESSION['role_id'] != 1 && $_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 4) {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền!']);
+            exit;
+        }
+
+        $taskId = $_POST['task_id'] ?? 0;
+        
+        $taskModel = new Task($this->db);
+        $task = $taskModel->getById($taskId);
+        
+        if (!$task) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy task!']);
+            exit;
+        }
+
+        // Lấy tất cả nội dung AI content từ các subtasks
+        $stmt = $this->db->prepare("SELECT ai_generated_content FROM task_reports WHERE task_id = ? AND ai_generated_content IS NOT NULL");
+        $stmt->execute([$taskId]);
+        $reports = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($reports)) {
+            echo json_encode(['success' => false, 'message' => 'Không có dữ liệu báo cáo nào từ các công việc con để tổng hợp!']);
+            exit;
+        }
+
+        $context = implode("\n\n---\n\n", $reports);
+
+        $apiKey = $this->getEnvVar('GROQ_API_KEY');
+        if (empty($apiKey)) {
+            echo json_encode(['success' => false, 'message' => 'Chưa cấu hình GROQ_API_KEY!']);
+            exit;
+        }
+
+        $systemPrompt = "Bạn là Trưởng phòng. Dưới đây là các báo cáo chi tiết từ nhân viên về từng hạng mục của dự án. Hãy tổng hợp thành một bài đăng tổng kết dự án dài không quá 1000 chữ. Yêu cầu: Nêu bật kết quả, biểu dương team, văn phong truyền cảm hứng để đăng lên mạng xã hội nội bộ.";
+        $userPrompt = "Tên dự án: " . $task['title'] . "\n\nDữ liệu báo cáo chi tiết:\n" . $context;
+
+        $postData = [
+            'model' => 'llama3-8b-8192',
+            'messages' => [
+                ['role' => 'system', 'content' => $systemPrompt],
+                ['role' => 'user', 'content' => $userPrompt]
+            ],
+            'temperature' => 0.7,
+            'max_tokens' => 1500
+        ];
+
+        $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $apiKey,
+            'Content-Type: application/json'
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200) {
+            echo json_encode(['success' => false, 'message' => 'Lỗi gọi API Groq. Xin thử lại.']);
+            exit;
+        }
+
+        $result = json_decode($response, true);
+        $aiContent = $result['choices'][0]['message']['content'] ?? 'Không thể tổng hợp báo cáo.';
+        
+        echo json_encode(['success' => true, 'data' => $aiContent]);
+        exit;
+    }
+
+    public function saveTaskSummary() {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        if ($_SESSION['role_id'] != 1 && $_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 4) {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền!']);
+            exit;
+        }
+
+        $taskId = $_POST['task_id'] ?? 0;
+        $aiContent = $_POST['ai_content'] ?? '';
+
+        $taskModel = new Task($this->db);
+        $task = $taskModel->getById($taskId);
+        if (!$task) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy task!']);
+            exit;
+        }
+
+        // Lưu bản báo cáo của Project vào bảng task_reports (ko có subtaskId)
+        $stmt = $this->db->prepare("INSERT INTO task_reports (subtask_id, task_id, content, ai_generated_content) VALUES (NULL, :tid, :content, :ai)");
+        $stmt->execute([
+            ':tid' => $taskId,
+            ':content' => $task['title'] . ' Tổng kết (AI)',
+            ':ai' => $aiContent
+        ]);
+        $reportId = $this->db->lastInsertId();
+
+        require_once __DIR__ . '/../models/Post.php';
+        $postModel = new Post($this->db);
+        $postContentHtml = "<div class='ai-post'><h5 class='fw-bold text-success mb-2'>🏆 Tổng kết dự án: " . htmlspecialchars($task['title']) . "</h5>" . nl2br(htmlspecialchars($aiContent)) . "</div>";
+        
+        // Đăng vào Department
+        $postId1 = $postModel->create($_SESSION['user_id'], $_SESSION['department_id'], $postContentHtml, 'Department');
+        if ($postId1) {
+            $this->db->prepare("UPDATE posts SET is_ai_generated = 1, task_report_id = ? WHERE id = ?")->execute([$reportId, $postId1]);
+        }
+        
+        // Đăng vào Public
+        $postId2 = $postModel->create($_SESSION['user_id'], null, $postContentHtml, 'Public');
+        if ($postId2) {
+            $this->db->prepare("UPDATE posts SET is_ai_generated = 1, task_report_id = ? WHERE id = ?")->execute([$reportId, $postId2]);
+        }
+
+        echo json_encode(['success' => true, 'message' => 'Đã lưu và đăng tải tổng kết dự án (Public & Department)!']);
         exit;
     }
 }
