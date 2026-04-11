@@ -87,7 +87,11 @@
                 <input type="hidden" name="visibility" value="<?php echo $postVisibility; ?>">
                 <div class="d-flex gap-3 mb-3">
                     <div class="avatar-circle shadow-sm flex-shrink-0" style="width: 44px; height: 44px; font-size: 14px;">
-                        <?php echo mb_substr(trim($_SESSION['full_name'] ?? 'User'), 0, 1, 'UTF-8'); ?>
+                        <?php if(!empty($_SESSION['avatar_url'])): ?>
+                            <img src="<?php echo htmlspecialchars($_SESSION['avatar_url']); ?>" class="w-100 h-100 rounded-circle" style="object-fit:cover">
+                        <?php else: ?>
+                            <?php echo mb_substr(trim($_SESSION['full_name'] ?? 'User'), 0, 1, 'UTF-8'); ?>
+                        <?php endif; ?>
                     </div>
                     <textarea class="form-control bg-light border-0 px-3 py-3 rounded-3" id="postContent" name="content" rows="3" placeholder="<?php echo $postPlaceholder; ?>" required style="resize: none;"></textarea>
                 </div>
@@ -114,7 +118,11 @@
                 <div class="p-4 pb-2">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="d-flex align-items-center gap-3">
-                            <div class="avatar-circle shadow-sm"><?php echo mb_substr(trim($post['full_name']), 0, 1, 'UTF-8'); ?></div>
+                            <?php if(!empty($post['avatar_url'])): ?>
+                                <img src="<?php echo htmlspecialchars($post['avatar_url']); ?>" class="avatar-circle shadow-sm" style="object-fit: cover;">
+                            <?php else: ?>
+                                <div class="avatar-circle shadow-sm"><?php echo mb_substr(trim($post['full_name']), 0, 1, 'UTF-8'); ?></div>
+                            <?php endif; ?>
                             <div>
                                 <h6 class="mb-0 fw-bold text-dark"><?php echo htmlspecialchars($post['full_name']); ?></h6>
                                 <p class="text-muted small mb-0 d-flex gap-2 align-items-center">
@@ -164,7 +172,13 @@
                 <div class="comment-section p-4 d-none" id="comment-section-<?php echo $post['id']; ?>">
                     <div class="comment-list mb-4"></div>
                     <div class="d-flex gap-2">
-                        <div class="avatar-circle shadow-sm flex-shrink-0 comment-avatar"><?php echo mb_substr(trim($_SESSION['full_name'] ?? 'U'), 0, 1, 'UTF-8'); ?></div>
+                        <div class="avatar-circle shadow-sm flex-shrink-0 comment-avatar">
+                            <?php if(!empty($_SESSION['avatar_url'])): ?>
+                                <img src="<?php echo htmlspecialchars($_SESSION['avatar_url']); ?>" class="w-100 h-100 rounded-circle" style="object-fit:cover">
+                            <?php else: ?>
+                                <?php echo mb_substr(trim($_SESSION['full_name'] ?? 'U'), 0, 1, 'UTF-8'); ?>
+                            <?php endif; ?>
+                        </div>
                         <div class="flex-grow-1 position-relative">
                             <input type="text" class="form-control form-control-sm rounded-pill border-0 bg-white shadow-sm px-3 input-comment" placeholder="Viết bình luận..." data-post-id="<?php echo $post['id']; ?>">
                             <button class="btn btn-link btn-sm position-absolute end-0 top-50 translate-middle-y text-primary btn-send-comment" style="padding-right: 15px;"><i class="bi bi-send-fill"></i></button>
@@ -309,7 +323,7 @@
         return `
             <div class="comment-item" id="comment-${c.id}">
                 <div class="d-flex gap-2">
-                    <div class="avatar-circle comment-avatar shadow-sm">${c.full_name.charAt(0)}</div>
+                    ${c.avatar_url ? `<img src="${c.avatar_url}" class="avatar-circle comment-avatar shadow-sm" style="object-fit:cover;">` : `<div class="avatar-circle comment-avatar shadow-sm">${c.full_name.charAt(0)}</div>`}
                     <div class="flex-grow-1">
                         <div class="comment-bubble shadow-sm">
                             <div class="fw-bold small">${c.full_name}</div>
@@ -324,7 +338,7 @@
                                 return `
                                 <div class="comment-item mt-2" id="comment-${r.id}">
                                     <div class="d-flex gap-2">
-                                        <div class="avatar-circle comment-avatar shadow-sm" style="width: 24px; height: 24px; font-size: 10px;">${r.full_name.charAt(0)}</div>
+                                        ${r.avatar_url ? `<img src="${r.avatar_url}" class="avatar-circle comment-avatar shadow-sm" style="width: 24px; height: 24px; object-fit:cover;">` : `<div class="avatar-circle comment-avatar shadow-sm" style="width: 24px; height: 24px; font-size: 10px;">${r.full_name.charAt(0)}</div>`}
                                         <div class="flex-grow-1">
                                             <div class="comment-bubble py-1 px-3 shadow-sm">
                                                 <div class="fw-bold small" style="font-size: 0.75rem;">${r.full_name}</div>
@@ -408,7 +422,7 @@
                 res.data.forEach(u => {
                     $container.append(`
                         <div class="d-flex align-items-center gap-3 p-3 liker-list-item">
-                            <div class="avatar-circle shadow-sm" style="width: 36px; height: 32px; font-size: 14px;">${u.full_name.charAt(0)}</div>
+                            ${u.avatar_url ? `<img src="${u.avatar_url}" class="avatar-circle shadow-sm" style="width: 36px; height: 36px; object-fit:cover;">` : `<div class="avatar-circle shadow-sm" style="width: 36px; height: 36px; font-size: 14px;">${u.full_name.charAt(0)}</div>`}
                             <div>
                                 <div class="fw-bold small text-dark">${u.full_name}</div>
                                 <div class="text-muted" style="font-size: 0.7rem;">${u.role_name}</div>

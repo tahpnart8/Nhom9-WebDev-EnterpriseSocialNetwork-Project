@@ -13,6 +13,7 @@ require_once 'controllers/SocialController.php';
 require_once 'controllers/TaskController.php';
 require_once 'controllers/NotificationController.php';
 require_once 'controllers/ChatController.php';
+require_once 'controllers/ProfileController.php';
 
 $authController = new AuthController();
 $dashboardController = new DashboardController();
@@ -21,6 +22,7 @@ $socialController = new SocialController();
 $taskController = new TaskController();
 $notiController = new NotificationController();
 $chatController = new ChatController();
+$profileController = new ProfileController();
 
 $routes = [
     'login' => [$authController, 'showLogin'],
@@ -70,6 +72,9 @@ $routes = [
     'chat' => [$chatController, 'index'],
     'api_send_message' => [$chatController, 'sendMessage'],
     'api_fetch_messages' => [$chatController, 'fetchMessages'],
+
+    'profile' => [$profileController, 'index'],
+    'api_update_profile' => [$profileController, 'updateProfile'],
 ];
 
 if (array_key_exists($action, $routes)) {

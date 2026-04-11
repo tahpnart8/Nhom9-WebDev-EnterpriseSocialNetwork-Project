@@ -6,23 +6,27 @@ require_once __DIR__ . '/../models/Subtask.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../controllers/NotificationController.php';
 
-class TaskController {
+class TaskController
+{
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $database = new Database();
         $this->db = $database->getConnection();
     }
 
-    private function checkAuth() {
-        if(!isset($_SESSION['user_id'])) {
+    private function checkAuth()
+    {
+        if (!isset($_SESSION['user_id'])) {
             header("Location: index.php?action=login");
             exit;
         }
     }
 
     // ========== TRANG CHÍNH ==========
-    public function index() {
+    public function index()
+    {
         $this->checkAuth();
         $pageTitle = "Quản lý Công việc";
 
@@ -47,8 +51,11 @@ class TaskController {
 
         // Kanban 5 cột (bảng tiến độ)
         $columns = [
-            'To Do' => [], 'In Progress' => [], 'Pending' => [],
-            'Done' => [], 'Overdue' => []
+            'To Do' => [],
+            'In Progress' => [],
+            'Pending' => [],
+            'Done' => [],
+            'Overdue' => []
         ];
         $now = date('Y-m-d H:i:s');
         foreach ($subtasks as $st) {
@@ -66,16 +73,18 @@ class TaskController {
             $taskIds = array_unique(array_column($subtasks, 'task_id'));
             foreach ($taskIds as $tid) {
                 $taskInfo = $taskModel->getById($tid);
-                if (!$taskInfo) continue;
+                if (!$taskInfo)
+                    continue;
                 $allSubtasksInTask = $subtaskModel->getByTaskId($tid);
                 $taskInfo['subtasks'] = $allSubtasksInTask;
                 $taskInfo['subtask_count'] = count($allSubtasksInTask);
-                $taskInfo['done_count'] = count(array_filter($allSubtasksInTask, function($s) { return $s['status'] == 'Done'; }));
+                $taskInfo['done_count'] = count(array_filter($allSubtasksInTask, function ($s) {
+                    return $s['status'] == 'Done'; }));
                 $tasksWithSubtasks[] = $taskInfo;
             }
         } else {
             foreach ($tasks as $t) {
-                $t['subtasks'] = array_values(array_filter($subtasks, function($s) use ($t) {
+                $t['subtasks'] = array_values(array_filter($subtasks, function ($s) use ($t) {
                     return $s['task_id'] == $t['id'];
                 }));
                 $tasksWithSubtasks[] = $t;
@@ -83,7 +92,7 @@ class TaskController {
         }
 
         // Sort: task 100% done → cuối (phải)
-        usort($tasksWithSubtasks, function($a, $b) {
+        usort($tasksWithSubtasks, function ($a, $b) {
             $sc_a = $a['subtask_count'] ?? count($a['subtasks'] ?? []);
             $dc_a = $a['done_count'] ?? 0;
             $sc_b = $b['subtask_count'] ?? count($b['subtasks'] ?? []);
@@ -105,7 +114,8 @@ class TaskController {
     }
 
     // ========== API: TẠO TASK (validate mạnh) ==========
-    public function createTask() {
+    public function createTask()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
 
@@ -157,7 +167,8 @@ class TaskController {
         $this->db->beginTransaction();
         try {
             $taskId = $taskModel->create($deptId, $_SESSION['user_id'], $title, $description, $priority, $deadline);
-            if (!$taskId) throw new Exception('Lỗi tạo Task.');
+            if (!$taskId)
+                throw new Exception('Lỗi tạo Task.');
 
             $subtaskDescs = $_POST['subtask_description'] ?? [];
             $subtaskDeadlines = $_POST['subtask_deadline'] ?? [];
@@ -176,16 +187,22 @@ class TaskController {
                 }
                 if (!empty($stTitle) && !empty($stAssignee)) {
                     $subtaskModel->create($taskId, $stAssignee, $stTitle, $stDesc, $stDeadline, $stPriority);
-                    if (!in_array($stAssignee, $notifyUserIds)) $notifyUserIds[] = $stAssignee;
+                    if (!in_array($stAssignee, $notifyUserIds))
+                        $notifyUserIds[] = $stAssignee;
                 }
             }
 
             $this->db->commit();
 
             foreach ($notifyUserIds as $uid) {
-                NotificationController::pushNotification($this->db, 'task_assigned', $_SESSION['user_id'],
+                NotificationController::pushNotification(
+                    $this->db,
+                    'task_assigned',
+                    $_SESSION['user_id'],
                     "Bạn được giao việc trong Task mới: " . $title,
-                    "index.php?action=tasks", [$uid]);
+                    "index.php?action=tasks",
+                    [$uid]
+                );
             }
 
             echo json_encode(['success' => true, 'message' => 'Tạo Task thành công.', 'task_id' => $taskId]);
@@ -197,7 +214,8 @@ class TaskController {
     }
 
     // ========== API: XÓA TASK (Leader/CEO) ==========
-    public function deleteTask() {
+    public function deleteTask()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
 
@@ -218,7 +236,8 @@ class TaskController {
     }
 
     // ========== API: GỬI MINH CHỨNG + DUYỆT (có validate) ==========
-    public function submitEvidence() {
+    public function submitEvidence()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
 
@@ -228,15 +247,22 @@ class TaskController {
         $fileUrl = null;
 
         $subtask = $subtaskModel->getById($subtaskId);
-        if (!$subtask) { echo json_encode(['success' => false, 'message' => 'Không tìm thấy subtask!']); exit; }
-        if ($subtask['assignee_id'] != $_SESSION['user_id']) { echo json_encode(['success' => false, 'message' => 'Bạn không có quyền!']); exit; }
+        if (!$subtask) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy subtask!']);
+            exit;
+        }
+        if ($subtask['assignee_id'] != $_SESSION['user_id']) {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền!']);
+            exit;
+        }
 
         // Upload file nếu có
         if (isset($_FILES['evidence_file']) && $_FILES['evidence_file']['error'] === UPLOAD_ERR_OK) {
             require_once __DIR__ . '/../models/CloudStorage.php';
             $cloudStorage = new CloudStorage();
             $cloudUrl = $cloudStorage->uploadImage($_FILES['evidence_file']['tmp_name']);
-            if ($cloudUrl !== false) $fileUrl = $cloudUrl;
+            if ($cloudUrl !== false)
+                $fileUrl = $cloudUrl;
         }
 
         // Validate: phải có ÍT NHẤT notes hoặc file MỚI, HOẶC đã có evidence cũ
@@ -251,10 +277,14 @@ class TaskController {
         if ($subtaskModel->submitEvidence($subtaskId, $notes, $fileUrl)) {
             $taskModel = new Task($this->db);
             $task = $taskModel->getById($subtask['task_id']);
-            NotificationController::pushNotification($this->db, 'task_approval', $_SESSION['user_id'],
+            NotificationController::pushNotification(
+                $this->db,
+                'task_approval',
+                $_SESSION['user_id'],
                 "Nhân viên " . $_SESSION['full_name'] . " đã gửi duyệt subtask: " . $subtask['title'],
                 "index.php?action=tasks&subtask_id=" . $subtaskId,
-                [$task['created_by_user_id']]);
+                [$task['created_by_user_id']]
+            );
             echo json_encode(['success' => true, 'message' => 'Đã gửi duyệt công việc!']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi hệ thống!']);
@@ -263,7 +293,8 @@ class TaskController {
     }
 
     // ========== API: DUYỆT SUBTASK ==========
-    public function approveSubtask() {
+    public function approveSubtask()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
 
@@ -276,7 +307,10 @@ class TaskController {
         $subtaskId = $_POST['subtask_id'] ?? 0;
         $subtask = $subtaskModel->getById($subtaskId);
 
-        if (!$subtask) { echo json_encode(['success' => false, 'message' => 'Không tìm thấy!']); exit; }
+        if (!$subtask) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy!']);
+            exit;
+        }
 
         // Chặn duyệt subtask trễ hạn
         if (!empty($subtask['deadline']) && $subtask['deadline'] < date('Y-m-d H:i:s') && $subtask['status'] != 'Done') {
@@ -285,10 +319,14 @@ class TaskController {
         }
 
         if ($subtaskModel->approve($subtaskId)) {
-            NotificationController::pushNotification($this->db, 'task_approved', $_SESSION['user_id'],
+            NotificationController::pushNotification(
+                $this->db,
+                'task_approved',
+                $_SESSION['user_id'],
                 "Subtask '" . $subtask['title'] . "' đã được DUYỆT! Vui lòng kéo subtask sang cột Hoàn thành và viết báo cáo AI.",
                 "index.php?action=tasks",
-                [$subtask['assignee_id']]);
+                [$subtask['assignee_id']]
+            );
             echo json_encode(['success' => true, 'message' => 'Đã duyệt! (Chờ nhân viên viết báo cáo)']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi!']);
@@ -297,7 +335,8 @@ class TaskController {
     }
 
     // ========== API: TỪ CHỐI SUBTASK ==========
-    public function rejectSubtask() {
+    public function rejectSubtask()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
 
@@ -319,10 +358,14 @@ class TaskController {
 
         if ($subtaskModel->reject($subtaskId, $reason)) {
             $subtask = $subtaskModel->getById($subtaskId);
-            NotificationController::pushNotification($this->db, 'task_rejected', $_SESSION['user_id'],
+            NotificationController::pushNotification(
+                $this->db,
+                'task_rejected',
+                $_SESSION['user_id'],
                 "Subtask '" . $subtask['title'] . "' bị TỪ CHỐI: $reason",
                 "index.php?action=tasks&subtask_id=" . $subtaskId,
-                [$subtask['assignee_id']]);
+                [$subtask['assignee_id']]
+            );
             $this->syncTaskStatus($subtask['task_id']);
             echo json_encode(['success' => true, 'message' => 'Đã từ chối!']);
         } else {
@@ -332,11 +375,13 @@ class TaskController {
     }
 
     // ========== API: XÓA SUBTASK ==========
-    public function deleteSubtask() {
+    public function deleteSubtask()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
         if ($_SESSION['role_id'] != 1 && $_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 4) {
-            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xóa!']); exit;
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xóa!']);
+            exit;
         }
         $subtaskModel = new Subtask($this->db);
         $subtaskId = $_POST['subtask_id'] ?? 0;
@@ -351,7 +396,8 @@ class TaskController {
     }
 
     // ========== API: KÉO THẢ CẬP NHẬT STATUS ==========
-    public function updateSubtaskStatus() {
+    public function updateSubtaskStatus()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
 
@@ -360,35 +406,47 @@ class TaskController {
         $status = $_POST['status'] ?? '';
 
         $subtask = $subtaskModel->getById($subtaskId);
-        if (!$subtask) { echo json_encode(['success' => false, 'message' => 'Lỗi dữ liệu!']); exit; }
+        if (!$subtask) {
+            echo json_encode(['success' => false, 'message' => 'Lỗi dữ liệu!']);
+            exit;
+        }
 
         // Khóa Done
         if ($subtask['status'] == 'Done' || $status == 'Done') {
-            echo json_encode(['success' => false, 'message' => 'locked_done']); exit;
+            echo json_encode(['success' => false, 'message' => 'locked_done']);
+            exit;
         }
         // Khóa Pending
         if ($subtask['status'] == 'Pending') {
-            echo json_encode(['success' => false, 'message' => 'locked_pending']); exit;
+            echo json_encode(['success' => false, 'message' => 'locked_pending']);
+            exit;
         }
 
         // Kéo vào Pending
         if ($status == 'Pending') {
             if ($subtask['assignee_id'] != $_SESSION['user_id']) {
-                echo json_encode(['success' => false, 'message' => 'permission_denied']); exit;
+                echo json_encode(['success' => false, 'message' => 'permission_denied']);
+                exit;
             }
             if (!$subtaskModel->hasEvidence($subtaskId)) {
-                echo json_encode(['success' => false, 'message' => 'no_evidence']); exit;
+                echo json_encode(['success' => false, 'message' => 'no_evidence']);
+                exit;
             }
             if (!isset($_POST['confirm']) || $_POST['confirm'] != '1') {
-                echo json_encode(['success' => false, 'message' => 'confirm_pending']); exit;
+                echo json_encode(['success' => false, 'message' => 'confirm_pending']);
+                exit;
             }
             if ($subtaskModel->updateStatus($subtaskId, 'Pending')) {
                 $taskModel = new Task($this->db);
                 $task = $taskModel->getById($subtask['task_id']);
-                NotificationController::pushNotification($this->db, 'task_approval', $_SESSION['user_id'],
+                NotificationController::pushNotification(
+                    $this->db,
+                    'task_approval',
+                    $_SESSION['user_id'],
                     "Nhân viên " . $_SESSION['full_name'] . " đã gửi duyệt subtask: " . $subtask['title'],
                     "index.php?action=tasks&subtask_id=" . $subtaskId,
-                    [$task['created_by_user_id']]);
+                    [$task['created_by_user_id']]
+                );
                 echo json_encode(['success' => true]);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Lỗi DB!']);
@@ -398,7 +456,8 @@ class TaskController {
 
         // To Do <-> In Progress
         if ($subtask['assignee_id'] != $_SESSION['user_id']) {
-            echo json_encode(['success' => false, 'message' => 'permission_denied']); exit;
+            echo json_encode(['success' => false, 'message' => 'permission_denied']);
+            exit;
         }
 
         if ($subtaskModel->updateStatus($subtaskId, $status)) {
@@ -410,7 +469,8 @@ class TaskController {
     }
 
     // ========== API: CHECK EVIDENCE ==========
-    public function checkEvidence() {
+    public function checkEvidence()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
         $subtaskModel = new Subtask($this->db);
@@ -419,27 +479,36 @@ class TaskController {
     }
 
     // ========== SYNC TASK STATUS ==========
-    private function syncTaskStatus($task_id) {
+    private function syncTaskStatus($task_id)
+    {
         $subtaskModel = new Subtask($this->db);
         $taskModel = new Task($this->db);
         $allSubs = $subtaskModel->getByTaskId($task_id);
-        if (empty($allSubs)) return;
-        $allDone = true; $anyProgress = false;
+        if (empty($allSubs))
+            return;
+        $allDone = true;
+        $anyProgress = false;
         foreach ($allSubs as $s) {
-            if ($s['status'] != 'Done') $allDone = false;
-            if ($s['status'] == 'In Progress' || $s['status'] == 'Pending') $anyProgress = true;
+            if ($s['status'] != 'Done')
+                $allDone = false;
+            if ($s['status'] == 'In Progress' || $s['status'] == 'Pending')
+                $anyProgress = true;
         }
-        if ($allDone) $taskModel->updateStatus($task_id, 'Done');
-        elseif ($anyProgress) $taskModel->updateStatus($task_id, 'In Progress');
+        if ($allDone)
+            $taskModel->updateStatus($task_id, 'Done');
+        elseif ($anyProgress)
+            $taskModel->updateStatus($task_id, 'In Progress');
     }
 
     // ========== API: TẠO SUBTASK (batch) ==========
-    public function createSubtask() {
+    public function createSubtask()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
 
         if ($_SESSION['role_id'] != 1 && $_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 4) {
-            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền!']); exit;
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền!']);
+            exit;
         }
 
         $subtaskModel = new Subtask($this->db);
@@ -454,7 +523,8 @@ class TaskController {
             $deadlines = $_POST['subtask_deadline'] ?? [];
             $priorities = $_POST['subtask_priority'] ?? [];
 
-            $created = 0; $notifyUserIds = [];
+            $created = 0;
+            $notifyUserIds = [];
             for ($i = 0; $i < count($titles); $i++) {
                 $t = htmlspecialchars(trim($titles[$i] ?? ''));
                 $a = $assignees[$i] ?? 0;
@@ -468,15 +538,21 @@ class TaskController {
                 if (!empty($t) && !empty($a)) {
                     $subtaskModel->create($taskId, $a, $t, $d, $dl, $p);
                     $created++;
-                    if (!in_array($a, $notifyUserIds)) $notifyUserIds[] = $a;
+                    if (!in_array($a, $notifyUserIds))
+                        $notifyUserIds[] = $a;
                 }
             }
             $taskModel = new Task($this->db);
             $task = $taskModel->getById($taskId);
             foreach ($notifyUserIds as $uid) {
-                NotificationController::pushNotification($this->db, 'task_assigned', $_SESSION['user_id'],
+                NotificationController::pushNotification(
+                    $this->db,
+                    'task_assigned',
+                    $_SESSION['user_id'],
                     "Bạn được giao $created việc mới trong Task: " . ($task['title'] ?? ''),
-                    "index.php?action=tasks", [$uid]);
+                    "index.php?action=tasks",
+                    [$uid]
+                );
             }
             $this->syncTaskStatus($taskId);
             echo json_encode(['success' => true, 'message' => "Đã tạo $created công việc con!"]);
@@ -491,19 +567,26 @@ class TaskController {
         $priority = $_POST['priority'] ?? 'Medium';
 
         if (empty($title) || empty($taskId) || empty($assigneeId)) {
-            echo json_encode(['success' => false, 'message' => 'Vui lòng điền đủ thông tin!']); exit;
+            echo json_encode(['success' => false, 'message' => 'Vui lòng điền đủ thông tin!']);
+            exit;
         }
         if ($deadline && $deadline < $today) {
-            echo json_encode(['success' => false, 'message' => 'Deadline không được là ngày quá khứ!']); exit;
+            echo json_encode(['success' => false, 'message' => 'Deadline không được là ngày quá khứ!']);
+            exit;
         }
 
         $subtaskId = $subtaskModel->create($taskId, $assigneeId, $title, $description, $deadline, $priority);
         if ($subtaskId) {
             $taskModel = new Task($this->db);
             $task = $taskModel->getById($taskId);
-            NotificationController::pushNotification($this->db, 'task_assigned', $_SESSION['user_id'],
+            NotificationController::pushNotification(
+                $this->db,
+                'task_assigned',
+                $_SESSION['user_id'],
                 "Bạn được giao việc mới: $title (Task: " . ($task['title'] ?? '') . ")",
-                "index.php?action=tasks", [$assigneeId]);
+                "index.php?action=tasks",
+                [$assigneeId]
+            );
             $this->syncTaskStatus($taskId);
             echo json_encode(['success' => true, 'message' => 'Giao việc thành công!', 'subtask_id' => $subtaskId]);
         } else {
@@ -513,7 +596,8 @@ class TaskController {
     }
 
     // ========== API: SUBTASK DETAIL ==========
-    public function getSubtaskDetail() {
+    public function getSubtaskDetail()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
         $subtaskModel = new Subtask($this->db);
@@ -532,24 +616,30 @@ class TaskController {
     }
 
     // ========== API: TASK DETAIL ==========
-    public function getTaskDetail() {
+    public function getTaskDetail()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
         $taskModel = new Task($this->db);
         $subtaskModel = new Subtask($this->db);
         $taskId = $_GET['id'] ?? 0;
         $task = $taskModel->getById($taskId);
-        if (!$task) { echo json_encode(['success' => false, 'message' => 'Không tìm thấy Task!']); exit; }
+        if (!$task) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy Task!']);
+            exit;
+        }
         $subtasks = $subtaskModel->getByTaskId($taskId);
         $task['subtasks'] = $subtasks;
         $task['subtask_count'] = count($subtasks);
-        $task['done_count'] = count(array_filter($subtasks, function($s) { return $s['status'] == 'Done'; }));
+        $task['done_count'] = count(array_filter($subtasks, function ($s) {
+            return $s['status'] == 'Done'; }));
         echo json_encode(['success' => true, 'data' => $task]);
         exit;
     }
 
     // ========== API: GIA HẠN SUBTASK TRỄ HẠN (Leader) ==========
-    public function extendSubtask() {
+    public function extendSubtask()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
 
@@ -574,10 +664,14 @@ class TaskController {
         }
 
         if ($subtaskModel->extendDeadline($subtaskId, $newDeadline)) {
-            NotificationController::pushNotification($this->db, 'task_extended', $_SESSION['user_id'],
+            NotificationController::pushNotification(
+                $this->db,
+                'task_extended',
+                $_SESSION['user_id'],
                 "Subtask '" . $subtask['title'] . "' đã được GIA HẠN đến " . date('d/m/Y', strtotime($newDeadline)) . ". Hãy thực hiện lại!",
                 "index.php?action=tasks&subtask_id=" . $subtaskId,
-                [$subtask['assignee_id']]);
+                [$subtask['assignee_id']]
+            );
             $this->syncTaskStatus($subtask['task_id']);
             echo json_encode(['success' => true, 'message' => 'Đã gia hạn! Subtask quay về cột Cần làm.']);
         } else {
@@ -587,7 +681,8 @@ class TaskController {
     }
 
     // ========== API: CHỈ LƯU MINH CHỨNG (không gửi duyệt) ==========
-    public function saveEvidence() {
+    public function saveEvidence()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
 
@@ -597,15 +692,22 @@ class TaskController {
         $fileUrl = null;
 
         $subtask = $subtaskModel->getById($subtaskId);
-        if (!$subtask) { echo json_encode(['success' => false, 'message' => 'Không tìm thấy!']); exit; }
-        if ($subtask['assignee_id'] != $_SESSION['user_id']) { echo json_encode(['success' => false, 'message' => 'Không có quyền!']); exit; }
+        if (!$subtask) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy!']);
+            exit;
+        }
+        if ($subtask['assignee_id'] != $_SESSION['user_id']) {
+            echo json_encode(['success' => false, 'message' => 'Không có quyền!']);
+            exit;
+        }
 
         // Upload file
         if (isset($_FILES['evidence_file']) && $_FILES['evidence_file']['error'] === UPLOAD_ERR_OK) {
             require_once __DIR__ . '/../models/CloudStorage.php';
             $cloudStorage = new CloudStorage();
             $cloudUrl = $cloudStorage->uploadImage($_FILES['evidence_file']['tmp_name']);
-            if ($cloudUrl !== false) $fileUrl = $cloudUrl;
+            if ($cloudUrl !== false)
+                $fileUrl = $cloudUrl;
         }
 
         if (empty($notes) && $fileUrl === null) {
@@ -622,7 +724,8 @@ class TaskController {
     }
 
     // ========== HELPER: LẤY BIẾN MÔI TRƯỜNG ==========
-    private function getEnvVar($key) {
+    private function getEnvVar($key)
+    {
         $envFile = __DIR__ . '/../.env';
         if (file_exists($envFile)) {
             $content = file_get_contents($envFile);
@@ -635,7 +738,8 @@ class TaskController {
     }
 
     // ========== API: GENERATE REPORT BẰNG AI (LLaMA via Groq) ==========
-    public function generateSubtaskReport() {
+    public function generateSubtaskReport()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
 
@@ -659,14 +763,14 @@ class TaskController {
         }
 
         $systemPrompt = "Bạn là nhân viên chuyên nghiệp tại công ty. Dựa vào mô tả công việc và câu trả lời của nhân viên, hãy viết lại thành một bài báo cáo tiến độ thật ngắn gọn, mạch lạc, văn phong chuyên nghiệp để đăng mạng xã hội công ty. CHỈ TRẢ VỀ nội dung bài đăng, không trả lời lan man.";
-        
+
         $userPrompt = "Tiêu đề công việc: " . $subtask['title'] . "\n"
-                    . "Mô tả: " . $subtask['description'] . "\n\n"
-                    . "Câu trả lời của tôi (người thực hiện):\n"
-                    . "- Cách thực hiện: " . $q1 . "\n"
-                    . "- Kinh nghiệm rút ra: " . $q2 . "\n"
-                    . "- Lưu ý lần sau: " . $q3 . "\n\n"
-                    . "Hãy viết bài báo cáo ngắn gọn gọn nhẹ.";
+            . "Mô tả: " . $subtask['description'] . "\n\n"
+            . "Câu trả lời của tôi (người thực hiện):\n"
+            . "- Cách thực hiện: " . $q1 . "\n"
+            . "- Kinh nghiệm rút ra: " . $q2 . "\n"
+            . "- Lưu ý lần sau: " . $q3 . "\n\n"
+            . "Hãy viết bài báo cáo ngắn gọn gọn nhẹ.";
 
         $postData = [
             'model' => 'llama-3.3-70b-versatile',
@@ -711,13 +815,14 @@ class TaskController {
 
         $result = json_decode($response, true);
         $aiContent = $result['choices'][0]['message']['content'] ?? 'Không thể tạo nội dung.';
-        
+
         echo json_encode(['success' => true, 'data' => $aiContent]);
         exit;
     }
 
     // ========== API: LƯU BÁO CÁO VÀ CHUYỂN SANG DONE, ĐĂNG SOCIAL ==========
-    public function saveSubtaskReport() {
+    public function saveSubtaskReport()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
 
@@ -756,7 +861,7 @@ class TaskController {
         require_once __DIR__ . '/../models/Post.php';
         $postModel = new Post($this->db);
         $postContentHtml = "<div class='ai-post'><h6 class='fw-bold text-primary mb-2'>🚀 Báo cáo tiến độ: " . htmlspecialchars($subtask['title']) . "</h6>" . nl2br(htmlspecialchars($aiContent)) . "</div>";
-        
+
         $postId = $postModel->create($_SESSION['user_id'], $_SESSION['department_id'], $postContentHtml, 'Department');
         if ($postId) {
             $this->db->prepare("UPDATE posts SET is_ai_generated = 1, task_report_id = ? WHERE id = ?")->execute([$reportId, $postId]);
@@ -767,7 +872,8 @@ class TaskController {
     }
 
     // ========== API: GENERATE TASK SUMMARY BẰNG AI (LLaMA via Groq) ==========
-    public function generateTaskSummary() {
+    public function generateTaskSummary()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
 
@@ -777,10 +883,10 @@ class TaskController {
         }
 
         $taskId = $_POST['task_id'] ?? 0;
-        
+
         $taskModel = new Task($this->db);
         $task = $taskModel->getById($taskId);
-        
+
         if (!$task) {
             echo json_encode(['success' => false, 'message' => 'Không tìm thấy task!']);
             exit;
@@ -850,12 +956,13 @@ class TaskController {
 
         $result = json_decode($response, true);
         $aiContent = $result['choices'][0]['message']['content'] ?? 'Không thể tổng hợp báo cáo.';
-        
+
         echo json_encode(['success' => true, 'data' => $aiContent]);
         exit;
     }
 
-    public function saveTaskSummary() {
+    public function saveTaskSummary()
+    {
         $this->checkAuth();
         header('Content-Type: application/json');
 
@@ -886,17 +993,11 @@ class TaskController {
         require_once __DIR__ . '/../models/Post.php';
         $postModel = new Post($this->db);
         $postContentHtml = "<div class='ai-post'><h5 class='fw-bold text-success mb-2'>🏆 Tổng kết dự án: " . htmlspecialchars($task['title']) . "</h5>" . nl2br(htmlspecialchars($aiContent)) . "</div>";
-        
+
         // Đăng vào Department
         $postId1 = $postModel->create($_SESSION['user_id'], $_SESSION['department_id'], $postContentHtml, 'Department');
         if ($postId1) {
             $this->db->prepare("UPDATE posts SET is_ai_generated = 1, task_report_id = ? WHERE id = ?")->execute([$reportId, $postId1]);
-        }
-        
-        // Đăng vào Public
-        $postId2 = $postModel->create($_SESSION['user_id'], null, $postContentHtml, 'Public');
-        if ($postId2) {
-            $this->db->prepare("UPDATE posts SET is_ai_generated = 1, task_report_id = ? WHERE id = ?")->execute([$reportId, $postId2]);
         }
 
         echo json_encode(['success' => true, 'message' => 'Đã lưu và đăng tải tổng kết dự án (Public & Department)!']);

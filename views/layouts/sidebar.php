@@ -69,12 +69,16 @@ $roleId = $_SESSION['role_id'] ?? 3; // Default to staff
     </ul>
 
     <!-- User Profile area -->
-    <a href="#" class="user-profile-tab">
-        <div class="avatar-circle shadow-sm">
-            <?php 
-                $nameParts = explode(' ', trim($_SESSION['full_name'] ?? 'User'));
-                echo mb_substr(end($nameParts), 0, 1, 'UTF-8'); 
-            ?>
+    <a href="index.php?action=profile" class="user-profile-tab" style="text-decoration: none;">
+        <div class="avatar-circle shadow-sm" style="flex-shrink: 0;">
+            <?php if(!empty($_SESSION['avatar_url'])): ?>
+                <img src="<?php echo htmlspecialchars($_SESSION['avatar_url']); ?>" class="w-100 h-100 rounded-circle" style="object-fit:cover">
+            <?php else: ?>
+                <?php 
+                    $nameParts = explode(' ', trim($_SESSION['full_name'] ?? 'User'));
+                    echo mb_substr(end($nameParts), 0, 1, 'UTF-8'); 
+                ?>
+            <?php endif; ?>
         </div>
         <div class="user-info-text">
             <p class="user-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Guest'); ?></p>
