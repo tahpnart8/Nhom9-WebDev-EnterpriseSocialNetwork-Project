@@ -37,13 +37,22 @@ class Post {
         return $stmt->execute();
     }
 
-    public function getFeed($role_id, $department_id, $current_user_id) {
-        // Build conditions based on role (Public OR Own Department)
-        $deptCondition = "";
-        if ($department_id) {
-            $deptCondition = " OR (p.visibility = 'Department' AND p.department_id = $department_id) ";
+    public function getFeed($role_id, $department_id, $current_user_id, $channel = 'public', $dept_filter_id = null) {
+        $where = " p.visibility = 'Public' ";
+        
+        if ($channel === 'announcement') {
+            $where = " p.visibility = 'Announcement' ";
+        } else if ($channel === 'department') {
+            if ($role_id == 1 || $role_id == 4) { // CEO or Admin
+                if ($dept_filter_id) {
+                    $where = " p.visibility = 'Department' AND p.department_id = " . intval($dept_filter_id);
+                } else {
+                    $where = " p.visibility = 'Department' ";
+                }
+            } else {
+                $where = " p.visibility = 'Department' AND p.department_id = " . intval($department_id);
+            }
         }
-        $where = " p.visibility = 'Public' " . $deptCondition;
         
         $query = "SELECT p.*, u.full_name, u.avatar_url, m.media_url, m.media_type, r.role_name,
                   (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.id) as like_count,

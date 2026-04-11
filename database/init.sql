@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS posts (
     author_id INT NOT NULL,
     department_id INT NULL,
     task_report_id INT NULL,
-    visibility ENUM('Public', 'Department', 'Private') DEFAULT 'Public',
+    visibility ENUM('Public', 'Department', 'Private', 'Announcement') DEFAULT 'Public',
     content_html TEXT NOT NULL,
     is_ai_generated TINYINT(1) DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

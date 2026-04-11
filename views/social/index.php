@@ -20,14 +20,76 @@
 
 <div class="row g-4 position-relative">
     <div class="col-lg-8" style="padding-bottom: 50px;">
+        <!-- Tabs Chuyển Kênh -->
+        <ul class="nav nav-pills mb-4 gap-2 bg-white p-2 rounded shadow-sm border">
+            <li class="nav-item">
+                <a class="nav-link fw-medium px-4 <?php echo $channel === 'public' ? 'active' : 'text-dark'; ?>" href="index.php?action=social&channel=public">
+                    🌍 Kênh Công Khai
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link fw-medium px-4 <?php echo $channel === 'department' ? 'active' : 'text-dark'; ?>" href="index.php?action=social&channel=department">
+                    🏢 Kênh Phòng Ban
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link fw-medium px-4 <?php echo $channel === 'announcement' ? 'active' : 'text-dark'; ?>" href="index.php?action=social&channel=announcement">
+                    📢 Thông Báo
+                </a>
+            </li>
+        </ul>
+
+        <?php if ($channel === 'department' && ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 4)): ?>
+        <div class="mb-4">
+            <form id="deptFilterForm" action="index.php" method="GET" class="d-flex align-items-center gap-2">
+                <input type="hidden" name="action" value="social">
+                <input type="hidden" name="channel" value="department">
+                <label class="fw-bold text-muted small mb-0">Lọc phòng ban:</label>
+                <select name="dept_id" class="form-select form-select-sm border shadow-sm rounded w-auto" onchange="document.getElementById('deptFilterForm').submit();">
+                    <option value="">Tất cả phòng ban</option>
+                    <?php foreach ($departments as $dept): ?>
+                        <option value="<?php echo $dept['id']; ?>" <?php echo $dept_id_filter == $dept['id'] ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($dept['dept_name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </form>
+        </div>
+        <?php endif; ?>
+
+        <?php 
+        $canPost = false;
+        $postVisibility = 'Public';
+        $postPlaceholder = "Chia sẻ một ý tưởng...";
+        
+        if ($channel === 'public') {
+            $canPost = true;
+            $postVisibility = 'Public';
+        } else if ($channel === 'department') {
+            if ($_SESSION['role_id'] != 1) { // Not CEO
+                $canPost = true;
+                $postVisibility = 'Department';
+                $postPlaceholder = "Thảo luận nội bộ phòng ban...";
+            }
+        } else if ($channel === 'announcement') {
+            if ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 4) { // CEO or Admin
+                $canPost = true;
+                $postVisibility = 'Announcement';
+                $postPlaceholder = "Ban hành thông báo...";
+            }
+        }
+        ?>
+        
+        <?php if ($canPost): ?>
         <!-- Khung Đăng Bài -->
         <div class="relioo-card p-4 mb-4 border-top border-3 border-primary shadow-sm" style="background: linear-gradient(180deg, #fdfdff 0%, #ffffff 100%);">
             <form id="createPostForm" enctype="multipart/form-data">
+                <input type="hidden" name="visibility" value="<?php echo $postVisibility; ?>">
                 <div class="d-flex gap-3 mb-3">
                     <div class="avatar-circle shadow-sm flex-shrink-0" style="width: 44px; height: 44px; font-size: 14px;">
                         <?php echo mb_substr(trim($_SESSION['full_name'] ?? 'User'), 0, 1, 'UTF-8'); ?>
                     </div>
-                    <textarea class="form-control bg-light border-0 px-3 py-3 rounded-3" id="postContent" name="content" rows="3" placeholder="Chia sẻ một ý tưởng..." required style="resize: none;"></textarea>
+                    <textarea class="form-control bg-light border-0 px-3 py-3 rounded-3" id="postContent" name="content" rows="3" placeholder="<?php echo $postPlaceholder; ?>" required style="resize: none;"></textarea>
                 </div>
                 <div class="d-flex justify-content-between align-items-center mt-3">
                     <div class="d-flex gap-2">
@@ -35,10 +97,6 @@
                             <i class="bi bi-images me-1"></i> Ảnh/Video
                             <input type="file" name="attachment" accept="image/*,video/mp4" class="d-none" id="attachmentFile">
                         </label>
-                        <select name="visibility" class="form-select form-select-sm border bg-light rounded-pill px-3" style="width: auto;">
-                            <option value="Public">🌍 Công khai</option>
-                            <option value="Department">🏢 Trong phòng ban</option>
-                        </select>
                     </div>
                     <button type="submit" class="btn btn-primary rounded-pill px-4 fw-medium shadow-sm" id="btn-submit-post">
                         <span class="spinner-border spinner-border-sm d-none me-1" id="post-spinner"></span> Đăng bài
@@ -47,6 +105,7 @@
                 <div id="fileNameDisplay" class="small text-muted mt-2 ps-2 d-none"><i class="bi bi-paperclip text-primary"></i> <span></span></div>
             </form>
         </div>
+        <?php endif; ?>
 
         <!-- Feed Container -->
         <div id="feedContainer">
@@ -60,7 +119,11 @@
                                 <h6 class="mb-0 fw-bold text-dark"><?php echo htmlspecialchars($post['full_name']); ?></h6>
                                 <p class="text-muted small mb-0 d-flex gap-2 align-items-center">
                                     <span><?php echo htmlspecialchars($post['role_name']); ?></span> • <span><?php echo date('H:i d/m/Y', strtotime($post['created_at'])); ?></span> •
-                                    <?php echo $post['visibility'] == 'Public' ? '<i class="bi bi-globe"></i>' : '<i class="bi bi-building"></i>'; ?>
+                                    <?php 
+                                    if ($post['visibility'] == 'Public') echo '<i class="bi bi-globe"></i>';
+                                    elseif ($post['visibility'] == 'Department') echo '<i class="bi bi-building"></i>';
+                                    elseif ($post['visibility'] == 'Announcement') echo '<i class="bi bi-megaphone-fill text-danger"></i>';
+                                    ?>
                                 </p>
                             </div>
                         </div>
