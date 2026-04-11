@@ -10,6 +10,8 @@
     flex-direction: column;
     gap: 0.75rem;
     height: calc(100vh - 120px);
+    min-width: 0;
+    width: 100%;
 }
 
 /* ===== TABS ===== */
@@ -17,35 +19,35 @@
 .view-btn { padding: 0.5rem 1.5rem; border-radius: 0.6rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; border: none; background: transparent; color: #64748b; transition: 0.2s; }
 .view-btn.active { background: white; color: #1e293b; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 
-/* ===== BOARD CONTAINER (CỐ ĐỊNH CHIỀU DỌC) ===== */
+/* ===== BOARD CONTAINER (CỐ ĐỊNH CHIỀU DỌC + SCROLL NGANG) ===== */
 .board-container {
     flex: 1;
+    min-height: 0;
     overflow-x: auto;
     overflow-y: hidden;
-    display: flex;
-    min-height: 0; /* QUAN TRỌNG: cho flex shrink hoạt động */
 }
+.board-container::-webkit-scrollbar { height: 10px; }
+.board-container::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 10px; }
+.board-container::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+.board-container::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
 /* CHẾ ĐỘ 1: TIẾN ĐỘ (5 CỘT) */
 .board-progress {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 0.7rem;
-    width: 100%;
     min-width: 1100px;
     height: 100%;
 }
-/* CHẾ ĐỘ 2: THEO TASK (SCROLL NGANG) */
+/* CHẾ ĐỘ 2: THEO TASK (SCROLL NGANG - inline-flex tạo width tự nhiên) */
 .board-tasks {
-    display: flex;
+    display: inline-flex;
     gap: 0.8rem;
     padding-bottom: 0.5rem;
     height: 100%;
-    flex-shrink: 0;
-    width: max-content;
-    min-width: 100%;
+    padding-right: 1rem;
 }
-/* Custom scrollbar */
+/* Custom scrollbar cũ (fallback) */
 .board-container::-webkit-scrollbar { height: 8px; width: 6px; }
 .board-container::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
 .board-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -57,12 +59,12 @@
     border: 1px solid #e2e8f0;
     display: flex;
     flex-direction: column;
-    min-height: 0; /* cho flex shrink */
+    min-height: 0;
     max-height: 100%;
 }
 .board-tasks .column {
     min-width: 300px;
-    max-width: 340px;
+    width: 320px;
     flex-shrink: 0;
 }
 .column-header {

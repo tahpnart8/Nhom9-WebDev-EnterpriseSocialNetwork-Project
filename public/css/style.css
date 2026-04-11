@@ -184,6 +184,8 @@ body {
     margin-left: var(--sidebar-width);
     padding: 2rem;
     min-height: 100vh;
+    min-width: 0; /* QUAN TRỌNG: cho phép flex item co lại nhỏ hơn content */
+    max-width: calc(100vw - var(--sidebar-width));
 }
 
 /* Helper utility for rounded clean cards */
