@@ -25,6 +25,11 @@ class SocialController {
             FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
         )";
         $this->db->exec($sql);
+        
+        try {
+            // Tự động vá DB phòng trường hợp người dùng chưa nâng cấp chuẩn ENUM
+            $this->db->exec("ALTER TABLE posts MODIFY visibility ENUM('Public', 'Department', 'Private', 'Announcement') DEFAULT 'Public'");
+        } catch (Exception $e) {}
     }
 
     public function index() {

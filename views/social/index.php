@@ -229,7 +229,28 @@
     $('#attachmentFile').on('change', function() { if(this.files.length > 0) $('#fileNameDisplay span').text(this.files[0].name).parent().removeClass('d-none'); });
     $('#createPostForm').on('submit', function(e) {
         e.preventDefault(); let formData = new FormData(this);
-        $.ajax({ url: 'index.php?action=api_create_post', type: 'POST', data: formData, processData: false, contentType: false, success: function() { location.reload(); } });
+        let btn = $('#btn-submit-post');
+        btn.prop('disabled', true);
+        $.ajax({ 
+            url: 'index.php?action=api_create_post', 
+            type: 'POST', 
+            data: formData, 
+            processData: false, 
+            contentType: false, 
+            dataType: 'json',
+            success: function(res) { 
+                if (res.success) {
+                    location.reload(); 
+                } else {
+                    alert(res.message);
+                    btn.prop('disabled', false);
+                }
+            },
+            error: function() {
+                alert("Đã xảy ra lỗi HTTP. Vui lòng xem console.");
+                btn.prop('disabled', false);
+            }
+        });
     });
     $(document).on('click', '.btn-delete-post', function(e) {
         e.preventDefault(); if (!confirm('Xóa bài viết này?')) return;
