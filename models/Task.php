@@ -76,6 +76,14 @@ class Task {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    // Xóa Task (cascade xóa subtasks, attachments)
+    public function delete($task_id) {
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $task_id);
+        return $stmt->execute();
+    }
+
     // Lấy thống kê dự án (Active Projects)
     public function getTaskStats($department_id = null) {
         $query = "SELECT COUNT(id) as total_tasks, 

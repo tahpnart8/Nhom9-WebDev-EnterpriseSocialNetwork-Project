@@ -75,31 +75,67 @@ toastr.options = { positionClass: 'toast-bottom-right', timeOut: 4000, progressB
 function pollNotifications() {
     $.getJSON('index.php?action=api_notifications', function(data) {
         var $badge = $('#notiBadge');
-        if (data.count > 0) {
-            $badge.text(data.count).show();
-            // Nếu có thông báo mới hơn lần trước → Toast
-            if (data.count > _lastNotiCount && _lastNotiCount >= 0) {
+        var unread = data.unread_count || 0;
+
+        if (unread > 0) {
+            $badge.text(unread).show();
+            // Toast nếu có thông báo mới
+            if (unread > _lastNotiCount && _lastNotiCount >= 0) {
                 var latest = data.items[0];
-                if (latest) toastr.info(latest.content, latest.trigger_name || 'Hệ thống');
+                if (latest && latest.is_read == 0) toastr.info(latest.content, latest.trigger_name || 'Hệ thống');
             }
-            // Render danh sách
+        } else {
+            $badge.hide();
+        }
+
+        // Render tất cả (đã đọc mờ đi)
+        if (data.items && data.items.length > 0) {
             var html = '';
             data.items.forEach(function(n) {
-                html += '<a href="' + (n.target_url || '#') + '" class="d-flex gap-3 p-2 rounded text-decoration-none text-dark" style="transition:background 0.15s;" onmouseover="this.style.background=\'#f8f9fa\'" onmouseout="this.style.background=\'transparent\'">';
-                html += '<div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width:36px;height:36px;"><i class="bi bi-bell"></i></div>';
-                html += '<div><p class="mb-0 small fw-medium">' + n.content + '</p><span class="text-muted" style="font-size:0.7rem;">' + n.created_at + '</span></div></a>';
+                var isRead = parseInt(n.is_read) === 1;
+                var opacity = isRead ? 'opacity:0.5;' : '';
+                var notiId = n.notification_id || n.id;
+                html += '<a href="#" class="d-flex gap-3 p-2 rounded text-decoration-none text-dark noti-item" '
+                    + 'style="transition:background 0.15s;' + opacity + '" '
+                    + 'data-noti-id="' + notiId + '" data-url="' + (n.target_url || '#') + '" '
+                    + 'data-is-read="' + n.is_read + '" '
+                    + 'onmouseover="this.style.background=\'#f8f9fa\'" onmouseout="this.style.background=\'transparent\'">';
+                var iconClass = isRead ? 'bg-secondary bg-opacity-10 text-secondary' : 'bg-primary bg-opacity-10 text-primary';
+                html += '<div class="rounded-circle ' + iconClass + ' d-flex align-items-center justify-content-center flex-shrink-0" style="width:36px;height:36px;"><i class="bi bi-bell"></i></div>';
+                var fontWeight = isRead ? '' : 'fw-semibold';
+                html += '<div><p class="mb-0 small ' + fontWeight + '">' + n.content + '</p><span class="text-muted" style="font-size:0.7rem;">' + n.created_at + '</span></div></a>';
             });
             $('#notiList').html(html);
         } else {
-            $badge.hide();
-            $('#notiList').html('<p class="text-center text-muted py-3 small mb-0">Không có thông báo mới</p>');
+            $('#notiList').html('<p class="text-center text-muted py-3 small mb-0">Không có thông báo</p>');
         }
-        _lastNotiCount = data.count;
+        _lastNotiCount = unread;
     });
 }
 pollNotifications();
-// Tăng thời gian polling lên 60 giây (60000ms) để tránh quá tải Vercel Serverless & Supabase Connection
 setInterval(pollNotifications, 60000);
+
+// Click 1 thông báo: đánh dấu đã đọc + navigate
+$(document).on('click', '.noti-item', function(e) {
+    e.preventDefault();
+    var $el = $(this);
+    var notiId = $el.data('noti-id');
+    var url = $el.data('url') || '#';
+    var isRead = parseInt($el.data('is-read'));
+
+    if (!isRead) {
+        // Mark as read first, then navigate
+        $.post('index.php?action=api_mark_one_read', { notification_id: notiId }, function() {
+            $el.css('opacity', '0.5').data('is-read', 1);
+            var badge = parseInt($('#notiBadge').text()) - 1;
+            if (badge <= 0) $('#notiBadge').hide(); else $('#notiBadge').text(badge);
+        });
+    }
+    // Navigate (support deep-link)
+    if (url && url !== '#') {
+        window.location.href = url;
+    }
+});
 
 $('#markAllRead').on('click', function() {
     $.post('index.php?action=api_mark_all_read', function() { pollNotifications(); });

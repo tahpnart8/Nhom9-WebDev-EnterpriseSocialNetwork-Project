@@ -111,7 +111,7 @@
     </div>
     
     <div class="col-lg-4 d-none d-lg-block">
-        <div class="relioo-card p-4 sticky-top shadow-sm" style="top: 2rem;">
+        <div class="relioo-card p-4 sticky-top shadow-sm" style="top: 5rem; z-index: 1;">
             <h6 class="fw-bold mb-4 text-muted small text-uppercase">Quy định mạng nội bộ</h6>
             <ul class="text-muted small ps-3 mb-0" style="line-height: 1.8;">
                 <li>Tôn trọng đồng nghiệp.</li>

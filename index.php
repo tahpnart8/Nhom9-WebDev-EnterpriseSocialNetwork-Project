@@ -27,10 +27,10 @@ $routes = [
     'login_submit' => [$authController, 'login'],
     'logout' => [$authController, 'logout'],
     'dashboard' => [$dashboardController, 'index'],
-    
+
     'admin_users' => [$adminController, 'users'],
     'admin_departments' => [$adminController, 'departments'],
-    
+
     'social' => [$socialController, 'index'],
     'api_create_post' => [$socialController, 'createPost'],
     'api_delete_post' => [$socialController, 'deletePost'],
@@ -43,7 +43,7 @@ $routes = [
     'api_delete_comment' => [$socialController, 'deleteComment'],
     'api_fetch_post_likers' => [$socialController, 'fetchPostLikers'],
     'api_fetch_comment_likers' => [$socialController, 'fetchCommentLikers'],
-    
+
     'tasks' => [$taskController, 'index'],
     'api_create_task' => [$taskController, 'createTask'],
     'api_create_subtask' => [$taskController, 'createSubtask'],
@@ -54,11 +54,15 @@ $routes = [
     'api_delete_subtask' => [$taskController, 'deleteSubtask'],
     'api_subtask_detail' => [$taskController, 'getSubtaskDetail'],
     'api_check_evidence' => [$taskController, 'checkEvidence'],
-    'api_task_detail'    => [$taskController, 'getTaskDetail'],
-    
+    'api_task_detail' => [$taskController, 'getTaskDetail'],
+    'api_delete_task' => [$taskController, 'deleteTask'],
+    'api_extend_subtask' => [$taskController, 'extendSubtask'],
+    'api_save_evidence' => [$taskController, 'saveEvidence'],
+
     'api_notifications' => [$notiController, 'fetchUnread'],
     'api_mark_all_read' => [$notiController, 'markAllRead'],
-    
+    'api_mark_one_read' => [$notiController, 'markOneRead'],
+
     'chat' => [$chatController, 'index'],
     'api_send_message' => [$chatController, 'sendMessage'],
     'api_fetch_messages' => [$chatController, 'fetchMessages'],

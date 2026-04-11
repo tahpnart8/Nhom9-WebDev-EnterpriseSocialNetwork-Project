@@ -18,9 +18,8 @@ class Notification {
         
         if ($stmt->execute()) {
             $notiId = $this->conn->lastInsertId();
-            // Broadcast: gán thông báo cho từng user
             foreach ($recipientIds as $uid) {
-                if ($uid == $triggerUserId) continue; // Không thông báo cho chính mình
+                if ($uid == $triggerUserId) continue;
                 $q2 = "INSERT INTO notification_user (notification_id, user_id) VALUES (:nid, :uid)";
                 $s2 = $this->conn->prepare($q2);
                 $s2->bindParam(':nid', $notiId);
@@ -32,7 +31,7 @@ class Notification {
         return false;
     }
 
-    // Lấy thông báo chưa đọc của user
+    // Lấy thông báo chưa đọc
     public function getUnread($userId) {
         $query = "SELECT n.*, nu.is_read, u.full_name as trigger_name
                   FROM notification_user nu
@@ -41,6 +40,21 @@ class Notification {
                   WHERE nu.user_id = :uid AND nu.is_read = 0
                   ORDER BY n.created_at DESC
                   LIMIT 20";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':uid', $userId);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // MỚI: Lấy TẤT CẢ thông báo (đã đọc + chưa đọc), limit 30
+    public function getAllForUser($userId) {
+        $query = "SELECT n.*, nu.is_read, nu.notification_id, u.full_name as trigger_name
+                  FROM notification_user nu
+                  JOIN notifications n ON nu.notification_id = n.id
+                  LEFT JOIN users u ON n.trigger_user_id = u.id
+                  WHERE nu.user_id = :uid
+                  ORDER BY n.created_at DESC
+                  LIMIT 30";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':uid', $userId);
         $stmt->execute();
@@ -58,7 +72,7 @@ class Notification {
         return $row['cnt'] ?? 0;
     }
 
-    // Đánh dấu đã đọc
+    // Đánh dấu 1 thông báo đã đọc
     public function markAsRead($notificationId, $userId) {
         $query = "UPDATE notification_user SET is_read = 1, read_at = NOW() 
                   WHERE notification_id = :nid AND user_id = :uid";
@@ -77,7 +91,7 @@ class Notification {
         return $stmt->execute();
     }
 
-    // Lấy danh sách user cùng phòng ban (để broadcast)
+    // Lấy danh sách user cùng phòng ban
     public function getDepartmentUserIds($departmentId) {
         $query = "SELECT id FROM users WHERE department_id = :dept_id AND is_active = 1";
         $stmt = $this->conn->prepare($query);

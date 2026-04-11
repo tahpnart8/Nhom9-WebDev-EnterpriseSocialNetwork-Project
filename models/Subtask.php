@@ -121,6 +121,30 @@ class Subtask {
         return $stmt->execute();
     }
 
+    // Gia hạn deadline subtask trễ hạn → về To Do + nền vàng vĩnh viễn
+    public function extendDeadline($subtask_id, $newDeadline) {
+        $query = "UPDATE " . $this->table_name . " SET deadline = :deadline, status = 'To Do', is_extended = 1, is_rejected = 0 WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':deadline', $newDeadline);
+        $stmt->bindParam(':id', $subtask_id);
+        return $stmt->execute();
+    }
+
+    // Chỉ lưu minh chứng (KHÔNG đổi status sang Pending)
+    public function saveEvidenceOnly($subtask_id, $notes, $file_url = null) {
+        if (!$notes && !$file_url) return false;
+        $query = "INSERT INTO subtask_attachments (subtask_id, file_name, file_url, notes) VALUES (:sid, :fname, :furl, :notes)";
+        $stmt = $this->conn->prepare($query);
+        $fname = $file_url ? basename($file_url) : 'Note/Link';
+        $stmt->execute([
+            ':sid' => $subtask_id,
+            ':fname' => $fname,
+            ':furl' => $file_url ?? '',
+            ':notes' => $notes
+        ]);
+        return true;
+    }
+
     // Xóa Subtask
     public function delete($subtask_id) {
         $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
