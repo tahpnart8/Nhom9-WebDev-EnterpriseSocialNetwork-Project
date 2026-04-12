@@ -31,6 +31,7 @@ class AuthController {
                 $_SESSION['department_id'] = $user->department_id;
                 $_SESSION['full_name'] = $user->full_name;
                 $_SESSION['avatar_url'] = $user->avatar_url;
+                $_SESSION['first_login_flash'] = true;
 
                 echo json_encode(['success' => true, 'message' => 'Đăng nhập thành công', 'redirect' => 'index.php?action=dashboard']);
                 exit;

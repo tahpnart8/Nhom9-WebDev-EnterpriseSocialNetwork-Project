@@ -77,14 +77,20 @@ class Post {
         $stmt = $this->conn->prepare($check);
         $stmt->execute([':pid' => $post_id, ':uid' => $user_id]);
         
+        $action = 'added';
         if ($stmt->rowCount() > 0) {
             $query = "DELETE FROM post_reactions WHERE post_id = :pid AND user_id = :uid";
+            $action = 'deleted';
         } else {
             $query = "INSERT INTO post_reactions (post_id, user_id, type) VALUES (:pid, :uid, 'Heart')";
+            $action = 'added';
         }
         
         $stmt = $this->conn->prepare($query);
-        return $stmt->execute([':pid' => $post_id, ':uid' => $user_id]);
+        if ($stmt->execute([':pid' => $post_id, ':uid' => $user_id])) {
+            return $action;
+        }
+        return false;
     }
 
     // Lấy danh sách người đã thích bài viết

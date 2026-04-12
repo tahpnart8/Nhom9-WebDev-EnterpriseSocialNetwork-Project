@@ -138,6 +138,9 @@ $coverUrl = !empty($user['cover_url']) ? $user['cover_url'] : 'https://placehold
                     <div class="d-flex align-items-center gap-3 text-muted small mt-1">
                         <span><b class="text-dark">0</b> bạn bè</span>
                         <span class="text-warning">🔥 <b><?php echo floor((time() - strtotime($user['created_at'])) / 86400); ?></b> ngày gắn bó</span>
+                        <?php if(!$isViewingSelf): ?>
+                        <span class="badge bg-light text-dark border"><i class="bi bi-person-check me-1"></i> Đồng nghiệp</span>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -167,12 +170,18 @@ $coverUrl = !empty($user['cover_url']) ? $user['cover_url'] : 'https://placehold
                 <!-- Col 3: Actions -->
                 <div class="col-md-3 text-end">
                     <div class="d-flex align-items-center justify-content-end gap-2">
+                        <?php if($isViewingSelf): ?>
                         <a href="index.php?action=social" class="btn btn-primary rounded-pill fw-bold px-4 shadow-sm border-0" style="background: linear-gradient(45deg, #0d6efd, #0b5ed7);">
                             <i class="bi bi-plus-lg me-1"></i>Đăng bài
                         </a>
                         <button type="button" onclick="handleOpenEditModal()" class="btn-edit-trigger shadow-sm" title="Chỉnh sửa trang cá nhân">
                             <i class="bi bi-three-dots fs-5"></i>
                         </button>
+                        <?php else: ?>
+                        <a href="index.php?action=chat&with=<?php echo $user['id']; ?>" class="btn btn-primary rounded-pill fw-bold px-4 shadow-sm border-0">
+                            <i class="bi bi-chat-dots me-2"></i>Nhắn tin
+                        </a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -186,7 +195,9 @@ $coverUrl = !empty($user['cover_url']) ? $user['cover_url'] : 'https://placehold
         <?php if (empty($userPosts)): ?>
             <div class="text-center py-5 bg-white rounded-4 shadow-sm border border-dashed">
                 <i class="bi bi-file-post fs-1 text-light"></i>
-                <p class="mt-2 text-muted">Bạn chưa chia sẻ bài đăng nào trên Bảng tin nội bộ.</p>
+                <p class="mt-2 text-muted">
+                    <?php echo $isViewingSelf ? "Bạn chưa chia sẻ bài đăng nào trên Bảng tin nội bộ." : "Người dùng này chưa có bài đăng công khai nào."; ?>
+                </p>
             </div>
         <?php else: ?>
             <div class="row row-cols-1 g-4">

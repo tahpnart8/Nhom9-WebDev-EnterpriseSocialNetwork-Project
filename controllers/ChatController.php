@@ -27,6 +27,12 @@ class ChatController {
         $msgModel = new Message($this->db);
         $userModel = new User($this->db);
         
+        // Cập nhật đã đọc trước khi lấy danh sách
+        $activeConvId = $_GET['conv_id'] ?? null;
+        if ($activeConvId) {
+            $msgModel->updateLastRead($activeConvId, $_SESSION['user_id']);
+        }
+
         $conversations = $msgModel->getConversations($_SESSION['user_id']);
         
         // Lấy danh sách tất cả users để bắt đầu hội thoại mới
@@ -47,6 +53,8 @@ class ChatController {
         if ($withUserId && !$activeConvId) {
             $activeConvId = $msgModel->getOrCreateConversation($_SESSION['user_id'], $withUserId);
             $activeMessages = $msgModel->getMessages($activeConvId);
+            // Đánh dấu đã đọc
+            $msgModel->updateLastRead($activeConvId, $_SESSION['user_id']);
         }
         
         require_once __DIR__ . '/../views/chat/index.php';
@@ -85,7 +93,27 @@ class ChatController {
         $msgModel = new Message($this->db);
         $convId = $_GET['conv_id'] ?? 0;
         $messages = $msgModel->getMessages($convId);
+        
+        // Cập nhật trạng thái đã đọc khi polling bài viết
+        if ($convId) {
+            $msgModel->updateLastRead($convId, $_SESSION['user_id']);
+        }
+
         echo json_encode($messages);
+        exit;
+    }
+
+    // API: Lấy số lượng cuộc hội thoại chưa đọc (Dùng cho Header)
+    public function fetchUnreadCount() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['unread_conversations' => 0]);
+            exit;
+        }
+
+        $msgModel = new Message($this->db);
+        $count = $msgModel->getTotalUnreadConversationCount($_SESSION['user_id']);
+        echo json_encode(['unread_conversations' => (int)$count]);
         exit;
     }
 }

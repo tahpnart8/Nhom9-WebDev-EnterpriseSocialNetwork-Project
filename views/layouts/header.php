@@ -15,8 +15,34 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <!-- Toastr CSS (Popup thông báo góc màn hình) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
     <!-- Custom CSS -->
     <link rel="stylesheet" href="<?php echo $basePath; ?>/public/css/style.css">
+    <style>
+        /* Modern Modal for Post Detail */
+        .modal-xl-custom { max-width: 1000px; }
+        .post-modal-body { display: flex; height: 85vh; padding: 0; border-radius: 1rem; overflow: hidden; }
+        .post-modal-left { flex: 1.2; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
+        .post-modal-left img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .post-modal-right { flex: 0.8; background: #fff; display: flex; flex-direction: column; border-left: 1px solid #eee; overflow: hidden; position: relative; }
+        .post-modal-body.no-media .post-modal-left { display: none; }
+        .post-modal-body.no-media .post-modal-right { flex: 1; border-left: none; }
+        .post-modal-header { padding: 1rem 1.25rem; border-bottom: 1px solid #f1f5f9; background: #fff; z-index: 10; }
+        .post-modal-scroll { flex: 1; overflow-y: auto; padding: 1.25rem; background: #fff; scroll-behavior: smooth; }
+        .post-modal-footer { padding: 1rem 1.25rem; border-top: 1px solid #f1f5f9; background: #fff; margin-top: auto; }
+        .comment-actions { display: flex; gap: 12px; margin-top: 4px; font-size: 0.75rem; font-weight: 700; color: #64748b; }
+        .comment-actions span { cursor: pointer; transition: color 0.2s; }
+        .comment-actions span:hover { color: var(--primary-color); }
+        .comment-actions .active-like { color: #dc3545; }
+        .comment-highlight { background-color: #fff9c4 !important; transition: background 2s; }
+        @media (max-width: 992px) {
+            .post-modal-body { flex-direction: column; height: auto; }
+            .post-modal-left { height: 300px; }
+            .post-modal-right { height: 500px; }
+        }
+    </style>
     <!-- JQuery -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <!-- Toastr JS -->
@@ -40,8 +66,9 @@
                     </div>
                     
                     <!-- Nút Chat -->
-                    <a href="index.php?action=chat" class="btn btn-light rounded-circle border shadow-sm d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Tin nhắn">
+                    <a href="index.php?action=chat" class="btn btn-light rounded-circle border shadow-sm d-flex align-items-center justify-content-center position-relative" style="width: 40px; height: 40px;" title="Tin nhắn">
                         <i class="bi bi-chat-dots text-muted fs-5"></i>
+                        <span class="badge bg-primary rounded-pill position-absolute" style="top:-4px;right:-4px;font-size:0.6rem;display:none;" id="chatBadge">0</span>
                     </a>
                     
                     <!-- Nút Thông báo + Dropdown -->
@@ -50,10 +77,16 @@
                             <i class="bi bi-bell text-muted fs-5"></i>
                             <span class="badge bg-danger rounded-pill position-absolute" style="top:-4px;right:-4px;font-size:0.6rem;display:none;" id="notiBadge">0</span>
                         </button>
-                        <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-0" style="width:340px;max-height:400px;overflow-y:auto;border-radius:1rem;">
-                            <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
-                                <h6 class="mb-0 fw-bold">Thông báo</h6>
-                                <button class="btn btn-sm btn-light border-0 text-primary" id="markAllRead">Đọc hết</button>
+                        <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-0" style="width:360px;max-height:500px;overflow-y:auto;border-radius:1rem;">
+                            <div class="p-3 border-bottom">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="mb-0 fw-bold">Thông báo</h6>
+                                    <button class="btn btn-sm btn-light border-0 text-primary p-0" id="markAllRead">Đọc hết</button>
+                                </div>
+                                <div class="btn-group w-100" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary active w-50" id="btnNotiTask" onclick="event.stopPropagation(); switchNotiTab('TASK')">Công việc</button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary w-50" id="btnNotiSocial" onclick="event.stopPropagation(); switchNotiTab('SOCIAL')">Mạng xã hội</button>
+                                </div>
                             </div>
                             <div id="notiList" class="p-2">
                                 <p class="text-center text-muted py-3 small mb-0">Không có thông báo mới</p>
@@ -67,55 +100,121 @@
                 </div>
             </div>
 
-<!-- Notification Polling Script (Global) -->
+            <!-- Global Post Detail Modal -->
+            <div class="modal fade" id="postDetailModal" tabindex="-1" style="z-index: 2050;">
+                <div class="modal-dialog modal-dialog-centered modal-xl modal-xl-custom">
+                    <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+                        <button type="button" class="btn-close position-absolute top-0 end-0 m-3 z-3 bg-white p-2 rounded-circle shadow-sm" data-bs-dismiss="modal" title="Thoát"></button>
+                        <div class="post-modal-body" id="postModalContent">
+                            <!-- Content loaded via AJAX -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+<!-- Notification & Chat Polling Script (Global) -->
 <script>
 var _lastNotiCount = 0;
+// Lấy tab cuối cùng từ sessionStorage, mặc định là TASK
+var _currentNotiTab = sessionStorage.getItem('lastNotiTab') || 'TASK';
+var _allNotiItems = [];
 toastr.options = { positionClass: 'toast-bottom-right', timeOut: 4000, progressBar: true };
+
+function switchNotiTab(tab) {
+    _currentNotiTab = tab;
+    sessionStorage.setItem('lastNotiTab', tab); // Lưu lại lựa chọn
+    $('#btnNotiTask').toggleClass('active', tab === 'TASK');
+    $('#btnNotiSocial').toggleClass('active', tab === 'SOCIAL');
+    renderNotiList();
+}
+
+function renderNotiList() {
+    var $list = $('#notiList');
+    var filtered = _allNotiItems.filter(function(n) {
+        var isSocial = n.type && n.type.indexOf('SOCIAL_') === 0;
+        return _currentNotiTab === 'SOCIAL' ? isSocial : !isSocial;
+    });
+
+    if (filtered.length > 0) {
+        var html = '';
+        filtered.forEach(function(n) {
+            var isRead = parseInt(n.is_read) === 1;
+            var opacity = isRead ? 'opacity:0.6;' : '';
+            var notiId = n.notification_id || n.id;
+            html += '<a href="#" class="d-flex gap-3 p-2 rounded text-decoration-none text-dark noti-item" '
+                + 'style="transition:background 0.15s;' + opacity + '" '
+                + 'data-noti-id="' + notiId + '" data-url="' + (n.target_url || '#') + '" '
+                + 'data-is-read="' + n.is_read + '" '
+                + 'onmouseover="this.style.background=\'#f8f9fa\'" onmouseout="this.style.background=\'transparent\'">';
+            
+            var isSocial = n.type && n.type.indexOf('SOCIAL_') === 0;
+            var iconClass = isRead ? 'bg-secondary bg-opacity-10 text-secondary' : (isSocial ? 'bg-danger bg-opacity-10 text-danger' : 'bg-primary bg-opacity-10 text-primary');
+            
+            var icon = 'bi-bell';
+            if (n.type === 'SOCIAL_LIKE') icon = 'bi-heart-fill';
+            if (n.type === 'SOCIAL_COMMENT') icon = 'bi-chat-left-text-fill';
+            
+            html += '<div class="rounded-circle ' + iconClass + ' d-flex align-items-center justify-content-center flex-shrink-0" style="width:36px;height:36px;"><i class="bi ' + icon + '"></i></div>';
+            var fontWeight = isRead ? '' : 'fw-semibold';
+            html += '<div class="flex-grow-1"><p class="mb-0 small ' + fontWeight + '">' + n.content + '</p><span class="text-muted" style="font-size:0.7rem;">' + n.created_at + '</span></div></a>';
+        });
+        $list.html(html);
+    } else {
+        $list.html('<p class="text-center text-muted py-4 small mb-0">Không có thông báo ' + (_currentNotiTab === 'SOCIAL' ? 'mạng xã hội' : 'công việc') + '</p>');
+    }
+}
 
 function pollNotifications() {
     $.getJSON('index.php?action=api_notifications', function(data) {
-        var $badge = $('#notiBadge');
         var unread = data.unread_count || 0;
-
+        _allNotiItems = data.items || [];
+        
         if (unread > 0) {
-            $badge.text(unread).show();
-            // Toast nếu có thông báo mới
+            $('#notiBadge').text(unread).show();
             if (unread > _lastNotiCount && _lastNotiCount >= 0) {
-                var latest = data.items[0];
-                if (latest && latest.is_read == 0) toastr.info(latest.content, latest.trigger_name || 'Hệ thống');
+                // Tìm thông báo CÔNG VIỆC mới nhất trong các mục chưa đọc
+                var latestWork = null;
+                var newCount = unread - _lastNotiCount;
+                for (var i = 0; i < Math.min(newCount, _allNotiItems.length); i++) {
+                    var item = _allNotiItems[i];
+                    var isSocial = item.type && item.type.indexOf('SOCIAL_') === 0;
+                    if (!isSocial) {
+                        latestWork = item;
+                        break; // Lấy cái mới nhất (đầu danh sách)
+                    }
+                }
+                
+                if (latestWork && latestWork.is_read == 0) {
+                    toastr.info(latestWork.content, latestWork.trigger_name || 'Hệ thống');
+                }
             }
         } else {
-            $badge.hide();
+            $('#notiBadge').hide();
         }
-
-        // Render tất cả (đã đọc mờ đi)
-        if (data.items && data.items.length > 0) {
-            var html = '';
-            data.items.forEach(function(n) {
-                var isRead = parseInt(n.is_read) === 1;
-                var opacity = isRead ? 'opacity:0.5;' : '';
-                var notiId = n.notification_id || n.id;
-                html += '<a href="#" class="d-flex gap-3 p-2 rounded text-decoration-none text-dark noti-item" '
-                    + 'style="transition:background 0.15s;' + opacity + '" '
-                    + 'data-noti-id="' + notiId + '" data-url="' + (n.target_url || '#') + '" '
-                    + 'data-is-read="' + n.is_read + '" '
-                    + 'onmouseover="this.style.background=\'#f8f9fa\'" onmouseout="this.style.background=\'transparent\'">';
-                var iconClass = isRead ? 'bg-secondary bg-opacity-10 text-secondary' : 'bg-primary bg-opacity-10 text-primary';
-                html += '<div class="rounded-circle ' + iconClass + ' d-flex align-items-center justify-content-center flex-shrink-0" style="width:36px;height:36px;"><i class="bi bi-bell"></i></div>';
-                var fontWeight = isRead ? '' : 'fw-semibold';
-                html += '<div><p class="mb-0 small ' + fontWeight + '">' + n.content + '</p><span class="text-muted" style="font-size:0.7rem;">' + n.created_at + '</span></div></a>';
-            });
-            $('#notiList').html(html);
-        } else {
-            $('#notiList').html('<p class="text-center text-muted py-3 small mb-0">Không có thông báo</p>');
-        }
+        
+        renderNotiList();
         _lastNotiCount = unread;
     });
 }
-pollNotifications();
-setInterval(pollNotifications, 60000);
 
-// Click 1 thông báo: đánh dấu đã đọc + navigate
+function pollChatCount() {
+    $.getJSON('index.php?action=api_unread_chat_count', function(data) {
+        var count = data.unread_conversations || 0;
+        if (count > 0) {
+            $('#chatBadge').text(count).show();
+        } else {
+            $('#chatBadge').hide();
+        }
+    });
+}
+
+pollNotifications();
+pollChatCount();
+switchNotiTab(_currentNotiTab); // Đồng bộ UI Tab ngay lập tức
+setInterval(pollNotifications, 30000);
+setInterval(pollChatCount, 15000);
+
+// Click 1 thông báo
 $(document).on('click', '.noti-item', function(e) {
     e.preventDefault();
     var $el = $(this);
@@ -124,18 +223,223 @@ $(document).on('click', '.noti-item', function(e) {
     var isRead = parseInt($el.data('is-read'));
 
     if (!isRead) {
-        // Mark as read first, then navigate
+        // Bỏ in đậm ngay lập tức trên UI
+        $el.find('p').removeClass('fw-semibold');
+        $el.css('opacity', '0.6').data('is-read', 1);
+
         $.post('index.php?action=api_mark_one_read', { notification_id: notiId }, function() {
-            $el.css('opacity', '0.5').data('is-read', 1);
-            var badge = parseInt($('#notiBadge').text()) - 1;
-            if (badge <= 0) $('#notiBadge').hide(); else $('#notiBadge').text(badge);
+            pollNotifications();
         });
     }
-    // Navigate (support deep-link)
     if (url && url !== '#') {
-        window.location.href = url;
+        // Nếu là thông báo bài viết/bình luận, mở Modal thay vì chuyển trang
+        var postIdMatch = url.match(/post_id=(\d+)/);
+        var commentIdMatch = url.match(/#comment-(\d+)/);
+        
+        if (postIdMatch) {
+            openPostModal(postIdMatch[1], commentIdMatch ? commentIdMatch[1] : null);
+            return;
+        }
+
+        if (url.indexOf('index.php') === 0) {
+            window.location.href = '<?php echo $basePath; ?>/' + url;
+        } else {
+            window.location.href = url;
+        }
     }
 });
+
+function openPostModal(postId, highlightCommentId) {
+    var $content = $('#postModalContent');
+    // Chỉ hiện spinner khi mở lần đầu
+    $content.html('<div class="d-flex w-100 align-items-center justify-content-center bg-white" style="height:85vh;"><div class="spinner-border text-primary"></div></div>');
+    var modal = new bootstrap.Modal(document.getElementById('postDetailModal'));
+    modal.show();
+    refreshPostModal(postId, highlightCommentId);
+}
+
+function refreshPostModal(postId, highlightCommentId) {
+    var $content = $('#postModalContent');
+    $.getJSON('index.php?action=api_get_post_details&post_id=' + postId, function(res) {
+        if (!res.success) {
+            $content.html('<div class="p-5 text-center bg-white w-100"><h5>' + res.message + '</h5></div>');
+            return;
+        }
+        
+        var p = res.post;
+        var curUid = res.current_user_id;
+        var isNoMedia = !p.media_url;
+        var mediaSideHtml = isNoMedia ? '' : '<div class="post-modal-left"><img src="' + p.media_url + '"></div>';
+        
+        function renderActions(comment) {
+            var likeCls = comment.is_liked == 1 ? 'active-like' : '';
+            var html = '<div class="comment-actions">' +
+                '<span class="btn-modal-comment-like ' + likeCls + '" data-id="' + comment.id + '">Thích ' + (comment.like_count || 0) + '</span>' +
+                '<span class="btn-modal-comment-reply" data-id="' + comment.id + '" data-name="' + comment.full_name + '">Trả lời</span>';
+            if (comment.user_id == curUid) {
+                html += '<span class="btn-modal-comment-edit" data-id="' + comment.id + '" data-content="' + comment.content + '">Sửa</span>' +
+                        '<span class="btn-modal-comment-delete text-danger" style="opacity:0.7;" data-id="' + comment.id + '">Xóa</span>';
+            }
+            html += '</div>';
+            return html;
+        }
+
+        var commentsHtml = '';
+        if (res.comments.length === 0) {
+            commentsHtml = '<div class="text-center text-muted py-5 small bg-white rounded-3 border-dashed mb-3"><i class="bi bi-chat-dots fs-3 opacity-25 d-block mb-2"></i>Chưa có bình luận nào. Hãy là người đầu tiên!</div>';
+        } else {
+            res.comments.forEach(function(c) {
+                var isHighlighted = highlightCommentId && c.id == highlightCommentId;
+                var hClass = isHighlighted ? 'comment-highlight' : '';
+                commentsHtml += '<div class="mb-3 p-3 bg-white rounded-3 shadow-sm ' + hClass + '" id="modal-comment-' + c.id + '">' +
+                    '<div class="d-flex gap-2">' +
+                    '<img src="' + (c.avatar_url || 'https://placehold.co/40x40') + '" class="rounded-circle border" style="width:36px;height:36px;object-fit:cover;">' +
+                    '<div class="flex-grow-1"><div class="d-flex justify-content-between align-items-start"><b class="small d-block text-primary">' + c.full_name + '</b><span class="text-muted" style="font-size:0.6rem;">' + c.created_at + '</span></div>' +
+                    '<p class="mb-0 small text-dark mt-1">' + c.content + '</p>' +
+                    renderActions(c) + '</div>' +
+                    '</div>' +
+                    '</div>';
+                
+                if (c.replies && c.replies.length > 0) {
+                    c.replies.forEach(function(r) {
+                        var isRHighlighted = highlightCommentId && r.id == highlightCommentId;
+                        var rhClass = isRHighlighted ? 'comment-highlight' : '';
+                        commentsHtml += '<div class="mb-2 ms-5 p-2 bg-white rounded-3 border-start border-3 border-primary shadow-sm ' + rhClass + '" id="modal-comment-' + r.id + '">' +
+                        '<div class="d-flex gap-2 opacity-85">' +
+                        '<img src="' + (r.avatar_url || 'https://placehold.co/30x30') + '" class="rounded-circle border" style="width:28px;height:28px;object-fit:cover;">' +
+                        '<div class="flex-grow-1"><div class="d-flex justify-content-between"><b class="small d-block text-primary" style="font-size:0.7rem;">' + r.full_name + '</b><span class="text-muted" style="font-size:0.55rem;">' + r.created_at + '</span></div>' +
+                        '<p class="mb-0 small" style="font-size:0.75rem;">' + r.content + '</p>' +
+                        renderActions(r) + '</div>' +
+                        '</div></div>';
+                    });
+                }
+            });
+        }
+
+        var html = mediaSideHtml +
+            '<div class="post-modal-right">' +
+                '<div class="post-modal-header">' +
+                    '<div class="d-flex align-items-center gap-3">' +
+                        '<img src="' + (p.avatar_url || 'https://placehold.co/40x44') + '" class="rounded-circle border" style="width:44px;height:44px;object-fit:cover;">' +
+                        '<div><h6 class="mb-0 fw-bold">' + p.full_name + '</h6><small class="text-muted d-flex align-items-center gap-1"><i class="bi bi-clock"></i> ' + p.created_at + '</small></div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="post-modal-scroll" id="modalCommentContainer">' +
+                    '<div class="post-main-content mb-4 pb-4 border-bottom">' +
+                        '<div class="text-dark" style="line-height:1.6; font-size: 0.95rem;">' + p.content_html + '</div>' +
+                    '</div>' +
+                    '<div class="fw-bold small mb-3 text-muted text-uppercase" style="letter-spacing:1px;">Bình luận ' + (p.comment_count || 0) + '</div>' +
+                    commentsHtml +
+                '</div>' +
+                '<div class="post-modal-footer">' +
+                    '<div class="d-flex gap-3 mb-3 border-bottom pb-3">' +
+                        '<button class="btn btn-sm ' + (p.is_liked == 1 ? 'btn-danger' : 'btn-light') + ' fw-bold px-3 rounded-pill btn-modal-like" data-id="' + p.id + '">' +
+                            '<i class="bi bi-heart' + (p.is_liked == 1 ? '-fill' : '') + ' me-1"></i> Tim ' + (p.like_count || 0) + 
+                        '</button>' +
+                        '<span class="small text-muted d-flex align-items-center"><i class="bi bi-chat-left-text me-1"></i> Bình luận ' + (p.comment_count || 0) + '</span>' +
+                    '</div>' +
+                    '<div class="d-flex flex-column gap-1">' +
+                        '<div id="modalReplyLabel" class="small text-primary fw-bold ms-2 mb-1" style="display:none; font-size:0.75rem;">Đang trả lời: <span id="modalReplyName"></span> <i class="bi bi-x-circle ms-1 cursor-pointer" onclick="cancelModalReply()"></i></div>' +
+                        '<input type="hidden" id="modalParentId" value="">' +
+                        '<div class="d-flex gap-2">' +
+                            '<input type="text" class="form-control form-control-sm rounded-pill border-0 bg-light px-3" id="modalCommentInput" placeholder="Viết bình luận của bạn..." style="font-size: 0.9rem;">' +
+                            '<button class="btn btn-sm btn-primary rounded-circle shadow-sm btn-modal-send-comment" data-id="' + p.id + '" style="width:36px;height:36px;padding:0;"><i class="bi bi-send-fill"></i></button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        
+        $content.html(html);
+        if (isNoMedia) $content.addClass('no-media'); else $content.removeClass('no-media');
+
+        // Gắn lại sự kiện cho các nút mới render
+        $content.find('.btn-modal-like').on('click', function() {
+            var pid = $(this).data('id');
+            $.post('index.php?action=api_toggle_post_reaction', { post_id: pid }, function() {
+                refreshPostModal(pid, null);
+            });
+        });
+
+        $content.find('.btn-modal-comment-like').on('click', function() {
+            var cid = $(this).data('id');
+            $.post('index.php?action=api_toggle_comment_reaction', { comment_id: cid }, function() {
+                refreshPostModal(p.id, null);
+            });
+        });
+
+        $content.find('.btn-modal-comment-reply').on('click', function() {
+            var cid = $(this).data('id'); var name = $(this).data('name');
+            $('#modalParentId').val(cid);
+            $('#modalReplyName').text(name);
+            $('#modalReplyLabel').show();
+            $('#modalCommentInput').focus().attr('placeholder', 'Trả lời ' + name + '...');
+        });
+
+        $content.find('.btn-modal-comment-edit').on('click', function() {
+            var cid = $(this).data('id'); var oldVal = $(this).data('content');
+            Swal.fire({
+                title: 'Sửa bình luận',
+                input: 'textarea',
+                inputValue: oldVal,
+                showCancelButton: true,
+                confirmButtonText: 'Lưu',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    $.post('index.php?action=api_edit_comment', { comment_id: cid, content: result.value }, function() {
+                        refreshPostModal(p.id, null);
+                    });
+                }
+            });
+        });
+
+        $content.find('.btn-modal-comment-delete').on('click', function() {
+            var cid = $(this).data('id');
+            Swal.fire({
+                title: 'Xóa bình luận?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Xóa',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('index.php?action=api_delete_comment', { comment_id: cid }, function() {
+                        refreshPostModal(p.id, null);
+                    });
+                }
+            });
+        });
+
+        $content.find('.btn-modal-send-comment').on('click', function() {
+            var pid = $(this).data('id');
+            var content = $('#modalCommentInput').val().trim();
+            var parentId = $('#modalParentId').val();
+            if (!content) return;
+            $.post('index.php?action=api_add_comment', { post_id: pid, content: content, parent_id: parentId }, function() {
+                refreshPostModal(pid, null);
+            });
+        });
+        $content.find('#modalCommentInput').on('keypress', function(e) { if(e.which === 13) $content.find('.btn-modal-send-comment').click(); });
+
+        if (highlightCommentId) {
+            setTimeout(function() {
+                var $mc = $('#modal-comment-' + highlightCommentId);
+                if ($mc.length) {
+                    var container = document.getElementById('modalCommentContainer');
+                    container.scrollTop = $mc.offset().top - $(container).offset().top + container.scrollTop - 20;
+                    setTimeout(function() { $mc.removeClass('comment-highlight'); }, 3000);
+                }
+            }, 500);
+        }
+    });
+}
+
+function cancelModalReply() {
+    $('#modalParentId').val('');
+    $('#modalReplyLabel').hide();
+    $('#modalCommentInput').attr('placeholder', 'Viết bình luận của bạn...');
+}
 
 $('#markAllRead').on('click', function() {
     $.post('index.php?action=api_mark_all_read', function() { pollNotifications(); });

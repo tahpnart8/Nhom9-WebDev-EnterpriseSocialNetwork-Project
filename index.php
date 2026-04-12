@@ -45,6 +45,7 @@ $routes = [
     'api_delete_comment' => [$socialController, 'deleteComment'],
     'api_fetch_post_likers' => [$socialController, 'fetchPostLikers'],
     'api_fetch_comment_likers' => [$socialController, 'fetchCommentLikers'],
+    'api_get_post_details' => [$socialController, 'fetchPostDetails'],
 
     'tasks' => [$taskController, 'index'],
     'api_create_task' => [$taskController, 'createTask'],
@@ -72,6 +73,7 @@ $routes = [
     'chat' => [$chatController, 'index'],
     'api_send_message' => [$chatController, 'sendMessage'],
     'api_fetch_messages' => [$chatController, 'fetchMessages'],
+    'api_unread_chat_count' => [$chatController, 'fetchUnreadCount'],
 
     'profile' => [$profileController, 'index'],
     'api_update_profile' => [$profileController, 'updateProfile'],

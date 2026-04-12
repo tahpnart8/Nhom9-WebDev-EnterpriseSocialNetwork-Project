@@ -99,5 +99,24 @@ class Notification {
         $stmt->execute();
         return array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'id');
     }
+    // Xóa thông báo xã hội khi rút lại tương tác (ví dụ: Unlike)
+    public function removeSocialNotification($type, $triggerUserId, $targetUrl) {
+        // Tìm ID của thông báo sử dụng LIKE để tránh lỗi khớp chuỗi tuyệt đối
+        $query = "SELECT id FROM notifications 
+                  WHERE type = :type AND trigger_user_id = :sid AND target_url LIKE :url";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([':type' => $type, ':sid' => $triggerUserId, ':url' => '%' . $targetUrl . '%']);
+        $noti = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($noti) {
+            $notiId = $noti['id'];
+            // Xóa ở bảng quan hệ trước
+            $this->conn->prepare("DELETE FROM notification_user WHERE notification_id = :nid")->execute([':nid' => $notiId]);
+            // Xóa ở bảng chính
+            $this->conn->prepare("DELETE FROM notifications WHERE id = :id")->execute([':id' => $notiId]);
+            return true;
+        }
+        return false;
+    }
 }
 ?>

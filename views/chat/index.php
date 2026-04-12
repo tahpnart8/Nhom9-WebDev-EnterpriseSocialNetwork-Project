@@ -60,9 +60,13 @@
         </div>
         
         <div class="chat-list">
-            <?php foreach($conversations as $conv): ?>
+            <?php foreach($conversations as $conv): 
+                $isUnread = ($conv['unread_count'] > 0);
+                $unreadWeight = $isUnread ? 'fw-bold' : '';
+                $nameColor = $isUnread ? 'text-dark' : 'text-secondary';
+            ?>
             <a href="index.php?action=chat&conv_id=<?php echo $conv['id']; ?>" class="chat-item text-decoration-none <?php echo ($activeConvId == $conv['id']) ? 'active' : ''; ?>">
-                <div class="chat-avatar">
+                <div class="chat-avatar <?php echo $isUnread ? 'border-primary' : ''; ?>">
                     <?php if(!empty($conv['partner_avatar'])): ?>
                         <img src="<?php echo htmlspecialchars($conv['partner_avatar']); ?>">
                     <?php else: ?>
@@ -70,11 +74,19 @@
                     <?php endif; ?>
                 </div>
                 <div class="chat-item-info">
-                    <p class="chat-item-name"><?php echo htmlspecialchars($conv['partner_name'] ?? 'Người dùng'); ?></p>
-                    <p class="chat-item-preview text-muted"><?php echo htmlspecialchars($conv['last_message'] ?? 'Bắt đầu trò chuyện...'); ?></p>
+                    <p class="chat-item-name <?php echo $unreadWeight; ?> text-dark"><?php echo htmlspecialchars($conv['partner_name'] ?? 'Người dùng'); ?></p>
+                    <?php if($conv['unread_count'] > 1): ?>
+                        <p class="chat-item-preview text-primary fw-bold unread-text"><?php echo $conv['unread_count']; ?> tin nhắn chưa đọc</p>
+                    <?php else: ?>
+                        <p class="chat-item-preview <?php echo $unreadWeight; ?> text-dark">
+                            <?php echo htmlspecialchars($conv['last_message'] ?? 'Bắt đầu trò chuyện...'); ?>
+                        </p>
+                    <?php endif; ?>
                 </div>
                 <?php if($conv['last_time']): ?>
-                <span class="text-muted" style="font-size:0.65rem;"><?php echo date('H:i', strtotime($conv['last_time'])); ?></span>
+                <span class="chat-item-time <?php echo $unreadWeight; ?> <?php echo $isUnread ? 'text-primary' : 'text-muted'; ?>" style="font-size:0.65rem;">
+                    <?php echo date('H:i', strtotime($conv['last_time'])); ?>
+                </span>
                 <?php endif; ?>
             </a>
             <?php endforeach; ?>
@@ -114,15 +126,17 @@
                     } 
                 }
             ?>
-            <div class="chat-avatar">
+            <a href="index.php?action=profile&id=<?php echo $withUserId ?: ($conversations[array_search($activeConvId, array_column($conversations, 'id'))]['partner_id'] ?? ''); ?>" class="chat-avatar text-decoration-none">
                 <?php if($partnerAvatar): ?>
                     <img src="<?php echo htmlspecialchars($partnerAvatar); ?>">
                 <?php else: ?>
                     <?php echo mb_substr(trim($partnerName),0,1,'UTF-8'); ?>
                 <?php endif; ?>
-            </div>
+            </a>
             <div>
-                <h6 class="mb-0 fw-bold"><?php echo htmlspecialchars($partnerName); ?></h6>
+                <a href="index.php?action=profile&id=<?php echo $withUserId ?: ($conversations[array_search($activeConvId, array_column($conversations, 'id'))]['partner_id'] ?? ''); ?>" class="text-decoration-none text-dark">
+                    <h6 class="mb-0 fw-bold"><?php echo htmlspecialchars($partnerName); ?></h6>
+                </a>
                 <div class="d-flex align-items-center gap-1">
                     <span class="bg-success rounded-circle" style="width:8px;height:8px;"></span>
                     <span class="text-muted" style="font-size:0.75rem;">Đang hoạt động</span>
@@ -177,6 +191,22 @@ $(function() {
     var $msgs = $('#chatMessages');
     if ($msgs.length) $msgs.scrollTop($msgs[0].scrollHeight);
     
+    // Xử lý click để bỏ in đậm ngay lập tức
+    $('.chat-item').on('click', function() {
+        var $info = $(this).find('.chat-item-name, .chat-item-preview, .chat-item-time');
+        if ($info.hasClass('fw-bold')) {
+            $info.removeClass('fw-bold');
+            $(this).find('.unread-text').removeClass('fw-bold text-primary').addClass('text-dark');
+            
+            // Giảm badge chat trên header ngay lập tức
+            var $badge = $('#chatBadge');
+            if ($badge.length && $badge.is(':visible')) {
+                var count = parseInt($badge.text()) - 1;
+                if (count <= 0) $badge.hide(); else $badge.text(count);
+            }
+        }
+    });
+
     function sendMsg() {
         var content = $('#chatInput').val().trim();
         if (!content || !convId) return;

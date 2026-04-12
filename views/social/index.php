@@ -433,6 +433,45 @@
             }
         });
     });
+    // Deep-linking xử lý khi vào từ thông báo
+    $(window).on('load', function() {
+        const hash = window.location.hash; // #comment-ID
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlPostId = urlParams.get('post_id');
+
+        if (hash && hash.startsWith('#comment-')) {
+            const commentId = hash.replace('#comment-', '');
+            const postItem = $(`[data-post-id="${urlPostId}"]`);
+            
+            if (postItem.length) {
+                // 1. Cuộn đến bài viết trước
+                $('html, body').animate({ scrollTop: postItem.offset().top - 100 }, 500);
+                
+                // 2. Mở phần bình luận
+                let $section = $('#comment-section-' + urlPostId);
+                $section.removeClass('d-none');
+                
+                // 3. Tải bình luận và cuộn đến bình luận cụ thể
+                loadComments(urlPostId);
+                
+                // Đợi AJAX load xong thì cuộn tiếp
+                setTimeout(() => {
+                    const $comment = $('#comment-' + commentId);
+                    if ($comment.length) {
+                        $('html, body').animate({ scrollTop: $comment.offset().top - 150 }, 500);
+                        $comment.find('.comment-bubble').css('background-color', '#fff9c4').animate({ backgroundColor: 'white' }, 2000);
+                    }
+                }, 1000);
+            }
+        } else if (urlPostId) {
+            // Trường hợp chỉ có post_id (Like)
+            const postItem = $(`[data-post-id="${urlPostId}"]`);
+            if (postItem.length) {
+                $('html, body').animate({ scrollTop: postItem.offset().top - 100 }, 500);
+                postItem.css('border-color', '#3b82f6').css('box-shadow', '0 0 15px rgba(59,130,246,0.3)');
+            }
+        }
+    });
 </script>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>
