@@ -45,7 +45,7 @@ class User {
 
     // Danh sách cho Admin sử dụng FETCH JOIN
     public function getAllUsersWithDetails() {
-        $query = "SELECT u.id, u.username, u.full_name, u.email, d.dept_name, r.role_name, u.is_active 
+        $query = "SELECT u.id, u.username, u.full_name, u.email, u.avatar_url, d.dept_name, r.role_name, u.is_active 
                   FROM " . $this->table_name . " u 
                   LEFT JOIN departments d ON u.department_id = d.id 
                   LEFT JOIN roles r ON u.role_id = r.id

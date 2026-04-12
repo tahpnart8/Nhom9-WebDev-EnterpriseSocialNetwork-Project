@@ -68,6 +68,9 @@ class Message {
                   (SELECT full_name FROM users WHERE id = 
                     (SELECT user_id FROM conversation_members WHERE conversation_id = c.id AND user_id != :uid1 LIMIT 1)
                   ) as partner_name,
+                  (SELECT avatar_url FROM users WHERE id = 
+                    (SELECT user_id FROM conversation_members WHERE conversation_id = c.id AND user_id != :uid_avatar LIMIT 1)
+                  ) as partner_avatar,
                   (SELECT user_id FROM conversation_members WHERE conversation_id = c.id AND user_id != :uid2 LIMIT 1) as partner_id
                   FROM conversations c
                   JOIN conversation_members cm ON c.id = cm.conversation_id
@@ -75,6 +78,7 @@ class Message {
                   ORDER BY last_time DESC";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':uid1', $userId);
+        $stmt->bindParam(':uid_avatar', $userId);
         $stmt->bindParam(':uid2', $userId);
         $stmt->bindParam(':uid3', $userId);
         $stmt->execute();

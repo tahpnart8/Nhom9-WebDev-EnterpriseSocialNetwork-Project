@@ -30,8 +30,12 @@
                             <td class="text-muted fw-medium">#<?php echo $u['id']; ?></td>
                             <td>
                                 <div class="d-flex align-items-center gap-3">
-                                    <div class="avatar-circle shadow-sm" style="width:34px; height:34px; font-size:12px;">
-                                        <?php echo mb_substr(trim($u['full_name']), 0, 1, 'UTF-8'); ?>
+                                    <div class="avatar-circle shadow-sm overflow-hidden" style="width:34px; height:34px; font-size:12px;">
+                                        <?php if(!empty($u['avatar_url'])): ?>
+                                            <img src="<?php echo htmlspecialchars($u['avatar_url']); ?>" class="w-100 h-100" style="object-fit:cover">
+                                        <?php else: ?>
+                                            <?php echo mb_substr(trim($u['full_name']), 0, 1, 'UTF-8'); ?>
+                                        <?php endif; ?>
                                     </div>
                                     <span class="fw-bold text-dark"><?php echo htmlspecialchars($u['full_name']); ?></span>
                                 </div>
