@@ -151,7 +151,11 @@
                         </div>
                         <?php endif; ?>
                     </div>
-                    <p class="mb-3 text-dark post-content-text" style="line-height: 1.6;"><?php echo nl2br(htmlspecialchars($post['content_html'])); ?></p>
+                    <?php if(($post['is_ai_generated'] ?? 0)): ?>
+                        <div class="mb-3 text-dark post-content-text" style="line-height: 1.6;"><?php echo $post['content_html']; ?></div>
+                    <?php else: ?>
+                        <p class="mb-3 text-dark post-content-text" style="line-height: 1.6;"><?php echo nl2br($post['content_html']); ?></p>
+                    <?php endif; ?>
                 </div>
                 <?php if($post['media_url']): ?><div class="bg-light text-center border-top border-bottom"><img src="<?php echo htmlspecialchars($post['media_url']); ?>" class="img-fluid" style="max-height: 400px;"></div><?php endif; ?>
                 
