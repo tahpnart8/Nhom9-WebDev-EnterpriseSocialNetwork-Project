@@ -56,7 +56,7 @@
         <!-- Main Content Wrapper -->
         <main id="main-content">
             <!-- Topbar (Search, Notifications, Chat, Logout) -->
-            <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+            <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom sticky-top bg-white" style="z-index: 1040; top: 0; padding-top: 1.5rem;">
                 <h3 class="fw-bold mb-0"><?php echo htmlspecialchars($pageTitle ?? 'Tổng quan'); ?></h3>
                 
                 <div class="d-flex align-items-center gap-2">

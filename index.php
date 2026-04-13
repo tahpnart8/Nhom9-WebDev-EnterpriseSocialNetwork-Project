@@ -74,6 +74,11 @@ $routes = [
     'api_send_message' => [$chatController, 'sendMessage'],
     'api_fetch_messages' => [$chatController, 'fetchMessages'],
     'api_unread_chat_count' => [$chatController, 'fetchUnreadCount'],
+    'api_create_group' => [$chatController, 'api_create_group'],
+    'api_get_group_info' => [$chatController, 'api_get_group_info'],
+    'api_manage_members' => [$chatController, 'api_manage_members'],
+    'api_handle_membership_request' => [$chatController, 'api_handle_membership_request'],
+    'api_update_group_settings' => [$chatController, 'api_update_group_settings'],
 
     'profile' => [$profileController, 'index'],
     'api_update_profile' => [$profileController, 'updateProfile'],
