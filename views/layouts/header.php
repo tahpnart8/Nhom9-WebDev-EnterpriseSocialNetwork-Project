@@ -53,6 +53,9 @@
         <!-- Include Sidebar via PHP -->
         <?php include 'sidebar.php'; ?>
         
+        <!-- Include Right Sidebar via PHP -->
+        <?php include 'right_sidebar.php'; ?>
+        
         <!-- Main Content Wrapper -->
         <main id="main-content">
             <!-- Topbar (Search, Notifications, Chat, Logout) -->

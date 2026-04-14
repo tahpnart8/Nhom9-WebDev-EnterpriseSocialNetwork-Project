@@ -1003,4 +1003,47 @@ class TaskController
         echo json_encode(['success' => true, 'message' => 'Đã lưu và đăng tải tổng kết dự án (Public & Department)!']);
         exit;
     }
+    // ========== API: FETCH URGENT SUBTASKS (Right Sidebar) ==========
+    public function fetchUrgentSubtasks()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        $subtaskModel = new Subtask($this->db);
+        $urgentSubtasks = $subtaskModel->getUrgentSubtasksByUser($_SESSION['user_id']);
+
+        $result = [];
+        $now = time();
+        foreach ($urgentSubtasks as $st) {
+            $progress = 0;
+            if ($st['parent_total_subtasks'] > 0) {
+                $progress = round(($st['parent_done_subtasks'] / $st['parent_total_subtasks']) * 100);
+            }
+            
+            $deadlineTime = strtotime($st['deadline']);
+            $secondsLeft = $deadlineTime - $now;
+
+            // Computed badge color base on seconds left (user requested color logic: computed by time)
+            if ($secondsLeft < 86400) { // < 24h or negative
+                $colorPrefix = 'danger'; // red
+            } elseif ($secondsLeft < 259200) { // < 72h (3 days)
+                $colorPrefix = 'warning'; // yellow
+            } else {
+                $colorPrefix = 'success'; // green
+            }
+
+            $result[] = [
+                'id' => $st['id'],
+                'subtask_title' => $st['title'],
+                'task_title' => $st['parent_task_title'],
+                'priority_label' => $st['priority'], // Native priority from DB
+                'badge_color' => $colorPrefix,
+                'seconds_left' => $secondsLeft,
+                'progress_percent' => $progress
+            ];
+        }
+
+        echo json_encode(['success' => true, 'data' => $result]);
+        exit;
+    }
 }

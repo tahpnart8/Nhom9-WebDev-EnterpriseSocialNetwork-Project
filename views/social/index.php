@@ -19,7 +19,7 @@
 </style>
 
 <div class="row g-4 position-relative">
-    <div class="col-lg-8" style="padding-bottom: 50px;">
+    <div class="col-12" style="padding-bottom: 50px;">
         <!-- Tabs Chuyển Kênh -->
         <ul class="nav nav-pills mb-4 gap-2 bg-white p-2 rounded shadow-sm border">
             <li class="nav-item">
@@ -191,16 +191,6 @@
                 </div>
             </div>
             <?php endforeach; ?>
-        </div>
-    </div>
-    
-    <div class="col-lg-4 d-none d-lg-block">
-        <div class="relioo-card p-4 sticky-top shadow-sm" style="top: 5rem; z-index: 1;">
-            <h6 class="fw-bold mb-4 text-muted small text-uppercase">Quy định mạng nội bộ</h6>
-            <ul class="text-muted small ps-3 mb-0" style="line-height: 1.8;">
-                <li>Tôn trọng đồng nghiệp.</li>
-                <li>Chia sẻ tài liệu đúng phòng ban.</li>
-            </ul>
         </div>
     </div>
 </div>

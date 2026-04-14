@@ -259,5 +259,23 @@ class Subtask {
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    // Lấy dữ liệu Việc gấp cần xử lý cho Right Sidebar
+    public function getUrgentSubtasksByUser($user_id) {
+        $query = "SELECT s.*, 
+                         t.title as parent_task_title,
+                         (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id) as parent_total_subtasks,
+                         (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id AND status = 'Done') as parent_done_subtasks
+                  FROM " . $this->table_name . " s
+                  JOIN tasks t ON s.task_id = t.id
+                  WHERE s.assignee_id = :user_id 
+                    AND s.status IN ('To Do', 'In Progress')
+                  ORDER BY s.deadline ASC
+                  LIMIT 15"; // Lấy nhiều hơn 3 để dự phòng/cuộn nếu sau này cần
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':user_id', $user_id);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
 ?>
