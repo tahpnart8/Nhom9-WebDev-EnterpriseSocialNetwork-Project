@@ -12,12 +12,17 @@
 }
 
 #main-content { padding: 0 !important; }
-#main-content > .sticky-top {
+#main-content > .top-bar-sticky {
     padding-left: 1.5rem !important;
     padding-right: 1.5rem !important;
-    margin-bottom: 0 !important;
+    margin: 0 !important; /* Reset global topbar margins in Chat context */
     padding-bottom: 0.5rem !important;
     border-bottom: none !important;
+    background: var(--ms-bg) !important;
+    backdrop-filter: none !important;
+}
+#main-content > .top-bar-sticky .search-wrapper {
+    display: none !important; /* Hide global search in Chat as it has its own search */
 }
 
 .chat-layout { display: flex; height: calc(100vh - 66px); background: var(--ms-bg); overflow: hidden; margin: 0; border-top: 1px solid #e0e0e0; font-family: system-ui, -apple-system, sans-serif; }

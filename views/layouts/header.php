@@ -58,16 +58,23 @@
         
         <!-- Main Content Wrapper -->
         <main id="main-content">
-            <!-- Topbar (Search, Notifications, Chat, Logout) -->
-            <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom sticky-top bg-white" style="z-index: 1040; top: 0; padding-top: 1.5rem;">
-                <h3 class="fw-bold mb-0"><?php echo htmlspecialchars($pageTitle ?? 'Tổng quan'); ?></h3>
+            <!-- Topbar (Search, Notifications, Chat, Logout) - Balanced 3-Section Layout -->
+            <div class="top-bar-sticky">
+                <!-- Left: Page Title / Channel Name -->
+                <div class="flex-shrink-0" style="min-width: 220px;">
+                    <h3 class="fw-bold mb-0 text-dark"><?php echo htmlspecialchars($pageTitle ?? 'Tổng quan'); ?></h3>
+                </div>
                 
-                <div class="d-flex align-items-center gap-2">
-                    <div class="position-relative d-none d-md-block">
-                        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
-                        <input type="text" class="form-control rounded-pill ps-5 bg-white border" placeholder="Tìm kiếm..." style="width: 250px;">
+                <!-- Middle: Search Bar (Centered) -->
+                <div class="search-wrapper d-none d-md-block">
+                    <div class="topbar-search-form">
+                        <i class="bi bi-search"></i>
+                        <input type="text" class="form-control" placeholder="Tìm kiếm nội dung, dự án...">
                     </div>
-                    
+                </div>
+                
+                <!-- Right: Utility Actions -->
+                <div class="topbar-utility-actions">
                     <!-- Nút Chat -->
                     <a href="index.php?action=chat" class="btn btn-light rounded-circle border shadow-sm d-flex align-items-center justify-content-center position-relative" style="width: 40px; height: 40px;" title="Tin nhắn">
                         <i class="bi bi-chat-dots text-muted fs-5"></i>
@@ -80,7 +87,7 @@
                             <i class="bi bi-bell text-muted fs-5"></i>
                             <span class="badge bg-danger rounded-pill position-absolute" style="top:-4px;right:-4px;font-size:0.6rem;display:none;" id="notiBadge">0</span>
                         </button>
-                        <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-0" style="width:360px;max-height:500px;overflow-y:auto;border-radius:1rem;">
+                        <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-0 mt-2" style="width:360px;max-height:500px;overflow-y:auto;border-radius:1rem;">
                             <div class="p-3 border-bottom">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <h6 class="mb-0 fw-bold">Thông báo</h6>
@@ -97,8 +104,8 @@
                         </div>
                     </div>
                     
-                    <a href="index.php?action=logout" class="btn btn-outline-danger btn-sm rounded-pill px-3 ms-1">
-                        <i class="bi bi-box-arrow-right"></i> Thoát
+                    <a href="index.php?action=logout" class="btn btn-outline-danger btn-sm rounded-pill px-3 ms-1 shadow-sm d-flex align-items-center gap-2 border-0 bg-danger bg-opacity-10 text-danger fw-600">
+                        <i class="bi bi-box-arrow-right"></i> <span class="d-none d-lg-inline">Thoát</span>
                     </a>
                 </div>
             </div>

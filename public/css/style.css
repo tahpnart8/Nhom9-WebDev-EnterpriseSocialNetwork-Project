@@ -212,3 +212,73 @@ body {
     border: 1px solid var(--border-soft);
     box-shadow: 0 1px 3px rgba(0,0,0,0.02);
 }
+
+/* Glassmorphism Topbar & Balanced Navigation */
+.top-bar-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 1040;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border-bottom: 1px solid rgba(229, 231, 235, 0.7);
+    margin-right: -2rem; /* Chỉ bù lề phải để sát mép khung */
+    margin-left: -2rem;  /* Chỉ bù lề trái để sát mép khung */
+    margin-top: -2rem;
+    margin-bottom: 2rem;
+    padding: 1rem 2.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.3s ease;
+}
+
+.search-wrapper {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    max-width: 500px;
+    margin: 0 1.5rem;
+}
+
+.topbar-search-form {
+    position: relative;
+    width: 100%;
+}
+
+.topbar-search-form i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    transition: color 0.2s;
+    z-index: 5;
+}
+
+.topbar-search-form .form-control {
+    padding-left: 2.75rem;
+    background-color: #f1f5f9;
+    border: 1px solid transparent;
+    border-radius: 50rem;
+    transition: all 0.2s;
+    height: 42px;
+}
+
+.topbar-search-form .form-control:focus {
+    background-color: #fff;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+}
+
+.topbar-search-form .form-control:focus + i {
+    color: var(--primary-color);
+}
+
+.topbar-utility-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 220px;
+    justify-content: flex-end;
+}
