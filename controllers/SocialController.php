@@ -215,7 +215,7 @@ class SocialController {
         exit;
     }
 
-    // API: Gửi bình luận
+    // API: Gửi bình luận (Tạo bình luận)
     public function addComment() {
         header('Content-Type: application/json');
         if(!isset($_SESSION['user_id'])) {
