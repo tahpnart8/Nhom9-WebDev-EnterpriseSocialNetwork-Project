@@ -17,9 +17,21 @@
         }
         .brand-logo {
             font-weight: 700;
-            color: #0d6efd;
-            font-size: 2rem;
+            color: #ff4d4f;
+            font-size: 2.2rem;
             letter-spacing: -1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        .btn-primary {
+            background-color: #ff4d4f;
+            border-color: #ff4d4f;
+        }
+        .btn-primary:hover, .btn-primary:focus {
+            background-color: #e63e40;
+            border-color: #e63e40;
         }
     </style>
 </head>
@@ -28,7 +40,10 @@
         <div class="row justify-content-center">
             <div class="col-md-5 col-lg-4">
                 <div class="text-center mb-4">
-                    <div class="brand-logo">Relioo</div>
+                    <div class="brand-logo">
+                        <img src="src/logo.png" alt="Logo" style="height: 44px; border-radius: 50%;">
+                        Relioo
+                    </div>
                     <p class="text-muted">Mạng xã hội Doanh nghiệp</p>
                 </div>
                 

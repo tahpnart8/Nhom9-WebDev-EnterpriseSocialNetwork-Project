@@ -2,13 +2,13 @@
 
 <div class="row g-4 mt-1">
     <div class="col-12">
-        <div class="alert border-0 bg-primary bg-opacity-10 relioo-card p-4 d-flex align-items-center gap-4 mb-0">
+        <div class="alert border-0 bg-primary relioo-card p-4 d-flex align-items-center gap-4 mb-0 shadow-sm" style="background-color: var(--primary-color) !important;">
             <div class="fs-1 text-primary bg-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 70px; height: 70px;">
                 <i class="bi bi-emoji-smile"></i>
             </div>
             <div>
-                <h4 class="fw-bold text-primary mb-1">Chào mừng quay trở lại, <?php echo htmlspecialchars($_SESSION['full_name'], ENT_QUOTES, 'UTF-8'); ?>!</h4>
-                <p class="mb-0 text-muted">Bắt đầu phiên làm việc mới thật hiệu quả với Relioo nhé.</p>
+                <h4 class="fw-bold text-white mb-1">Chào mừng quay trở lại, <?php echo htmlspecialchars($_SESSION['full_name'], ENT_QUOTES, 'UTF-8'); ?>!</h4>
+                <p class="mb-0 text-white opacity-75">Bắt đầu phiên làm việc mới thật hiệu quả với Relioo nhé.</p>
             </div>
         </div>
     </div>

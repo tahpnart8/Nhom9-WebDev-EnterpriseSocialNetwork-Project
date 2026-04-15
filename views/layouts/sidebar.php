@@ -6,7 +6,7 @@ $roleId = $_SESSION['role_id'] ?? 3; // Default to staff
 ?>
 <aside class="sidebar">
     <a href="index.php?action=dashboard" class="brand-logo">
-        <i class="bi bi-layers-fill brand-icon"></i>
+        <img src="src/logo.png" alt="Logo" style="height: 36px; border-radius: 50%;">
         Relioo
     </a>
 
