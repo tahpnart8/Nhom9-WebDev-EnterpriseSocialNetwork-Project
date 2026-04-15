@@ -145,7 +145,7 @@
 
         <div class="search-input-group">
             <i class="bi bi-search text-muted"></i>
-            <input type="text" id="chatSearchInput" placeholder="Tìm kiếm trên Messenger" autocomplete="off">
+            <input type="text" id="chatSearchInput" placeholder="Tìm kiếm trên Relioo chat" autocomplete="off">
         </div>
 
         <div class="chat-filter-tabs">
@@ -542,7 +542,7 @@ $(function() {
                 if($('#rightSidebar').length === 0) {
                     $('.chat-layout').append('<div class="chat-right-sidebar" id="rightSidebar"></div>');
                 }
-                $('#rightSidebar').html(newRight).removeClass('hidden');
+                $('#rightSidebar').html(newRight);
             } else {
                 $('#rightSidebar').addClass('hidden');
             }
