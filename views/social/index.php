@@ -19,7 +19,7 @@
 </style>
 
 <div class="row g-4 position-relative">
-    <div class="col-lg-8" style="padding-bottom: 50px;">
+    <div class="col-12" style="padding-bottom: 50px;">
         <!-- Tabs Chuyển Kênh -->
         <ul class="nav nav-pills mb-4 gap-2 bg-white p-2 rounded shadow-sm border">
             <li class="nav-item">
@@ -191,62 +191,6 @@
                 </div>
             </div>
             <?php endforeach; ?>
-        </div>
-    </div>
-
-    <!-- Cột bên phải: Widget Bảng xếp hạng (TÍNH NĂNG MỚI TỪ PROCEDURE) -->
-    <div class="col-lg-4 d-none d-lg-block">
-        <div class="sticky-top" style="top: 100px; z-index: 10;">
-            <div class="relioo-card p-0 border-0 shadow-sm overflow-hidden mb-4 bg-white">
-                <div class="p-3 bg-primary text-white d-flex align-items-center justify-content-between">
-                    <h6 class="mb-0 fw-bold"><i class="bi bi-trophy-fill me-2 text-warning"></i> BẢNG XẾP HẠNG</h6>
-                    <span class="badge bg-white text-primary rounded-pill small">Top 10</span>
-                </div>
-                <div class="p-0">
-                    <?php if (empty($leaderboard)): ?>
-                        <div class="p-4 text-center text-muted small">
-                            <i class="bi bi-info-circle d-block mb-2 fs-4 opacity-25"></i>
-                            Chưa có dữ liệu thi đua phòng ban.
-                        </div>
-                    <?php else: ?>
-                        <div class="list-group list-group-flush">
-                            <?php foreach ($leaderboard as $index => $userLB): ?>
-                                <div class="list-group-item border-light d-flex align-items-center gap-3 py-3 px-3">
-                                    <div class="fw-bold text-muted" style="width: 25px; font-size: 0.9rem;">
-                                        <?php 
-                                        if ($index == 0) echo '🥇';
-                                        elseif ($index == 1) echo '🥈';
-                                        elseif ($index == 2) echo '🥉';
-                                        else echo ($index + 1);
-                                        ?>
-                                    </div>
-                                    <div class="avatar-circle shadow-sm flex-shrink-0" style="width: 38px; height: 38px; font-size: 13px;">
-                                        <?php if(!empty($userLB['avatar_url'])): ?>
-                                            <img src="<?php echo htmlspecialchars($userLB['avatar_url']); ?>" class="w-100 h-100 rounded-circle" style="object-fit:cover">
-                                        <?php else: ?>
-                                            <?php echo mb_substr(trim($userLB['full_name']), 0, 1, 'UTF-8'); ?>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="flex-grow-1 overflow-hidden">
-                                        <div class="fw-bold text-dark text-truncate small"><?php echo htmlspecialchars($userLB['full_name']); ?></div>
-                                        <div class="text-muted" style="font-size: 0.7rem;">Đã xong: <b class="text-success"><?php echo $userLB['tasks_done']; ?></b> việc</div>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
-                <div class="card-footer bg-light border-0 py-2 text-center">
-                    <small class="text-muted fw-medium" style="font-size: 0.7rem;">Dữ liệu cập nhật thời gian thực</small>
-                </div>
-            </div>
-
-            <!-- Widget Giới thiệu AI -->
-            <div class="p-4 rounded-4 bg-white border border-dashed text-center shadow-sm">
-                <i class="bi bi-stars fs-2 text-primary opacity-50 mb-2 d-block"></i>
-                <h6 class="fw-bold small mb-1">Relioo AI Insights</h6>
-                <p class="text-muted mb-0" style="font-size: 0.75rem;">Hệ thống đang sử dụng Stored Procedures để tối ưu hóa hiệu suất truy vấn lên đến 40%.</p>
-            </div>
         </div>
     </div>
 </div>
@@ -543,19 +487,11 @@
                     if (res.data.length === 0) {
                         $container.html('<div class="relioo-card p-5 text-center text-muted"><i class="bi bi-search fs-1 opacity-25 d-block mb-3"></i><h5>Không tìm thấy kết quả phù hợp</h5><p>Thử tìm kiếm với từ khóa khác hoặc quay lại <a href="index.php?action=social">bảng tin chính</a>.</p></div>');
                     } else {
-                        // In reality, we would render the posts here. 
-                        // For simplicity and to keep the UI consistent with existing PHP rendering, 
-                        // we can either reload the page with the Q param (user said "load lại trang nhưng nhanh")
-                        // or re-render using a JS template.
-                        // The user said "load lại trang nhưng nhanh", often this implies a reload with the query.
-                        // However, to make it TRULY fast, let's use the query param to reload if it's not already there.
-                        
                         const currentUrl = new URL(window.location.href);
                         if (currentUrl.searchParams.get('q') !== keyword) {
                             currentUrl.searchParams.set('q', keyword);
                             window.location.href = currentUrl.toString();
                         } else {
-                            // If already on the page with that Q, just hide spinner (shouldn't happen with our header logic)
                             location.reload();
                         }
                     }
@@ -575,7 +511,6 @@
                 $(this).html(html.replace(regex, '<mark class="bg-warning-subtle text-dark p-0 rounded">$1</mark>'));
             });
             
-            // Scroll to the first match if it exists
             const firstMatch = $('.post-content-text mark').first();
             if (firstMatch.length) {
                 $('html, body').animate({ scrollTop: firstMatch.offset().top - 150 }, 500);

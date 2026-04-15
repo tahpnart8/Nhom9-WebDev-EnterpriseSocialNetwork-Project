@@ -1,4 +1,41 @@
 <aside class="right-sidebar">
+    <!-- Box: Bảng xếp hạng (TÍNH NĂNG MỚI TỪ PROCEDURE) - Chỉ hiện ở Social -->
+    <?php if (($currentAction ?? '') === 'social' && !empty($leaderboard)): ?>
+    <div class="relioo-card p-0 border-0 shadow-sm overflow-hidden mb-4 bg-white">
+        <div class="p-3 bg-primary text-white d-flex align-items-center justify-content-between">
+            <h6 class="mb-0 fw-bold small"><i class="bi bi-trophy-fill me-2 text-warning"></i> BẢNG XẾP HẠNG</h6>
+            <span class="badge bg-white text-primary rounded-pill" style="font-size: 0.6rem;">Top 10</span>
+        </div>
+        <div class="p-0">
+            <div class="list-group list-group-flush">
+                <?php foreach ($leaderboard as $index => $userLB): ?>
+                    <div class="list-group-item border-light d-flex align-items-center gap-2 py-2 px-3">
+                        <div class="fw-bold text-muted" style="width: 20px; font-size: 0.8rem;">
+                            <?php 
+                            if ($index == 0) echo '🥇';
+                            elseif ($index == 1) echo '🥈';
+                            elseif ($index == 2) echo '🥉';
+                            else echo ($index + 1);
+                            ?>
+                        </div>
+                        <div class="avatar-circle shadow-sm flex-shrink-0" style="width: 32px; height: 32px; font-size: 12px;">
+                            <?php if(!empty($userLB['avatar_url'])): ?>
+                                <img src="<?php echo htmlspecialchars($userLB['avatar_url']); ?>" class="w-100 h-100 rounded-circle" style="object-fit:cover">
+                            <?php else: ?>
+                                <?php echo mb_substr(trim($userLB['full_name']), 0, 1, 'UTF-8'); ?>
+                            <?php endif; ?>
+                        </div>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="fw-bold text-dark text-truncate small" style="font-size: 0.75rem;"><?php echo htmlspecialchars($userLB['full_name']); ?></div>
+                            <div class="text-muted" style="font-size: 0.65rem;">Xong: <b class="text-success"><?php echo $userLB['tasks_done']; ?></b> việc</div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Box: Việc gấp cần xử lý -->
     <div class="relioo-card p-3 mb-4 urgent-tasks-box" style="background: linear-gradient(135deg, #fff5f5 0%, #ffe4e6 100%); border: none; box-shadow: 0 4px 15px rgba(225, 29, 72, 0.05);">
         <h6 class="fw-bold mb-4 text-dark text-center pb-2" style="border-bottom: 2px dashed rgba(225,29,72,0.2);">🔥 Việc gấp cần xử lý</h6>
