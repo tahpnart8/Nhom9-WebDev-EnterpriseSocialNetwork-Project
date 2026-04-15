@@ -798,56 +798,82 @@ function renderSubActions(s) {
     return '';
 }
 
-// ================= DYNAMIC TASK SEARCH HANDLING =================
-window.searchTasks = function(keyword) {
-    if (!keyword) {
-        $('.task-card').removeClass('search-highlight d-none');
+// ================= DYNAMIC TASK SEARCH HANDLING (PINK GLOW) =================
+function normalizeText(str) {
+    if (!str) return "";
+    return str.normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .toLowerCase()
+              .trim();
+}
+
+window.highlightTasks = function(keyword) {
+    if (!keyword || keyword.trim() === "") {
+        window.clearTaskHighlights();
+        // Show everything
+        $('.task-card').show();
+        $('.column').show();
         return;
     }
 
-    keyword = keyword.toLowerCase();
+    const searchTerm = normalizeText(keyword);
     let firstMatch = null;
-    let foundCount = 0;
 
+    // View 1: Progress (Kanban) filtering
     $('.task-card').each(function() {
         const $card = $(this);
-        const cardName = $card.find('.card-name').text().toLowerCase();
-        const cardLabel = $card.find('.card-label').text().toLowerCase();
-        const cardDesc = $card.find('.card-desc-preview').text().toLowerCase();
-        const cardAssignee = $card.find('.assignee').text().toLowerCase();
+        // Normalize searchable content (Task Name in label, Subtask Name in card-name)
+        const taskName = normalizeText($card.find('.card-label').text());
+        const subtaskName = normalizeText($card.find('.card-name').text());
+        const subtaskDesc = normalizeText($card.find('.card-desc-preview').text());
 
-        if (cardName.includes(keyword) || cardLabel.includes(keyword) || cardDesc.includes(keyword) || cardAssignee.includes(keyword)) {
-            $card.addClass('search-highlight').removeClass('d-none');
-            foundCount++;
+        if (taskName.includes(searchTerm) || subtaskName.includes(searchTerm) || subtaskDesc.includes(searchTerm)) {
+            $card.addClass('search-highlight').show();
             if (!firstMatch) firstMatch = $card;
         } else {
-            $card.removeClass('search-highlight');
-            // We could hide non-matches, but user asked for "lướt tới vị trí" (scroll to position), 
-            // which implies they are still there in context. So I won't hide them unless foundCount is high.
+            $card.removeClass('search-highlight').hide();
+        }
+    });
+
+    // View 2: Task Group filtering (Columns)
+    $('.board-tasks .column').each(function() {
+        const $col = $(this);
+        const taskTitle = normalizeText($col.find('.column-header h6').text());
+        
+        if (taskTitle.includes(searchTerm)) {
+            $col.show();
+        } else {
+            $col.hide();
         }
     });
 
     if (firstMatch) {
-        // Switch view if needed? Most cards are in both views but let's ensure the current one works.
-        // Scroll logic
-        const container = firstMatch.closest('.card-list')[0];
-        if (container) {
-            container.scrollTo({
-                top: firstMatch[0].offsetTop - 20,
-                behavior: 'smooth'
-            });
-        }
-        
         $('html, body').animate({
             scrollTop: firstMatch.offset().top - 150
         }, 500);
 
-        // Optionally show a toast
-        toastr.info(`Đã tìm thấy ${foundCount} công việc phù hợp.`, 'Tìm kiếm công việc');
-    } else {
-        toastr.warning('Không tìm thấy công việc nào khớp với từ khóa.', 'Tìm kiếm');
+        const $column = firstMatch.closest('.card-list');
+        if ($column.length) {
+            $column.animate({
+                scrollTop: firstMatch.position().top + $column.scrollTop() - 20
+            }, 500);
+        }
     }
 };
+
+window.clearTaskHighlights = function() {
+    $('.task-card').removeClass('search-highlight').show();
+    $('.board-tasks .column').show();
+};
+
+// Auto-trigger if q param exists
+$(function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const q = urlParams.get('q');
+    if (q) {
+        setTimeout(() => window.highlightTasks(q), 800);
+    }
+});
 
 // ===== TASK DETAIL MODAL =====
 function openTaskDetail(tid) {

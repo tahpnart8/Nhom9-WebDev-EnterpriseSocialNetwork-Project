@@ -157,5 +157,16 @@ class Task {
             'pending_approvals' => $result['pending_count'] ?? 0
         ];
     }
+
+    public function search($keyword, $role_id, $dept_id, $user_id) {
+        $query = "CALL sp_SearchTasks(:user_id, :role_id, :dept_id, :keyword)";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':user_id', $user_id);
+        $stmt->bindParam(':role_id', $role_id);
+        $stmt->bindValue(':dept_id', $dept_id, $dept_id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+        $stmt->bindParam(':keyword', $keyword);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
 ?>

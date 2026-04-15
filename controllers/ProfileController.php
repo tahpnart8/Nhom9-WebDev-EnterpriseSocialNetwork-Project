@@ -124,5 +124,19 @@ class ProfileController {
         }
         exit;
     }
+
+    public function apiSearchUsers() {
+        header('Content-Type: application/json');
+        $keyword = trim($_GET['q'] ?? '');
+        if (empty($keyword)) {
+            echo json_encode([]);
+            exit;
+        }
+
+        $userModel = new User($this->db);
+        $results = $userModel->search($keyword);
+        echo json_encode($results);
+        exit;
+    }
 }
 ?>

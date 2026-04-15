@@ -9,20 +9,14 @@ class Comment {
 
     // Lấy danh sách bình luận của một bài viết (kèm thông tin user và số lượt tim)
     public function getByPostId($post_id, $current_user_id) {
-        $query = "SELECT c.*, u.full_name, u.avatar_url,
-                  (SELECT COUNT(*) FROM comment_reactions WHERE comment_id = c.id) as like_count,
-                  (SELECT COUNT(*) FROM comment_reactions WHERE comment_id = c.id AND user_id = :current_user) as is_liked
-                  FROM " . $this->table_name . " c
-                  JOIN users u ON c.user_id = u.id
-                  WHERE c.post_id = :post_id
-                  ORDER BY c.created_at ASC";
-                  
+        $query = "CALL sp_GetPostComments(:post_id, :current_user)";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':post_id', $post_id);
         $stmt->bindParam(':current_user', $current_user_id);
         $stmt->execute();
         
         $all_comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
         
         // Phân cấp: Parent -> Children
         $parents = [];
@@ -92,19 +86,8 @@ class Comment {
         return $stmt->execute();
     }
 
-    // Toggle Reaction cho Bình luận
     public function toggleReaction($comment_id, $user_id) {
-        // Kiểm tra xem đã tim chưa
-        $check = "SELECT id FROM comment_reactions WHERE comment_id = :cid AND user_id = :uid";
-        $stmt = $this->conn->prepare($check);
-        $stmt->execute([':cid' => $comment_id, ':uid' => $user_id]);
-        
-        if ($stmt->rowCount() > 0) {
-            $query = "DELETE FROM comment_reactions WHERE comment_id = :cid AND user_id = :uid";
-        } else {
-            $query = "INSERT INTO comment_reactions (comment_id, user_id) VALUES (:cid, :uid)";
-        }
-        
+        $query = "CALL sp_ToggleCommentReaction(:cid, :uid)";
         $stmt = $this->conn->prepare($query);
         return $stmt->execute([':cid' => $comment_id, ':uid' => $user_id]);
     }

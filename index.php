@@ -47,6 +47,7 @@ $routes = [
     'api_fetch_comment_likers' => [$socialController, 'fetchCommentLikers'],
     'api_get_post_details' => [$socialController, 'fetchPostDetails'],
     'api_search_posts' => [$socialController, 'apiSearchPosts'],
+    'api_search_users' => [$profileController, 'apiSearchUsers'],
 
     'tasks' => [$taskController, 'index'],
     'api_create_task' => [$taskController, 'createTask'],
@@ -67,6 +68,7 @@ $routes = [
     'api_generate_task_summary' => [$taskController, 'generateTaskSummary'],
     'api_save_task_summary' => [$taskController, 'saveTaskSummary'],
     'api_urgent_subtasks' => [$taskController, 'fetchUrgentSubtasks'],
+    'api_search_tasks' => [$taskController, 'apiSearchTasks'],
 
     'api_notifications' => [$notiController, 'fetchUnread'],
     'api_mark_all_read' => [$notiController, 'markAllRead'],

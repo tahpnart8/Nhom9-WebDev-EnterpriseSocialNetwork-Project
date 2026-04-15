@@ -67,18 +67,20 @@
                 
                 <!-- Middle: Search Bar (Centered) -->
                 <div class="search-wrapper d-none d-md-block">
-                    <div class="topbar-search-form" id="searchContainer">
+                    <div class="topbar-search-form">
                         <i class="bi bi-search"></i>
-                        <input type="text" class="form-control" id="globalSearchInput" name="q" placeholder="Tìm kiếm nội dung, dự án..." autocomplete="off">
-                        <!-- Search History Dropdown -->
-                        <div id="searchHistoryDropdown" class="search-history-dropdown shadow-lg border-0 d-none">
-                            <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
-                                <span class="fw-bold small text-muted text-uppercase">Tìm kiếm gần đây</span>
-                                <button class="btn btn-sm btn-link text-danger p-0 text-decoration-none small" id="clearAllHistory">Xóa tất cả</button>
-                            </div>
-                            <div id="historyItemsList" class="py-2">
-                                <!-- Items loaded via JS -->
-                            </div>
+                        <input type="text" class="form-control" placeholder="Tìm kiếm nội dung, dự án..." value="<?php echo htmlspecialchars($_GET['q'] ?? ''); ?>">
+                        <i class="bi bi-x-circle-fill clear-search-input" style="display: <?php echo isset($_GET['q']) && $_GET['q'] !== '' ? 'block' : 'none'; ?>;"></i>
+                    </div>
+                    
+                    <!-- Search Results / History Dropdown -->
+                    <div class="search-history-dropdown shadow-lg">
+                        <div class="history-header">
+                            <span>TÌM KIẾM GẦN ĐÂY</span>
+                            <button id="clearHistoryBtn">Xóa tất cả</button>
+                        </div>
+                        <div id="historyList">
+                            <!-- JS dynamic render -->
                         </div>
                     </div>
                 </div>
@@ -467,25 +469,68 @@ $('#markAllRead').on('click', function() {
 
 // ================= GLOBAL SEARCH & HISTORY LOGIC =================
 $(document).ready(function() {
-    const $searchInput = $('#globalSearchInput');
-    const $historyDropdown = $('#searchHistoryDropdown');
-    const $historyList = $('#historyItemsList');
-    const COOKIE_NAME = 'relioo_search_history';
+    const $searchInput = $('.topbar-search-form input');
+    const $historyDropdown = $('.search-history-dropdown');
+    const $historyList = $('#historyList');
+    let searchDebounceTimer;
+
+    // Cookie Helpers
+    function setCookie(name, value, days) {
+        let expires = "";
+        if (days) {
+            let date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    }
+
+    function getCookie(name) {
+        let nameEQ = name + "=";
+        let ca = document.cookie.split(';');
+        for (let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    }
+
+    function getCookieName() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get('action') || 'dashboard';
+        return 'relioo_history_' + action;
+    }
 
     function getHistory() {
-        const cookie = document.cookie.split('; ').find(row => row.startsWith(COOKIE_NAME + '='));
-        if (cookie) {
-            try {
-                return JSON.parse(decodeURIComponent(cookie.split('=')[1]));
-            } catch (e) {
-                return [];
-            }
+        const ckName = getCookieName();
+        const data = getCookie(ckName);
+        if (data) {
+            try { return JSON.parse(data); } catch (e) { return []; }
         }
         return [];
     }
 
     function saveHistory(history) {
-        document.cookie = COOKIE_NAME + '=' + encodeURIComponent(JSON.stringify(history)) + '; path=/; max-age=' + (30 * 24 * 60 * 60);
+        const ckName = getCookieName();
+        setCookie(ckName, JSON.stringify(history), 30);
+    }
+
+    function addToHistory(keyword) {
+        if (!keyword) return;
+        keyword = keyword.trim();
+        if (keyword === "") return;
+
+        let history = getHistory();
+        // Explicitly remove existing entry if found to avoid duplicates
+        history = history.filter(item => item.toLowerCase() !== keyword.toLowerCase());
+        
+        // Add new item to front
+        history.unshift(keyword);
+        
+        // Cap history size
+        if (history.length > 8) history.pop();
+        saveHistory(history);
     }
 
     function renderHistory() {
@@ -498,82 +543,162 @@ $(document).ready(function() {
         let html = '';
         history.forEach((item, index) => {
             html += `<div class="history-item" data-keyword="${item}">
-                        <i class="bi bi-clock-history"></i>
-                        <span class="keyword">${item}</span>
-                        <i class="bi bi-x remove-history" data-index="${index}"></i>
+                        <div class="history-item-content">
+                            <i class="bi bi-clock-history"></i>
+                            <span class="keyword">${item}</span>
+                        </div>
+                        <i class="bi bi-x remove-history" data-index="${index}" title="Xóa"></i>
                     </div>`;
         });
         $historyList.html(html);
     }
 
-    $searchInput.on('focus', function() {
-        renderHistory();
-        $historyDropdown.removeClass('d-none');
-    });
+    function renderCombinedResults(users, tasks) {
+        let html = '<div class="p-2 border-bottom text-muted x-small fw-bold">ĐỀ XUẤT TÌM KIẾM</div>';
+        let found = false;
 
-    $(document).on('click', function(e) {
-        if (!$(e.target).closest('#searchContainer').length) {
-            $historyDropdown.addClass('d-none');
+        if (users && users.length > 0) {
+            found = true;
+            html += '<div class="px-3 py-2 text-primary x-small fw-bold mt-1 bg-light">ĐỒNG NGHIỆP</div>';
+            users.forEach(u => {
+                html += `<div class="history-item suggestion-item" onclick="location.href='index.php?action=profile&id=${u.id}'">
+                            <div class="keyword-group">
+                                <img src="${u.avatar_url || 'public/img/default-avatar.png'}" class="rounded-circle me-2" width="24" height="24" style="object-fit:cover;">
+                                <span class="keyword">${u.full_name} <small class="text-muted">(${u.dept_name})</small></span>
+                            </div>
+                        </div>`;
+            });
         }
-    });
 
-    $searchInput.on('keypress', function(e) {
-        if (e.which === 13) {
-            const keyword = $(this).val().trim();
-            if (keyword) {
-                let history = getHistory();
-                history = history.filter(item => item !== keyword);
-                history.unshift(keyword);
-                history = history.slice(0, 8);
-                saveHistory(history);
-                executeSearch(keyword);
-            }
+        if (tasks && tasks.length > 0) {
+            found = true;
+            html += '<div class="px-3 py-2 text-primary x-small fw-bold mt-1 bg-light">CÔNG VIỆC</div>';
+            tasks.forEach(t => {
+                html += `<div class="history-item suggestion-item" onclick="executeSearch('${t.title.replace(/'/g, "\\'")}')">
+                            <div class="history-item-content">
+                                <i class="bi bi-briefcase me-2 text-muted"></i>
+                                <span class="keyword">${t.title}</span>
+                            </div>
+                        </div>`;
+            });
         }
-    });
 
-    $(document).on('click', '.history-item', function(e) {
-        if ($(e.target).hasClass('remove-history')) {
-            e.stopPropagation();
-            const index = $(e.target).data('index');
-            let history = getHistory();
-            history.splice(index, 1);
-            saveHistory(history);
-            renderHistory();
-            return;
+        if (!found) {
+            html = '<div class="p-4 text-center text-muted small">Không tìm thấy gợi ý nào</div>';
         }
-        const keyword = $(this).data('keyword');
-        $searchInput.val(keyword);
-        executeSearch(keyword);
-        $historyDropdown.addClass('d-none');
-    });
 
-    $('#clearAllHistory').on('click', function(e) {
-        e.preventDefault();
-        saveHistory([]);
-        renderHistory();
-    });
+        $historyList.html(html);
+    }
 
     function executeSearch(keyword) {
-        // Kiểm tra xem đang ở trang nào để xử lý logic tìm kiếm phù hợp
+        keyword = keyword.trim();
+        if (!keyword) return;
+        addToHistory(keyword);
+        
         const urlParams = new URLSearchParams(window.location.search);
         const action = urlParams.get('action') || 'dashboard';
 
         if (action === 'social') {
-            // Logic cho trang Bảng tin
             if (typeof window.searchSocialFeed === 'function') {
                 window.searchSocialFeed(keyword);
             } else {
                 window.location.href = 'index.php?action=social&q=' + encodeURIComponent(keyword);
             }
         } else if (action === 'tasks' || action === 'project_tasks') {
-            // Logic cho trang Công việc
-            if (typeof window.searchTasks === 'function') {
-                window.searchTasks(keyword);
+            if (typeof window.highlightTasks === 'function') {
+                window.highlightTasks(keyword);
             }
         } else {
-            // Chuyển hướng sang trang tìm kiếm chung hoặc trang bảng tin nếu không rõ context
             window.location.href = 'index.php?action=social&q=' + encodeURIComponent(keyword);
         }
     }
+
+    // Event Listeners
+    $searchInput.on('focus', function() {
+        if ($(this).val().trim().length === 0) {
+            renderHistory();
+        }
+        $historyDropdown.fadeIn(200);
+    });
+
+    $searchInput.on('input', function() {
+        const keyword = $(this).val().trim();
+        if (keyword.length > 0) {
+            $('.clear-search-input').show();
+        } else {
+            $('.clear-search-input').hide();
+        }
+
+        clearTimeout(searchDebounceTimer);
+        if (keyword.length >= 2) {
+            searchDebounceTimer = setTimeout(() => {
+                $.when(
+                    $.ajax({ url: 'index.php?action=api_search_users&q=' + encodeURIComponent(keyword), dataType: 'json' }),
+                    $.ajax({ url: 'index.php?action=api_search_tasks&q=' + encodeURIComponent(keyword), dataType: 'json' })
+                ).done(function(uRes, tRes) {
+                    renderCombinedResults(uRes[0], tRes[0]);
+                });
+            }, 300);
+        } else if (keyword.length === 0) {
+            renderHistory();
+        }
+    });
+
+    $searchInput.on('keypress', function(e) {
+        if (e.which === 13) {
+            executeSearch($(this).val());
+            $historyDropdown.hide();
+        }
+    });
+
+    $('.clear-search-input').on('click', function(e) {
+        e.stopPropagation();
+        $searchInput.val('').focus();
+        $(this).hide();
+        renderHistory();
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get('action') || 'dashboard';
+        if (action === 'tasks' && typeof window.clearTaskHighlights === 'function') window.clearTaskHighlights();
+        if (action === 'social' && typeof window.clearSocialSearch === 'function') window.clearSocialSearch();
+    });
+
+    $(document).on('click', '.history-item', function(e) {
+        if ($(e.target).hasClass('remove-history')) return;
+        const kw = $(this).data('keyword');
+        if (kw) {
+            $searchInput.val(kw);
+            executeSearch(kw);
+            $historyDropdown.hide();
+        }
+    });
+
+    $(document).on('click', '.remove-history', function(e) {
+        e.stopPropagation();
+        const index = $(this).data('index');
+        let history = getHistory();
+        history.splice(index, 1);
+        saveHistory(history);
+        renderHistory();
+    });
+
+    $('#clearHistoryBtn').on('click', function(e) {
+        e.stopPropagation();
+        saveHistory([]);
+        renderHistory();
+    });
+
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('.search-wrapper').length) {
+            $historyDropdown.fadeOut(200);
+            
+            // Nếu click ra ngoài và input rỗng, clear highlight (cho task)
+            if ($searchInput.val().trim() === '') {
+                const urlParams = new URLSearchParams(window.location.search);
+                const action = urlParams.get('action') || 'dashboard';
+                if (action === 'tasks' && typeof window.clearTaskHighlights === 'function') window.clearTaskHighlights();
+            }
+        }
+    });
 });
 </script>

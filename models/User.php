@@ -111,5 +111,13 @@ class User {
         
         return $stmt->execute();
     }
+
+    public function search($keyword) {
+        $query = "CALL sp_SearchUsers(:keyword)";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':keyword', $keyword);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
 ?>

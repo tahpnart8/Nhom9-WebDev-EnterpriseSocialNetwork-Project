@@ -45,17 +45,13 @@ class Message {
         return $stmt->execute();
     }
 
-    // Lấy tin nhắn trong hội thoại
-    public function getMessages($conversationId, $limit = 50) {
-        $query = "SELECT m.*, u.full_name as sender_name, u.avatar_url as sender_avatar
-                  FROM messages m
-                  JOIN users u ON m.sender_id = u.id
-                  WHERE m.conversation_id = :cid
-                  ORDER BY m.created_at ASC
-                  LIMIT :lim";
+    // Lấy tin nhắn trong hội thoại (Có kiểm tra quyền truy cập)
+    public function getMessages($conversationId, $userId, $limit = 50) {
+        $query = "CALL sp_GetConversationMessages(:cid, :lim, :uid)";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':cid', $conversationId);
         $stmt->bindParam(':lim', $limit, PDO::PARAM_INT);
+        $stmt->bindParam(':uid', $userId, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -205,10 +201,8 @@ class Message {
         return $this->conn->prepare($sql)->execute($params);
     }
 
-    // Cập nhật thời điểm đọc tin nhắn cuối
     public function updateLastRead($conversationId, $userId) {
-        $query = "UPDATE conversation_members SET last_read_at = NOW() 
-                  WHERE conversation_id = :cid AND user_id = :uid";
+        $query = "CALL sp_MarkMessagesAsRead(:cid, :uid)";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':cid', $conversationId);
         $stmt->bindParam(':uid', $userId);

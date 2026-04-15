@@ -22,26 +22,41 @@ BEGIN
     END IF;
 
     IF p_search IS NOT NULL AND p_search <> '' THEN
-        SET @where_clause = CONCAT(@where_clause, ' AND (p.content_html LIKE "%', p_search, '%" OR u.full_name LIKE "%', p_search, '%") ');
+        SET @where_clause = CONCAT(@where_clause, ' AND (p.content_html LIKE ? OR u.full_name LIKE ? OR t.title LIKE ? ) ');
+        SET @search_val = CONCAT('%', p_search, '%');
+    ELSE
+        SET @search_val = '%%';
     END IF;
 
     SET @final_query = CONCAT('
-        SELECT p.*, u.full_name, u.avatar_url, m.media_url, m.media_type, r.role_name,
+        SELECT p.*, u.full_name, u.avatar_url, m.media_url, m.media_type, r.role_name, t.title as task_title,
+               (CASE 
+                    WHEN u.full_name LIKE ? THEN 20
+                    WHEN t.title LIKE ? THEN 15
+                    WHEN p.content_html LIKE ? THEN 10
+                    ELSE 0 
+                END) as relevance_score,
                COALESCE(rc.like_count, 0) as like_count,
                CASE WHEN my_r.user_id IS NOT NULL THEN 1 ELSE 0 END as is_liked,
                COALESCE(cc.comment_count, 0) as comment_count
         FROM posts p
         JOIN users u ON p.author_id = u.id
         LEFT JOIN roles r ON u.role_id = r.id
+        LEFT JOIN tasks t ON p.task_report_id = t.id
         LEFT JOIN post_media m ON p.id = m.post_id
         LEFT JOIN (SELECT post_id, COUNT(*) as like_count FROM post_reactions GROUP BY post_id) rc ON rc.post_id = p.id
         LEFT JOIN post_reactions my_r ON my_r.post_id = p.id AND my_r.user_id = ', p_current_user_id, '
         LEFT JOIN (SELECT post_id, COUNT(*) as comment_count FROM comments GROUP BY post_id) cc ON cc.post_id = p.id
         WHERE ', @where_clause, '
-        ORDER BY p.created_at DESC LIMIT 50'
+        ORDER BY relevance_score DESC, p.created_at DESC LIMIT 50'
     );
+    
     PREPARE stmt FROM @final_query;
-    EXECUTE stmt;
+    IF p_search IS NOT NULL AND p_search <> '' THEN
+        EXECUTE stmt USING @search_val, @search_val, @search_val, @search_val, @search_val, @search_val;
+    ELSE
+        EXECUTE stmt USING @search_val, @search_val, @search_val;
+    END IF;
     DEALLOCATE PREPARE stmt;
 END$$
 
@@ -131,49 +146,75 @@ END$$
 DROP PROCEDURE IF EXISTS sp_SearchUsers$$
 CREATE PROCEDURE sp_SearchUsers(IN p_keyword VARCHAR(100))
 BEGIN
-    SELECT u.id, u.full_name, u.email, u.avatar_url, d.dept_name, r.role_name FROM users u
+    SELECT u.id, u.full_name, u.username, u.email, u.avatar_url, d.dept_name, r.role_name FROM users u
     LEFT JOIN departments d ON u.department_id = d.id LEFT JOIN roles r ON u.role_id = r.id
-    WHERE u.full_name LIKE CONCAT('%', p_keyword, '%') OR u.username LIKE CONCAT('%', p_keyword, '%') LIMIT 20;
+    WHERE u.full_name LIKE CONCAT('%', p_keyword, '%') OR u.username LIKE CONCAT('%', p_keyword, '%') LIMIT 15;
 END$$
 
-DROP PROCEDURE IF EXISTS sp_UpdateTaskStatusSync$$
-CREATE PROCEDURE sp_UpdateTaskStatusSync(IN p_task_id INT)
+DROP PROCEDURE IF EXISTS sp_SearchTasks$$
+CREATE PROCEDURE sp_SearchTasks(
+    IN p_user_id INT,
+    IN p_role_id INT,
+    IN p_dept_id INT,
+    IN p_keyword VARCHAR(100)
+)
 BEGIN
-    DECLARE v_total INT; DECLARE v_done INT;
-    SELECT COUNT(*), SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) INTO v_total, v_done FROM subtasks WHERE task_id = p_task_id;
-    IF v_total > 0 AND v_total = v_done THEN UPDATE tasks SET status = 'Done' WHERE id = p_task_id;
-    ELSEIF v_done > 0 THEN UPDATE tasks SET status = 'In Progress' WHERE id = p_task_id; END IF;
+    SELECT t.*, u.full_name as creator_name, d.dept_name
+    FROM tasks t
+    JOIN users u ON t.created_by_user_id = u.id
+    LEFT JOIN departments d ON t.department_id = d.id
+    WHERE (p_role_id IN (1, 4) OR t.department_id = p_dept_id)
+      AND (t.title LIKE CONCAT('%', p_keyword, '%') OR t.description LIKE CONCAT('%', p_keyword, '%'))
+    ORDER BY t.created_at DESC LIMIT 15;
 END$$
 
+-- 11. sp_GetConversationMessages: Lấy tin nhắn chat với đầy đủ thông tin người gửi + Kiểm tra quyền truy cập
 DROP PROCEDURE IF EXISTS sp_GetConversationMessages$$
-CREATE PROCEDURE sp_GetConversationMessages(IN p_conv_id INT, IN p_limit INT, IN p_offset INT)
+CREATE PROCEDURE sp_GetConversationMessages(
+    IN p_conv_id INT, 
+    IN p_limit INT,
+    IN p_viewer_id INT
+)
 BEGIN
-    SELECT m.*, u.full_name, u.avatar_url FROM messages m JOIN users u ON m.sender_id = u.id
-    WHERE m.conversation_id = p_conv_id ORDER BY m.created_at DESC LIMIT p_limit OFFSET p_offset;
+    -- Chỉ cho phép xem nếu viewer là thành viên của cuộc hội thoại
+    IF EXISTS (SELECT 1 FROM conversation_members WHERE conversation_id = p_conv_id AND user_id = p_viewer_id) THEN
+        SELECT m.*, u.full_name as sender_name, u.avatar_url as sender_avatar 
+        FROM messages m 
+        JOIN users u ON m.sender_id = u.id
+        WHERE m.conversation_id = p_conv_id 
+        ORDER BY m.created_at ASC LIMIT p_limit;
+    END IF;
 END$$
 
+-- 12. sp_MarkMessagesAsRead: Cập nhật trạng thái đã xem (Now)
 DROP PROCEDURE IF EXISTS sp_MarkMessagesAsRead$$
-CREATE PROCEDURE sp_MarkMessagesAsRead(IN p_conv_id INT, IN p_user_id INT)
+CREATE PROCEDURE sp_MarkMessagesAsRead(
+    IN p_conv_id INT, 
+    IN p_user_id INT
+)
 BEGIN
-    UPDATE conversation_members SET last_read_at = NOW() WHERE conversation_id = p_conv_id AND user_id = p_user_id;
+    UPDATE conversation_members 
+    SET last_read_at = NOW() 
+    WHERE conversation_id = p_conv_id AND user_id = p_user_id;
 END$$
 
-DROP PROCEDURE IF EXISTS sp_GetEmployeePerformance$$
-CREATE PROCEDURE sp_GetEmployeePerformance(IN p_user_id INT)
+-- 13. sp_GetPostComments: Lấy danh sách bình luận (Comment + User + Reactions)
+DROP PROCEDURE IF EXISTS sp_GetPostComments$$
+CREATE PROCEDURE sp_GetPostComments(
+    IN p_post_id INT,
+    IN p_current_user_id INT
+)
 BEGIN
-    SELECT COUNT(*) as total_assigned, SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as completed,
-    SUM(CASE WHEN deadline < NOW() AND status != 'Done' THEN 1 ELSE 0 END) as overdue,
-    ROUND((SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as efficiency_rate
-    FROM subtasks WHERE assignee_id = p_user_id;
+    SELECT c.*, u.full_name, u.avatar_url,
+           (SELECT COUNT(*) FROM comment_reactions WHERE comment_id = c.id) as like_count,
+           CASE WHEN EXISTS (SELECT 1 FROM comment_reactions WHERE comment_id = c.id AND user_id = p_current_user_id) THEN 1 ELSE 0 END as is_liked
+    FROM comments c
+    JOIN users u ON c.user_id = u.id
+    WHERE c.post_id = p_post_id
+    ORDER BY c.created_at ASC;
 END$$
 
-DROP PROCEDURE IF EXISTS sp_GetLeaderboard$$
-CREATE PROCEDURE sp_GetLeaderboard(IN p_dept_id INT)
-BEGIN
-    SELECT u.full_name, u.avatar_url, COUNT(s.id) as tasks_done FROM users u JOIN subtasks s ON u.id = s.assignee_id
-    WHERE u.department_id = p_dept_id AND s.status = 'Done' GROUP BY u.id ORDER BY tasks_done DESC LIMIT 10;
-END$$
-
+-- 14. sp_ToggleCommentReaction: Like/Unlike bình luận
 DROP PROCEDURE IF EXISTS sp_ToggleCommentReaction$$
 CREATE PROCEDURE sp_ToggleCommentReaction(IN p_comment_id INT, IN p_user_id INT)
 BEGIN
@@ -184,25 +225,6 @@ BEGIN
         INSERT INTO comment_reactions (comment_id, user_id) VALUES (p_comment_id, p_user_id);
         SELECT 'added' AS action;
     END IF;
-END$$
-
-DROP PROCEDURE IF EXISTS sp_GetSubtaskStatsDetailed$$
-CREATE PROCEDURE sp_GetSubtaskStatsDetailed(
-    IN p_dept_id INT,
-    IN p_assignee_id INT
-)
-BEGIN
-    SELECT 
-        COUNT(s.id) as total_subtasks,
-        SUM(CASE WHEN s.status = 'Done' THEN 1 ELSE 0 END) as done_subtasks,
-        SUM(CASE WHEN s.deadline < NOW() AND s.status != 'Done' THEN 1 ELSE 0 END) as overdue_subtasks,
-        SUM(CASE WHEN s.status = 'To Do' THEN 1 ELSE 0 END) as todo_subtasks,
-        SUM(CASE WHEN s.status = 'In Progress' THEN 1 ELSE 0 END) as inprogress_subtasks,
-        SUM(CASE WHEN s.status = 'Pending' THEN 1 ELSE 0 END) as pending_subtasks
-    FROM subtasks s
-    JOIN tasks t ON s.task_id = t.id
-    WHERE (p_dept_id IS NULL OR t.department_id = p_dept_id)
-      AND (p_assignee_id IS NULL OR s.assignee_id = p_assignee_id);
 END$$
 
 DELIMITER ;

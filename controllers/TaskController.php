@@ -1069,4 +1069,18 @@ class TaskController
         echo json_encode(['success' => true, 'data' => $result]);
         exit;
     }
+
+    public function apiSearchTasks() {
+        header('Content-Type: application/json');
+        $keyword = trim($_GET['q'] ?? '');
+        if (empty($keyword)) {
+            echo json_encode([]);
+            exit;
+        }
+
+        $taskModel = new Task($this->db);
+        $results = $taskModel->search($keyword, $_SESSION['role_id'], $_SESSION['department_id'] ?? null, $_SESSION['user_id']);
+        echo json_encode($results);
+        exit;
+    }
 }

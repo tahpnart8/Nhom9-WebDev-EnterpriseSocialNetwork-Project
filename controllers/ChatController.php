@@ -42,7 +42,7 @@ class ChatController {
         $activeConv = null;
         
         if ($activeConvId) {
-            $activeMessages = $msgModel->getMessages($activeConvId);
+            $activeMessages = $msgModel->getMessages($activeConvId, $_SESSION['user_id']);
             $activeConv = $msgModel->getConversationDetail($activeConvId);
             if ($activeConv && $activeConv['type'] === 'Group') {
                 $activeGroupMembers = $msgModel->getGroupMembers($activeConvId);
@@ -52,7 +52,7 @@ class ChatController {
         $withUserId = $_GET['with'] ?? null;
         if ($withUserId && !$activeConvId) {
             $activeConvId = $msgModel->getOrCreateConversation($_SESSION['user_id'], $withUserId);
-            $activeMessages = $msgModel->getMessages($activeConvId);
+            $activeMessages = $msgModel->getMessages($activeConvId, $_SESSION['user_id']);
             $activeConv = $msgModel->getConversationDetail($activeConvId);
             $msgModel->updateLastRead($activeConvId, $_SESSION['user_id']);
         }
@@ -193,7 +193,7 @@ class ChatController {
         
         $msgModel = new Message($this->db);
         $convId = $_GET['conv_id'] ?? 0;
-        $messages = $msgModel->getMessages($convId);
+        $messages = $msgModel->getMessages($convId, $_SESSION['user_id']);
         
         // Cập nhật trạng thái đã đọc khi polling bài viết
         if ($convId) {
