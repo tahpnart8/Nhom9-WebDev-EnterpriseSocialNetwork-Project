@@ -48,6 +48,25 @@ class Task {
 
     // Tạo Task mới (Leader / CEO)
     public function create($department_id, $created_by, $title, $description, $priority, $deadline) {
+        // Kiểm tra chống trùng lặp (Duplicate Prevention) do ấn đúp chuột
+        $checkQuery = "SELECT id FROM " . $this->table_name . " 
+                       WHERE department_id = :dept_id 
+                         AND created_by_user_id = :created_by 
+                         AND title = :title 
+                         AND description = :desc 
+                         AND created_at >= NOW() - INTERVAL 1 MINUTE";
+        $checkStmt = $this->conn->prepare($checkQuery);
+        $checkStmt->execute([
+            ':dept_id' => $department_id,
+            ':created_by' => $created_by,
+            ':title' => $title,
+            ':desc' => $description
+        ]);
+        
+        if ($row = $checkStmt->fetch(PDO::FETCH_ASSOC)) {
+            return $row['id']; // Trả về Task ID đã tồn tại thay vì tạo mới
+        }
+
         $query = "INSERT INTO " . $this->table_name . " 
                   (department_id, created_by_user_id, title, description, priority, deadline) 
                   VALUES (:dept_id, :created_by, :title, :desc, :priority, :deadline)";

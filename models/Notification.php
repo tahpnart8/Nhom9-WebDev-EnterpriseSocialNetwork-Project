@@ -8,6 +8,24 @@ class Notification {
 
     // Tạo thông báo và broadcast cho danh sách user
     public function create($type, $triggerUserId, $content, $targetUrl, $recipientIds = []) {
+        // Kiểm tra chống trùng lặp (Duplicate Prevention)
+        $checkQuery = "SELECT id FROM notifications 
+                       WHERE type = :type 
+                         AND trigger_user_id = :trigger_user_id 
+                         AND content = :content 
+                         AND target_url = :target_url 
+                         AND created_at >= NOW() - INTERVAL 1 MINUTE";
+        $checkStmt = $this->conn->prepare($checkQuery);
+        $checkStmt->execute([
+            ':type' => $type,
+            ':trigger_user_id' => $triggerUserId,
+            ':content' => $content,
+            ':target_url' => $targetUrl
+        ]);
+        if ($row = $checkStmt->fetch(PDO::FETCH_ASSOC)) {
+            return $row['id']; // Trả về Notification ID đã tồn tại, tự động bỏ qua broadcast bước sau do trùng
+        }
+
         $query = "INSERT INTO notifications (type, trigger_user_id, content, target_url) 
                   VALUES (:type, :trigger_user_id, :content, :target_url)";
         $stmt = $this->conn->prepare($query);
