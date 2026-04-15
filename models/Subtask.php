@@ -20,6 +20,45 @@ class Subtask {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    // CEO xem tất cả Subtask toàn công ty
+    public function getAll() {
+        $query = "SELECT s.*, t.title as task_title, t.priority, u.full_name as assignee_name
+                  FROM " . $this->table_name . " s
+                  JOIN tasks t ON s.task_id = t.id
+                  JOIN users u ON s.assignee_id = u.id
+                  ORDER BY s.deadline ASC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Lấy subtask theo phòng ban (cho Leader)
+    public function getByDepartment($department_id) {
+        $query = "SELECT s.*, t.title as task_title, t.priority, u.full_name as assignee_name
+                  FROM " . $this->table_name . " s
+                  JOIN tasks t ON s.task_id = t.id
+                  JOIN users u ON s.assignee_id = u.id
+                  WHERE t.department_id = :dept_id
+                  ORDER BY s.deadline ASC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':dept_id', $department_id);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Lấy subtask theo ID
+    public function getById($subtask_id) {
+        $query = "SELECT s.*, t.title as task_title, t.priority, u.full_name as assignee_name
+                  FROM " . $this->table_name . " s
+                  JOIN tasks t ON s.task_id = t.id
+                  JOIN users u ON s.assignee_id = u.id
+                  WHERE s.id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $subtask_id);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     // Kiểm tra subtask đã có minh chứng chưa
     public function hasEvidence($subtask_id) {
         $query = "SELECT COUNT(*) as cnt FROM subtask_attachments WHERE subtask_id = :id";
@@ -133,6 +172,49 @@ class Subtask {
             return true;
         }
         return false;
+    }
+
+    // Từ chối Subtask (Leader/CEO) - đưa về To Do + ghi lý do
+    public function reject($subtask_id, $reason) {
+        $query = "UPDATE " . $this->table_name . " SET status = 'To Do', is_rejected = 1, is_approved = 0, feedback = :reason WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':reason', $reason);
+        $stmt->bindParam(':id', $subtask_id);
+        return $stmt->execute();
+    }
+
+    // Xóa Subtask
+    public function delete($subtask_id) {
+        // Xóa attachments trước (FK)
+        $stmt = $this->conn->prepare("DELETE FROM subtask_attachments WHERE subtask_id = :id");
+        $stmt->execute([':id' => $subtask_id]);
+        // Xóa subtask
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $subtask_id);
+        return $stmt->execute();
+    }
+
+    // Gia hạn deadline subtask trễ hạn - đưa về To Do
+    public function extendDeadline($subtask_id, $new_deadline) {
+        $query = "UPDATE " . $this->table_name . " SET deadline = :deadline, status = 'To Do', is_rejected = 0, is_extended = 1 WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':deadline', $new_deadline);
+        $stmt->bindParam(':id', $subtask_id);
+        return $stmt->execute();
+    }
+
+    // Lưu minh chứng riêng (không gửi duyệt, không đổi trạng thái)
+    public function saveEvidenceOnly($subtask_id, $notes, $file_url = null) {
+        $query = "INSERT INTO subtask_attachments (subtask_id, file_name, file_url, notes) 
+                  VALUES (:sid, :fname, :furl, :notes)";
+        $stmt = $this->conn->prepare($query);
+        $fileName = $file_url ? basename($file_url) : 'Note/Link';
+        $stmt->bindParam(':sid', $subtask_id);
+        $stmt->bindParam(':fname', $fileName);
+        $stmt->bindParam(':furl', $file_url);
+        $stmt->bindParam(':notes', $notes);
+        return $stmt->execute();
     }
 
     // Lấy dữ liệu Bar Chart cho CEO/Leader sử dụng sp_GetWorkloadStats
