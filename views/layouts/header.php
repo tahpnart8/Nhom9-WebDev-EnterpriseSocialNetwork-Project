@@ -66,6 +66,11 @@
                 </div>
                 
                 <!-- Middle: Search Bar (Centered) -->
+                <?php 
+                    $currentAction = $_GET['action'] ?? 'dashboard';
+                    $hideSearch = in_array($currentAction, ['dashboard', 'profile']);
+                ?>
+                <?php if (!$hideSearch): ?>
                 <div class="search-wrapper d-none d-md-block">
                     <div class="topbar-search-form">
                         <i class="bi bi-search"></i>
@@ -84,6 +89,9 @@
                         </div>
                     </div>
                 </div>
+                <?php else: ?>
+                <div class="flex-grow-1"></div> <!-- Spacer when search is hidden -->
+                <?php endif; ?>
                 
                 <!-- Right: Utility Actions -->
                 <div class="topbar-utility-actions">

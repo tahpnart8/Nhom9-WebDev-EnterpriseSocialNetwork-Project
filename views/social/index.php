@@ -124,7 +124,7 @@
                                 <div class="avatar-circle shadow-sm"><?php echo mb_substr(trim($post['full_name']), 0, 1, 'UTF-8'); ?></div>
                             <?php endif; ?>
                             <div>
-                                <h6 class="mb-0 fw-bold text-dark"><?php echo htmlspecialchars($post['full_name']); ?></h6>
+                                <h6 class="mb-0 fw-bold text-dark post-author-name"><?php echo htmlspecialchars($post['full_name']); ?></h6>
                                 <p class="text-muted small mb-0 d-flex gap-2 align-items-center">
                                     <span><?php echo htmlspecialchars($post['role_name']); ?></span> • <span><?php echo date('H:i d/m/Y', strtotime($post['created_at'])); ?></span> •
                                     <?php 
@@ -500,18 +500,36 @@
         });
     };
 
-    // Highlight matching text if search query exists
+    // ================= SAFE HIGHLIGHTING SYSTEM =================
     $(function() {
         const urlParams = new URLSearchParams(window.location.search);
         const q = urlParams.get('q');
-        if (q) {
+        if (q && q.trim().length > 0) {
             const regex = new RegExp(`(${q})`, 'gi');
-            $('.post-content-text').each(function() {
-                const html = $(this).html();
-                $(this).html(html.replace(regex, '<mark class="bg-warning-subtle text-dark p-0 rounded">$1</mark>'));
+            
+            // Hàm đệ quy để highlight chỉ trong text nodes
+            function highlightTextNodes(element, regex) {
+                $(element).contents().each(function() {
+                    if (this.nodeType === 3) { // Text node
+                        const text = this.nodeValue;
+                        if (regex.test(text)) {
+                            const span = document.createElement('span');
+                            span.innerHTML = text.replace(regex, '<mark class="bg-warning-subtle text-dark p-0 rounded">$1</mark>');
+                            this.parentNode.replaceChild(span, this);
+                        }
+                    } else if (this.nodeType === 1 && this.childNodes.length > 0 && !$(this).is('script, style, mark')) {
+                        highlightTextNodes(this, regex);
+                    }
+                });
+            }
+
+            // Áp dụng cho Nội dung bài viết và Tên tác giả
+            $('.post-content-text, .post-author-name').each(function() {
+                highlightTextNodes(this, regex);
             });
             
-            const firstMatch = $('.post-content-text mark').first();
+            // Cuộn đến kết quả đầu tiên
+            const firstMatch = $('mark').first();
             if (firstMatch.length) {
                 $('html, body').animate({ scrollTop: firstMatch.offset().top - 150 }, 500);
             }

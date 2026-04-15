@@ -22,7 +22,7 @@ BEGIN
     END IF;
 
     IF p_search IS NOT NULL AND p_search <> '' THEN
-        SET @where_clause = CONCAT(@where_clause, ' AND (p.content_html LIKE ? OR u.full_name LIKE ? OR t.title LIKE ? ) ');
+        SET @where_clause = CONCAT(@where_clause, ' AND (p.content_html LIKE ? OR u.full_name LIKE ? ) ');
         SET @search_val = CONCAT('%', p_search, '%');
     ELSE
         SET @search_val = '%%';
@@ -32,7 +32,6 @@ BEGIN
         SELECT p.*, u.full_name, u.avatar_url, m.media_url, m.media_type, r.role_name, t.title as task_title,
                (CASE 
                     WHEN u.full_name LIKE ? THEN 20
-                    WHEN t.title LIKE ? THEN 15
                     WHEN p.content_html LIKE ? THEN 10
                     ELSE 0 
                 END) as relevance_score,
@@ -53,9 +52,9 @@ BEGIN
     
     PREPARE stmt FROM @final_query;
     IF p_search IS NOT NULL AND p_search <> '' THEN
-        EXECUTE stmt USING @search_val, @search_val, @search_val, @search_val, @search_val, @search_val;
+        EXECUTE stmt USING @search_val, @search_val, @search_val, @search_val;
     ELSE
-        EXECUTE stmt USING @search_val, @search_val, @search_val;
+        EXECUTE stmt USING @search_val, @search_val;
     END IF;
     DEALLOCATE PREPARE stmt;
 END$$
