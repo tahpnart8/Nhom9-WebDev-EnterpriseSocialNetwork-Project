@@ -9,7 +9,13 @@ class Comment {
 
     // Lấy danh sách bình luận của một bài viết (kèm thông tin user và số lượt tim)
     public function getByPostId($post_id, $current_user_id) {
-        $query = "CALL sp_GetPostComments(:post_id, :current_user)";
+        $query = "SELECT c.*, u.full_name, u.avatar_url,
+                  (SELECT COUNT(*) FROM comment_reactions WHERE comment_id = c.id) as like_count,
+                  CASE WHEN EXISTS(SELECT 1 FROM comment_reactions WHERE comment_id = c.id AND user_id = :current_user) THEN 1 ELSE 0 END as is_liked
+                  FROM comments c
+                  JOIN users u ON c.user_id = u.id
+                  WHERE c.post_id = :post_id
+                  ORDER BY c.created_at ASC";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':post_id', $post_id);
         $stmt->bindParam(':current_user', $current_user_id);
@@ -87,9 +93,19 @@ class Comment {
     }
 
     public function toggleReaction($comment_id, $user_id) {
-        $query = "CALL sp_ToggleCommentReaction(:cid, :uid)";
-        $stmt = $this->conn->prepare($query);
-        return $stmt->execute([':cid' => $comment_id, ':uid' => $user_id]);
+        $checkQuery = "SELECT id FROM comment_reactions WHERE comment_id = :cid AND user_id = :uid";
+        $stmt = $this->conn->prepare($checkQuery);
+        $stmt->execute([':cid' => $comment_id, ':uid' => $user_id]);
+        
+        if ($stmt->rowCount() > 0) {
+            $delQuery = "DELETE FROM comment_reactions WHERE comment_id = :cid AND user_id = :uid";
+            $delStmt = $this->conn->prepare($delQuery);
+            return $delStmt->execute([':cid' => $comment_id, ':uid' => $user_id]);
+        } else {
+            $insQuery = "INSERT INTO comment_reactions (comment_id, user_id) VALUES (:cid, :uid)";
+            $insStmt = $this->conn->prepare($insQuery);
+            return $insStmt->execute([':cid' => $comment_id, ':uid' => $user_id]);
+        }
     }
 
     // Lấy danh sách người đã thích bình luận
