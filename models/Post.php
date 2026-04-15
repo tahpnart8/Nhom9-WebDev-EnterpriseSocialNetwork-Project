@@ -55,13 +55,20 @@ class Post {
         }
         
         $query = "SELECT p.*, u.full_name, u.avatar_url, m.media_url, m.media_type, r.role_name,
-                  (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.id) as like_count,
-                  (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.id AND user_id = :current_user) as is_liked,
-                  (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count
+                  COALESCE(rc.like_count, 0) as like_count,
+                  CASE WHEN my_r.user_id IS NOT NULL THEN 1 ELSE 0 END as is_liked,
+                  COALESCE(cc.comment_count, 0) as comment_count
                   FROM " . $this->table_name . " p
                   JOIN users u ON p.author_id = u.id
                   LEFT JOIN roles r ON u.role_id = r.id
                   LEFT JOIN post_media m ON p.id = m.post_id
+                  LEFT JOIN (
+                      SELECT post_id, COUNT(*) as like_count FROM post_reactions GROUP BY post_id
+                  ) rc ON rc.post_id = p.id
+                  LEFT JOIN post_reactions my_r ON my_r.post_id = p.id AND my_r.user_id = :current_user
+                  LEFT JOIN (
+                      SELECT post_id, COUNT(*) as comment_count FROM comments GROUP BY post_id
+                  ) cc ON cc.post_id = p.id
                   WHERE $where
                   ORDER BY p.created_at DESC LIMIT 50";
                   

@@ -63,42 +63,58 @@ class Message {
     // Danh sách hội thoại của user (kèm tin nhắn cuối + số tin nhắn chưa đọc)
     public function getConversations($userId) {
         $query = "SELECT c.id, c.type, c.name as group_name, c.avatar_url as group_avatar, c.created_by, c.requires_approval,
-                  (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
-                  (SELECT created_at FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_time,
-                  -- Lấy thông tin đối tác cho trò chuyện Direct
-                  (SELECT u.full_name FROM conversation_members cm2 
-                   JOIN users u ON cm2.user_id = u.id 
-                   WHERE cm2.conversation_id = c.id AND cm2.user_id != :uid1 
-                   AND c.type = 'Direct' LIMIT 1) as partner_name,
-                  (SELECT u.avatar_url FROM conversation_members cm3 
-                   JOIN users u ON cm3.user_id = u.id 
-                   WHERE cm3.conversation_id = c.id AND cm3.user_id != :uid2 
-                   AND c.type = 'Direct' LIMIT 1) as partner_avatar,
-                  (SELECT cm4.user_id FROM conversation_members cm4 
-                   WHERE cm4.conversation_id = c.id AND cm4.user_id != :uid3 
-                   AND c.type = 'Direct' LIMIT 1) as partner_id,
-                  -- Lấy avatar của các thành viên làm ảnh ghép cho Nhóm nếu chưa có ảnh
-                  (SELECT u.avatar_url FROM conversation_members cma 
-                   JOIN users u ON cma.user_id = u.id 
-                   WHERE cma.conversation_id = c.id AND c.type = 'Group' LIMIT 1) as group_avatar_1,
-                  (SELECT u.avatar_url FROM conversation_members cmb 
-                   JOIN users u ON cmb.user_id = u.id 
-                   WHERE cmb.conversation_id = c.id AND c.type = 'Group' LIMIT 1 OFFSET 1) as group_avatar_2,
-                  (SELECT COUNT(*) FROM messages m 
-                   JOIN conversation_members cm_read ON m.conversation_id = cm_read.conversation_id 
-                   WHERE m.conversation_id = c.id 
-                   AND cm_read.user_id = :uid_unread 
-                   AND m.created_at > cm_read.last_read_at
-                   AND m.sender_id != :uid_sender
-                  ) as unread_count
+                  lm.content as last_message,
+                  lm.created_at as last_time,
+                  partner.full_name as partner_name,
+                  partner.avatar_url as partner_avatar,
+                  partner.id as partner_id,
+                  ga1.avatar_url as group_avatar_1,
+                  ga2.avatar_url as group_avatar_2,
+                  COALESCE(unread.unread_count, 0) as unread_count
                   FROM conversations c
-                  JOIN conversation_members cm ON c.id = cm.conversation_id
-                  WHERE cm.user_id = :uid4
-                  ORDER BY last_time DESC";
+                  JOIN conversation_members cm ON c.id = cm.conversation_id AND cm.user_id = :uid1
+                  -- Last message: JOIN với derived table lấy tin nhắn mới nhất
+                  LEFT JOIN (
+                      SELECT m1.conversation_id, m1.content, m1.created_at
+                      FROM messages m1
+                      INNER JOIN (
+                          SELECT conversation_id, MAX(id) as max_id FROM messages GROUP BY conversation_id
+                      ) m2 ON m1.id = m2.max_id
+                  ) lm ON lm.conversation_id = c.id
+                  -- Partner info for Direct conversations
+                  LEFT JOIN conversation_members cm_partner ON cm_partner.conversation_id = c.id 
+                      AND cm_partner.user_id != :uid2 AND c.type = 'Direct'
+                  LEFT JOIN users partner ON partner.id = cm_partner.user_id
+                  -- Group avatars (lấy 2 thành viên đầu tiên)
+                  LEFT JOIN (
+                      SELECT cma.conversation_id, u.avatar_url,
+                             ROW_NUMBER() OVER (PARTITION BY cma.conversation_id ORDER BY cma.user_id) as rn
+                      FROM conversation_members cma
+                      JOIN users u ON cma.user_id = u.id
+                      JOIN conversations cv ON cma.conversation_id = cv.id AND cv.type = 'Group'
+                  ) ga1 ON ga1.conversation_id = c.id AND ga1.rn = 1
+                  LEFT JOIN (
+                      SELECT cma.conversation_id, u.avatar_url,
+                             ROW_NUMBER() OVER (PARTITION BY cma.conversation_id ORDER BY cma.user_id) as rn
+                      FROM conversation_members cma
+                      JOIN users u ON cma.user_id = u.id
+                      JOIN conversations cv ON cma.conversation_id = cv.id AND cv.type = 'Group'
+                  ) ga2 ON ga2.conversation_id = c.id AND ga2.rn = 2
+                  -- Unread count
+                  LEFT JOIN (
+                      SELECT m.conversation_id, COUNT(*) as unread_count
+                      FROM messages m
+                      JOIN conversation_members cmr ON m.conversation_id = cmr.conversation_id
+                          AND cmr.user_id = :uid_unread
+                      WHERE m.created_at > cmr.last_read_at
+                        AND m.sender_id != :uid_sender
+                      GROUP BY m.conversation_id
+                  ) unread ON unread.conversation_id = c.id
+                  ORDER BY lm.created_at DESC";
         $stmt = $this->conn->prepare($query);
         $stmt->execute([
-            ':uid1' => $userId, ':uid2' => $userId, ':uid3' => $userId,
-            ':uid_unread' => $userId, ':uid_sender' => $userId, ':uid4' => $userId
+            ':uid1' => $userId, ':uid2' => $userId,
+            ':uid_unread' => $userId, ':uid_sender' => $userId
         ]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

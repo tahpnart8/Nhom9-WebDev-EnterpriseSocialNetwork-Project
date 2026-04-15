@@ -69,18 +69,30 @@ class TaskController
         // === Bảng THEO TASK: Staff cũng thấy TẤT CẢ subtask trong Task ===
         $tasksWithSubtasks = [];
         if ($roleId == 3) {
-            // Staff: tìm các Task chứa subtask của mình, rồi lấy TOÀN BỘ subtask trong Task
+            // Staff: Batch lấy tất cả tasks cùng lúc (tránh N+1 loop)
             $taskIds = array_unique(array_column($subtasks, 'task_id'));
-            foreach ($taskIds as $tid) {
-                $taskInfo = $taskModel->getById($tid);
-                if (!$taskInfo)
-                    continue;
-                $allSubtasksInTask = $subtaskModel->getByTaskId($tid);
-                $taskInfo['subtasks'] = $allSubtasksInTask;
-                $taskInfo['subtask_count'] = count($allSubtasksInTask);
-                $taskInfo['done_count'] = count(array_filter($allSubtasksInTask, function ($s) {
-                    return $s['status'] == 'Done'; }));
-                $tasksWithSubtasks[] = $taskInfo;
+            if (!empty($taskIds)) {
+                $allTasks = $taskModel->getTasksByIds($taskIds);
+                // Lấy TẤT CẢ subtasks trong các tasks đó bằng 1 query
+                $placeholders = implode(',', array_fill(0, count($taskIds), '?'));
+                $stmtAll = $this->db->prepare("SELECT s.*, u.full_name as assignee_name
+                    FROM subtasks s JOIN users u ON s.assignee_id = u.id
+                    WHERE s.task_id IN ($placeholders) ORDER BY s.created_at ASC");
+                $stmtAll->execute(array_values($taskIds));
+                $allSubInTasks = $stmtAll->fetchAll(PDO::FETCH_ASSOC);
+                // Group subtasks theo task_id trong PHP (in-memory)
+                $subtasksByTask = [];
+                foreach ($allSubInTasks as $sub) {
+                    $subtasksByTask[$sub['task_id']][] = $sub;
+                }
+                foreach ($allTasks as $taskInfo) {
+                    $subs = $subtasksByTask[$taskInfo['id']] ?? [];
+                    $taskInfo['subtasks'] = $subs;
+                    $taskInfo['subtask_count'] = count($subs);
+                    $taskInfo['done_count'] = count(array_filter($subs, function ($s) {
+                        return $s['status'] == 'Done'; }));
+                    $tasksWithSubtasks[] = $taskInfo;
+                }
             }
         } else {
             foreach ($tasks as $t) {

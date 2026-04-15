@@ -264,14 +264,19 @@ class Subtask {
     public function getUrgentSubtasksByUser($user_id) {
         $query = "SELECT s.*, 
                          t.title as parent_task_title,
-                         (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id) as parent_total_subtasks,
-                         (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id AND status = 'Done') as parent_done_subtasks
+                         COALESCE(tc.parent_total_subtasks, 0) as parent_total_subtasks,
+                         COALESCE(tc.parent_done_subtasks, 0) as parent_done_subtasks
                   FROM " . $this->table_name . " s
                   JOIN tasks t ON s.task_id = t.id
+                  LEFT JOIN (
+                      SELECT task_id, COUNT(*) as parent_total_subtasks,
+                             SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as parent_done_subtasks
+                      FROM subtasks GROUP BY task_id
+                  ) tc ON tc.task_id = t.id
                   WHERE s.assignee_id = :user_id 
                     AND s.status IN ('To Do', 'In Progress')
                   ORDER BY s.deadline ASC
-                  LIMIT 15"; // Lấy nhiều hơn 3 để dự phòng/cuộn nếu sau này cần
+                  LIMIT 15";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':user_id', $user_id);
         $stmt->execute();

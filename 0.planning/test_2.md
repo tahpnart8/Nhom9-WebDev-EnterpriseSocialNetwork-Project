@@ -18,6 +18,7 @@
 ### TEST-2C: Leader duyệt/từ chối Subtask ở cột Pending
 - **Kết quả:** ⚠️ **CHƯA TEST** — Cần có subtask ở trạng thái Pending trước. Nút "Duyệt" và "Trả lại" đã được verify hiện ở cột Pending qua code review.
 
+
 ### TEST-2D: Click vào thẻ Subtask → Hiện Modal chi tiết đầy đủ
 - **Hành vi:** Click vào thẻ Subtask "Code giao dien form thanh toan" trên Kanban Board.
 - **Kỳ vọng:** Hiện popup/modal hiển thị chi tiết: Tiêu đề, Mô tả, Người được gán, Deadline, Trạng thái, Task cha.

@@ -10,10 +10,15 @@ class Task {
     // Lấy tất cả Task thuộc phòng ban (cho Leader / Staff trong phòng đó)
     public function getByDepartment($department_id) {
         $query = "SELECT t.*, u.full_name as creator_name,
-                  (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id) as subtask_count,
-                  (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id AND status = 'Done') as done_count
+                  COALESCE(sc.subtask_count, 0) as subtask_count,
+                  COALESCE(sc.done_count, 0) as done_count
                   FROM " . $this->table_name . " t
                   JOIN users u ON t.created_by_user_id = u.id
+                  LEFT JOIN (
+                      SELECT task_id, COUNT(*) as subtask_count,
+                             SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as done_count
+                      FROM subtasks GROUP BY task_id
+                  ) sc ON sc.task_id = t.id
                   WHERE t.department_id = :dept_id
                   ORDER BY t.created_at DESC";
         $stmt = $this->conn->prepare($query);
@@ -25,11 +30,16 @@ class Task {
     // CEO xem tất cả Task toàn công ty
     public function getAll() {
         $query = "SELECT t.*, u.full_name as creator_name, d.dept_name,
-                  (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id) as subtask_count,
-                  (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id AND status = 'Done') as done_count
+                  COALESCE(sc.subtask_count, 0) as subtask_count,
+                  COALESCE(sc.done_count, 0) as done_count
                   FROM " . $this->table_name . " t
                   JOIN users u ON t.created_by_user_id = u.id
                   LEFT JOIN departments d ON t.department_id = d.id
+                  LEFT JOIN (
+                      SELECT task_id, COUNT(*) as subtask_count,
+                             SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as done_count
+                      FROM subtasks GROUP BY task_id
+                  ) sc ON sc.task_id = t.id
                   ORDER BY t.created_at DESC";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
@@ -64,6 +74,27 @@ class Task {
     }
 
     // Lấy Task theo ID
+    // Lấy nhiều Tasks cùng lúc (Batch — tránh N+1)
+    public function getTasksByIds($ids) {
+        if (empty($ids)) return [];
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $query = "SELECT t.*, u.full_name as creator_name, d.dept_name,
+                  COALESCE(sc.subtask_count, 0) as subtask_count,
+                  COALESCE(sc.done_count, 0) as done_count
+                  FROM " . $this->table_name . " t
+                  JOIN users u ON t.created_by_user_id = u.id
+                  LEFT JOIN departments d ON t.department_id = d.id
+                  LEFT JOIN (
+                      SELECT task_id, COUNT(*) as subtask_count,
+                             SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as done_count
+                      FROM subtasks GROUP BY task_id
+                  ) sc ON sc.task_id = t.id
+                  WHERE t.id IN ($placeholders)";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute(array_values($ids));
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function getById($task_id) {
         $query = "SELECT t.*, u.full_name as creator_name, d.dept_name
                   FROM " . $this->table_name . " t
