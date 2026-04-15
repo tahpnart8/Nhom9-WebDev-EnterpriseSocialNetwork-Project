@@ -55,6 +55,17 @@ class SocialController {
         // Fetch feed using Role ID & Department ID & Current User ID
         $feed = $postModel->getFeed($_SESSION['role_id'], $_SESSION['department_id'] ?? null, $_SESSION['user_id'], $channel, $dept_id_filter, $searchQuery);
         
+        // Lấy Bảng xếp hạng (Leaderboard) sử dụng Procedure (TÍNH NĂNG MỚI)
+        $leaderboard = [];
+        if (isset($_SESSION['department_id'])) {
+            $queryLB = "CALL sp_GetLeaderboard(:dept_id)";
+            $stmtLB = $this->db->prepare($queryLB);
+            $stmtLB->bindParam(':dept_id', $_SESSION['department_id']);
+            $stmtLB->execute();
+            $leaderboard = $stmtLB->fetchAll(PDO::FETCH_ASSOC);
+            $stmtLB->closeCursor();
+        }
+
         require_once __DIR__ . '/../views/social/index.php';
     }
 

@@ -38,69 +38,31 @@ class Post {
     }
 
     public function getFeed($role_id, $department_id, $current_user_id, $channel = 'public', $dept_filter_id = null, $searchQuery = null) {
-        $where = " p.visibility = 'Public' ";
+        $dept_id = ($role_id == 1 || $role_id == 4) ? $dept_filter_id : $department_id;
         
-        if ($channel === 'announcement') {
-            $where = " p.visibility = 'Announcement' ";
-        } else if ($channel === 'department') {
-            if ($role_id == 1 || $role_id == 4) { // CEO or Admin
-                if ($dept_filter_id) {
-                    $where = " p.visibility = 'Department' AND p.department_id = " . intval($dept_filter_id);
-                } else {
-                    $where = " p.visibility = 'Department' ";
-                }
-            } else {
-                $where = " p.visibility = 'Department' AND p.department_id = " . intval($department_id);
-            }
-        }
-
-        $params = [':current_user' => $current_user_id];
-        if ($searchQuery) {
-            $where .= " AND (p.content_html LIKE :q OR u.full_name LIKE :q) ";
-            $params[':q'] = "%$searchQuery%";
-        }
-        
-        $query = "SELECT p.*, u.full_name, u.avatar_url, m.media_url, m.media_type, r.role_name,
-                  COALESCE(rc.like_count, 0) as like_count,
-                  CASE WHEN my_r.user_id IS NOT NULL THEN 1 ELSE 0 END as is_liked,
-                  COALESCE(cc.comment_count, 0) as comment_count
-                  FROM " . $this->table_name . " p
-                  JOIN users u ON p.author_id = u.id
-                  LEFT JOIN roles r ON u.role_id = r.id
-                  LEFT JOIN post_media m ON p.id = m.post_id
-                  LEFT JOIN (
-                      SELECT post_id, COUNT(*) as like_count FROM post_reactions GROUP BY post_id
-                  ) rc ON rc.post_id = p.id
-                  LEFT JOIN post_reactions my_r ON my_r.post_id = p.id AND my_r.user_id = :current_user
-                  LEFT JOIN (
-                      SELECT post_id, COUNT(*) as comment_count FROM comments GROUP BY post_id
-                  ) cc ON cc.post_id = p.id
-                  WHERE $where
-                  ORDER BY p.created_at DESC LIMIT 50";
-                  
+        $query = "CALL sp_GetFeed(:current_user, :role_id, :dept_id, :channel, :search)";
         $stmt = $this->conn->prepare($query);
-        $stmt->execute($params);
+        $stmt->bindParam(':current_user', $current_user_id);
+        $stmt->bindParam(':role_id', $role_id);
+        $stmt->bindValue(':dept_id', $dept_id, $dept_id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+        $stmt->bindParam(':channel', $channel);
+        $stmt->bindValue(':search', $searchQuery, $searchQuery === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        
+        $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // Toggle Reaction cho Bài viết
+    // Toggle Reaction cho Bài viết sử dụng Procedure
     public function toggleReaction($post_id, $user_id) {
-        $check = "SELECT id FROM post_reactions WHERE post_id = :pid AND user_id = :uid";
-        $stmt = $this->conn->prepare($check);
-        $stmt->execute([':pid' => $post_id, ':uid' => $user_id]);
-        
-        $action = 'added';
-        if ($stmt->rowCount() > 0) {
-            $query = "DELETE FROM post_reactions WHERE post_id = :pid AND user_id = :uid";
-            $action = 'deleted';
-        } else {
-            $query = "INSERT INTO post_reactions (post_id, user_id, type) VALUES (:pid, :uid, 'Heart')";
-            $action = 'added';
-        }
-        
+        $query = "CALL sp_TogglePostReaction(:pid, :uid)";
         $stmt = $this->conn->prepare($query);
-        if ($stmt->execute([':pid' => $post_id, ':uid' => $user_id])) {
-            return $action;
+        $stmt->bindParam(':pid', $post_id);
+        $stmt->bindParam(':uid', $user_id);
+        
+        if ($stmt->execute()) {
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt->closeCursor(); // Quan trọng khi gọi procedure trả về result set
+            return $result['action'];
         }
         return false;
     }

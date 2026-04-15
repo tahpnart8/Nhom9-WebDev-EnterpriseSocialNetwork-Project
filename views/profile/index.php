@@ -185,6 +185,35 @@ $coverUrl = !empty($user['cover_url']) ? $user['cover_url'] : 'https://placehold
                     </div>
                 </div>
             </div>
+
+            <!-- KPI Performance Section (TÍNH NĂNG MỚI TỪ PROCEDURE) -->
+            <div class="row mt-4 pt-4 border-top g-3">
+                <div class="col-md-3">
+                    <div class="p-3 rounded-4 bg-light border-start border-primary border-4 shadow-sm">
+                        <div class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing: 0.5px;">Tổng công việc</div>
+                        <div class="h3 fw-black mb-0 text-primary"><?php echo $performance['total_assigned'] ?? 0; ?></div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-3 rounded-4 bg-light border-start border-success border-4 shadow-sm">
+                        <div class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing: 0.5px;">Đã hoàn thành</div>
+                        <div class="h3 fw-black mb-0 text-success"><?php echo $performance['completed'] ?? 0; ?></div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-3 rounded-4 bg-light border-start border-danger border-4 shadow-sm">
+                        <div class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing: 0.5px;">Việc trễ hạn</div>
+                        <div class="h3 fw-black mb-0 text-danger"><?php echo $performance['overdue'] ?? 0; ?></div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-3 rounded-4 bg-primary text-white shadow-sm position-relative overflow-hidden">
+                        <div class="text-uppercase small fw-bold mb-1 opacity-75" style="letter-spacing: 0.5px;">Hiệu suất (KPI)</div>
+                        <div class="h3 fw-black mb-0"><?php echo $performance['efficiency_rate'] ?? 0; ?>%</div>
+                        <i class="bi bi-graph-up-arrow position-absolute opacity-25" style="font-size: 4rem; bottom: -10px; right: -5px;"></i>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

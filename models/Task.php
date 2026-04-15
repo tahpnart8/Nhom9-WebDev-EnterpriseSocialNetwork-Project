@@ -135,22 +135,27 @@ class Task {
         return $stmt->execute();
     }
 
-    // Lấy thống kê dự án (Active Projects)
-    public function getTaskStats($department_id = null) {
-        $query = "SELECT COUNT(id) as total_tasks, 
-                         SUM(CASE WHEN status != 'Done' THEN 1 ELSE 0 END) as active_projects
-                  FROM " . $this->table_name;
-        
-        if ($department_id) {
-            $query .= " WHERE department_id = :dept_id";
-        }
-        
+    // Lấy thống kê dự án sử dụng Procedure sp_GetDashboardOverview
+    public function getTaskStats($role_id = null, $department_id = null) {
+        // Nếu không truyền role_id, mặc định lấy từ Session hoặc gán là 1 (CEO) để lấy toàn bộ
+        $r_id = $role_id ?? ($_SESSION['role_id'] ?? 1);
+        $d_id = $department_id ?? ($_SESSION['department_id'] ?? null);
+
+        $query = "CALL sp_GetDashboardOverview(:uid, :dept_id, :role_id)";
         $stmt = $this->conn->prepare($query);
-        if ($department_id) {
-            $stmt->bindParam(':dept_id', $department_id);
-        }
+        $dummy_uid = 0; 
+        $stmt->bindParam(':uid', $dummy_uid);
+        $stmt->bindValue(':dept_id', $d_id, $d_id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+        $stmt->bindParam(':role_id', $r_id);
         $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+        
+        return [
+            'total_tasks' => $result['task_count'] ?? 0,
+            'active_projects' => $result['task_count'] ?? 0,
+            'pending_approvals' => $result['pending_count'] ?? 0
+        ];
     }
 }
 ?>

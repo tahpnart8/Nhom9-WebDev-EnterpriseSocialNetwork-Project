@@ -56,6 +56,12 @@ class ProfileController {
         $userPosts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $pageTitle = $isViewingSelf ? "Trang cá nhân" : "Hồ sơ của " . $user['full_name'];
+
+        // Lấy hiệu suất (KPI) sử dụng Procedure qua Subtask Model
+        require_once __DIR__ . '/../models/Subtask.php';
+        $subtaskModel = new Subtask($this->db);
+        $performance = $subtaskModel->getPerformance($viewingId);
+
         require_once __DIR__ . '/../views/profile/index.php';
     }
 

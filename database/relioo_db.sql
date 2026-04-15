@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 100.72.177.39
--- Generation Time: Apr 15, 2026 at 03:04 AM
+-- Generation Time: Apr 15, 2026 at 09:22 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -160,17 +160,17 @@ CREATE TABLE `conversation_members` (
 --
 
 INSERT INTO `conversation_members` (`conversation_id`, `user_id`, `last_read_at`, `role`) VALUES
-(1, 3, '2026-04-14 02:06:34', 'member'),
+(1, 3, '2026-04-15 10:12:56', 'member'),
 (1, 4, '2026-04-12 23:04:34', 'member'),
-(2, 2, '2026-04-14 16:09:09', 'member'),
-(2, 3, '2026-04-15 01:46:48', 'member'),
+(2, 2, '2026-04-15 10:16:46', 'member'),
+(2, 3, '2026-04-15 10:15:58', 'member'),
 (3, 1, '2026-04-15 00:37:40', 'member'),
-(3, 2, '2026-04-14 02:25:28', 'member'),
+(3, 2, '2026-04-15 10:14:32', 'member'),
 (4, 1, '2026-04-15 00:38:05', 'member'),
-(4, 3, '2026-04-15 00:10:09', 'member'),
-(5, 1, '2026-04-15 00:37:20', 'member'),
-(5, 2, '2026-04-14 16:09:11', 'member'),
-(5, 3, '2026-04-15 08:04:39', 'admin');
+(4, 3, '2026-04-15 10:16:00', 'member'),
+(5, 1, '2026-04-15 10:22:45', 'member'),
+(5, 2, '2026-04-15 10:14:26', 'member'),
+(5, 3, '2026-04-15 14:17:47', 'admin');
 
 -- --------------------------------------------------------
 
@@ -332,7 +332,25 @@ INSERT INTO `messages` (`id`, `conversation_id`, `sender_id`, `content`, `create
 (102, 5, 3, 'ngu', '2026-04-14 16:07:51'),
 (103, 5, 3, 'bonding cái lồn', '2026-04-14 16:07:55'),
 (104, 5, 3, 'ngu', '2026-04-14 16:07:57'),
-(105, 5, 3, '👍', '2026-04-14 16:08:02');
+(105, 5, 3, '👍', '2026-04-14 16:08:02'),
+(106, 2, 3, '👍', '2026-04-15 08:33:55'),
+(107, 2, 2, 'ngu', '2026-04-15 10:12:52'),
+(108, 2, 2, 'ngu', '2026-04-15 10:13:13'),
+(109, 2, 2, 'ngu', '2026-04-15 10:13:23'),
+(110, 2, 2, 'ngu', '2026-04-15 10:13:29'),
+(111, 2, 2, 'ngu', '2026-04-15 10:13:38'),
+(112, 2, 3, 'ê', '2026-04-15 10:13:46'),
+(113, 2, 3, '👍', '2026-04-15 10:13:48'),
+(114, 2, 3, '👍', '2026-04-15 10:13:48'),
+(115, 2, 3, '👍', '2026-04-15 10:13:49'),
+(116, 2, 3, '👍', '2026-04-15 10:13:49'),
+(117, 5, 2, 'ngu', '2026-04-15 10:14:17'),
+(118, 2, 2, 'ngu', '2026-04-15 10:14:23'),
+(119, 3, 2, 'ngu', '2026-04-15 10:14:28'),
+(120, 2, 2, 'ngu', '2026-04-15 10:14:35'),
+(121, 2, 2, 'ádasdsadasd', '2026-04-15 10:14:41'),
+(122, 5, 1, 'cái l gì d', '2026-04-15 10:22:06'),
+(123, 5, 1, '?', '2026-04-15 10:22:10');
 
 -- --------------------------------------------------------
 
@@ -453,14 +471,22 @@ INSERT INTO `notifications` (`id`, `type`, `trigger_user_id`, `content`, `target
 (111, 'SOCIAL_COMMENT', 2, 'Trần IT Trưởng đã bình luận về bài viết của bạn.', 'index.php?action=social&post_id=11#comment-53', '2026-04-13 00:44:47'),
 (112, 'SOCIAL_COMMENT', 2, 'Trần IT Trưởng đã bình luận về bài viết của bạn.', 'index.php?action=social&post_id=11#comment-54', '2026-04-13 00:44:57'),
 (114, 'SOCIAL_COMMENT', 3, 'Vũ Nhân Viên 1 đã bình luận về bài viết của bạn.', 'index.php?action=social&post_id=20#comment-56', '2026-04-13 00:55:13'),
-(115, 'SOCIAL_LIKE', 1, 'Nguyễn Văn CEO đã thích bài viết của bạn.', 'index.php?action=social&post_id=20', '2026-04-13 09:44:32'),
 (121, 'SOCIAL_LIKE', 3, 'Vũ Nhân Viên 1 đã thích bài viết của bạn.', 'index.php?action=social&post_id=2', '2026-04-14 15:35:10'),
-(122, 'SOCIAL_LIKE', 1, 'Nguyễn Văn CEO đã thích bài viết của bạn.', 'index.php?action=social&post_id=11', '2026-04-14 16:00:05'),
 (123, 'SOCIAL_LIKE', 1, 'Nguyễn Văn CEO đã thích bài viết của bạn.', 'index.php?action=social&post_id=4', '2026-04-14 16:00:08'),
 (124, 'SOCIAL_LIKE', 1, 'Nguyễn Văn CEO đã thích bài viết của bạn.', 'index.php?action=social&post_id=3', '2026-04-14 16:00:09'),
 (152, 'task_approval', 3, 'Nhân viên Vũ Nhân Viên 1 đã gửi duyệt subtask: đói vndajkv', 'index.php?action=tasks&subtask_id=26', '2026-04-14 23:04:44'),
 (153, 'task_approval', 3, 'Nhân viên Vũ Nhân Viên 1 đã gửi duyệt subtask: đói vndajkv', 'index.php?action=tasks&subtask_id=26', '2026-04-14 23:04:48'),
-(161, 'SOCIAL_LIKE', 3, 'Vũ Nhân Viên 1 đã thích bài viết của bạn.', 'index.php?action=social&post_id=20', '2026-04-15 07:55:03');
+(161, 'SOCIAL_LIKE', 3, 'Vũ Nhân Viên 1 đã thích bài viết của bạn.', 'index.php?action=social&post_id=20', '2026-04-15 07:55:03'),
+(175, 'task_assigned', 1, 'Bạn được giao việc trong Task mới: dâdadwdad', 'index.php?action=tasks', '2026-04-15 08:55:42'),
+(177, 'SOCIAL_LIKE', 1, 'Nguyễn Văn CEO đã thích bài viết của bạn.', 'index.php?action=social&post_id=20', '2026-04-15 08:56:39'),
+(178, 'SOCIAL_LIKE', 1, 'Nguyễn Văn CEO đã thích bài viết của bạn.', 'index.php?action=social&post_id=11', '2026-04-15 08:56:45'),
+(185, 'SOCIAL_LIKE', 3, 'Vũ Nhân Viên 1 đã thích bài viết của bạn.', 'index.php?action=social&post_id=8', '2026-04-15 08:57:09'),
+(186, 'task_assigned', 1, 'Bạn được giao việc trong Task mới: cxzzxc', 'index.php?action=tasks', '2026-04-15 09:03:36'),
+(187, 'task_assigned', 1, 'Bạn được giao việc trong Task mới: cxzzxc', 'index.php?action=tasks', '2026-04-15 09:04:40'),
+(188, 'task_assigned', 1, 'Bạn được giao việc trong Task mới: cxzzxc', 'index.php?action=tasks', '2026-04-15 09:12:37'),
+(189, 'task_assigned', 1, 'Bạn được giao việc trong Task mới: szvs', 'index.php?action=tasks', '2026-04-15 09:15:43'),
+(190, 'task_approval', 3, 'Nhân viên Vũ Nhân Viên 1 đã gửi duyệt subtask: áaf', 'index.php?action=tasks&subtask_id=35', '2026-04-15 09:57:31'),
+(191, 'task_approved', 1, 'Subtask \'áaf\' đã được DUYỆT! Vui lòng kéo subtask sang cột Hoàn thành và viết báo cáo AI.', 'index.php?action=tasks', '2026-04-15 09:58:16');
 
 -- --------------------------------------------------------
 
@@ -574,14 +600,22 @@ INSERT INTO `notification_user` (`notification_id`, `user_id`, `is_read`, `read_
 (111, 3, 1, '2026-04-13 00:45:22'),
 (112, 3, 1, '2026-04-13 00:47:47'),
 (114, 2, 1, '2026-04-13 00:55:59'),
-(115, 2, 1, '2026-04-13 09:50:31'),
-(121, 1, 0, NULL),
-(122, 3, 0, NULL),
+(121, 1, 1, '2026-04-15 08:49:35'),
 (123, 3, 0, NULL),
-(124, 3, 0, NULL),
+(124, 3, 1, '2026-04-15 08:47:49'),
 (152, 2, 0, NULL),
 (153, 2, 0, NULL),
-(161, 2, 0, NULL);
+(161, 2, 1, '2026-04-15 09:22:59'),
+(175, 3, 0, NULL),
+(177, 2, 1, '2026-04-15 09:22:56'),
+(178, 3, 0, NULL),
+(185, 1, 1, '2026-04-15 08:57:16'),
+(186, 3, 0, NULL),
+(187, 3, 0, NULL),
+(188, 3, 0, NULL),
+(189, 2, 0, NULL),
+(190, 1, 1, '2026-04-15 09:58:10'),
+(191, 3, 1, '2026-04-15 09:58:29');
 
 -- --------------------------------------------------------
 
@@ -693,15 +727,16 @@ INSERT INTO `post_reactions` (`id`, `post_id`, `user_id`, `type`, `created_at`) 
 (83, 19, 3, 'Heart', '2026-04-13 00:07:42'),
 (84, 19, 2, 'Heart', '2026-04-13 00:42:19'),
 (85, 11, 3, 'Heart', '2026-04-13 00:45:31'),
-(88, 20, 1, 'Heart', '2026-04-13 09:44:32'),
 (94, 1, 3, 'Heart', '2026-04-14 15:27:32'),
-(97, 11, 1, 'Heart', '2026-04-14 16:00:05'),
-(98, 8, 1, 'Heart', '2026-04-14 16:00:05'),
 (99, 5, 1, 'Heart', '2026-04-14 16:00:07'),
 (100, 4, 1, 'Heart', '2026-04-14 16:00:08'),
 (101, 3, 1, 'Heart', '2026-04-14 16:00:09'),
 (113, 20, 2, 'Heart', '2026-04-14 16:09:20'),
-(138, 20, 3, 'Heart', '2026-04-15 07:55:03');
+(138, 20, 3, 'Heart', '2026-04-15 07:55:03'),
+(153, 20, 1, 'Heart', '2026-04-15 08:56:39'),
+(154, 11, 1, 'Heart', '2026-04-15 08:56:45'),
+(161, 8, 3, 'Heart', '2026-04-15 08:57:09'),
+(162, 4, 3, 'Heart', '2026-04-15 10:10:23');
 
 -- --------------------------------------------------------
 
@@ -764,12 +799,6 @@ INSERT INTO `subtasks` (`id`, `task_id`, `assignee_id`, `title`, `description`, 
 (9, 4, 3, 'quýnh Đạt', 'quýnh tới khi nó đi kh nổi', '2026-11-04 00:00:00', 'High', 'Done', NULL, '2026-04-11 02:53:55', '2026-04-11 02:55:41', NULL, 0, 0, 0),
 (10, 4, 1, 'chặt tay th Phát', 'chặt 1 tay để nó kh nhắn tin được nma đủ để code web', '2026-11-04 00:00:00', 'High', 'To Do', NULL, '2026-04-11 02:53:55', '2026-04-11 02:53:55', NULL, 0, 0, 0),
 (11, 4, 2, 'chăm sóc đặc biệt cho Quân', 'mua thuốc cho bạn, để bạn hồi sức code web', '2026-11-04 00:00:00', 'High', 'To Do', NULL, '2026-04-11 02:53:55', '2026-04-11 02:53:55', NULL, 0, 0, 0),
-(12, 5, 3, 'quýnh Đạt', 'quýnh tới khi nó đi kh nổi', '2026-11-04 00:00:00', 'High', 'Done', NULL, '2026-04-11 02:53:56', '2026-04-11 09:28:43', NULL, 0, 0, 0),
-(13, 5, 1, 'chặt tay th Phát', 'chặt 1 tay để nó kh nhắn tin được nma đủ để code web', '2026-11-04 00:00:00', 'High', 'To Do', NULL, '2026-04-11 02:53:56', '2026-04-11 02:53:56', NULL, 0, 0, 0),
-(14, 5, 2, 'chăm sóc đặc biệt cho Quân', 'mua thuốc cho bạn, để bạn hồi sức code web', '2026-11-04 00:00:00', 'High', 'To Do', NULL, '2026-04-11 02:53:56', '2026-04-11 02:53:56', NULL, 0, 0, 0),
-(15, 6, 3, 'quýnh Đạt', 'quýnh tới khi nó đi kh nổi', '2026-11-04 00:00:00', 'High', 'Done', NULL, '2026-04-11 02:53:56', '2026-04-11 03:55:39', NULL, 0, 0, 0),
-(16, 6, 1, 'chặt tay th Phát', 'chặt 1 tay để nó kh nhắn tin được nma đủ để code web', '2026-11-04 00:00:00', 'High', 'To Do', NULL, '2026-04-11 02:53:56', '2026-04-11 02:53:56', NULL, 0, 0, 0),
-(17, 6, 2, 'chăm sóc đặc biệt cho Quân', 'mua thuốc cho bạn, để bạn hồi sức code web', '2026-11-04 00:00:00', 'High', 'To Do', NULL, '2026-04-11 02:53:56', '2026-04-11 02:53:56', NULL, 0, 0, 0),
 (18, 7, 3, 'Code web của ba Thành', 'Dùng đầy đủ quan hệ OOP ko là bị trừ điểm', '2026-04-15 00:00:00', 'High', 'Done', NULL, '2026-04-11 03:08:45', '2026-04-11 09:33:00', NULL, 1, 0, 0),
 (19, 7, 1, 'Thuyết trình cùng ba Hói', 'Cùng thảo luận nha', '2026-04-15 00:00:00', 'High', 'Done', NULL, '2026-04-11 03:08:45', '2026-04-12 22:24:44', NULL, 1, 0, 1),
 (20, 8, 3, 'Học code web cùng ba Thành', 'Phải dùng đủ quan hệ OOP không là bị trừ điểm', '2026-04-15 00:00:00', 'High', 'In Progress', NULL, '2026-04-11 03:10:34', '2026-04-12 21:28:37', 'ừ gà', 1, 0, 0),
@@ -786,7 +815,10 @@ INSERT INTO `subtasks` (`id`, `task_id`, `assignee_id`, `title`, `description`, 
 (31, 14, 3, 'sub 2', 'lẹ mày', '2026-04-14 00:00:00', 'High', 'Done', NULL, '2026-04-11 14:07:17', '2026-04-11 14:16:57', 'ngu', 0, 0, 1),
 (32, 16, 3, 'Khảo sát thị trường', 'Đi khảo sát thị trường công nghệ hiện nay', '2026-04-19 00:00:00', 'High', 'Done', NULL, '2026-04-11 15:19:21', '2026-04-11 15:23:00', NULL, 0, 0, 1),
 (33, 16, 3, 'Khảo sát người dùng', 'Đi khảo sát thị trường công nghệ ET', '2026-04-19 00:00:00', 'Medium', 'Done', NULL, '2026-04-11 15:19:21', '2026-04-11 15:25:11', NULL, 0, 0, 1),
-(34, 16, 3, 'Tổng kết kết quả nghiên cứu', 'Kết quả nghiên cứu như thế nào?', '2026-04-19 00:00:00', 'Medium', 'Done', NULL, '2026-04-11 15:19:21', '2026-04-11 15:26:33', NULL, 0, 0, 1);
+(34, 16, 3, 'Tổng kết kết quả nghiên cứu', 'Kết quả nghiên cứu như thế nào?', '2026-04-19 00:00:00', 'Medium', 'Done', NULL, '2026-04-11 15:19:21', '2026-04-11 15:26:33', NULL, 0, 0, 1),
+(35, 17, 3, 'áaf', 'âfas', '2026-04-19 00:00:00', 'Medium', 'Pending', NULL, '2026-04-15 08:55:42', '2026-04-15 09:58:16', NULL, 0, 0, 1),
+(36, 18, 3, 'Ngu lắm con', '', '2026-04-16 00:00:00', 'Medium', 'To Do', NULL, '2026-04-15 09:03:36', '2026-04-15 09:03:36', NULL, 0, 0, 0),
+(38, 20, 2, 'zxvvx', '', '0000-00-00 00:00:00', 'Medium', 'To Do', NULL, '2026-04-15 09:15:43', '2026-04-15 09:15:43', NULL, 0, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -815,7 +847,6 @@ INSERT INTO `subtask_attachments` (`id`, `subtask_id`, `file_name`, `file_url`, 
 (5, 4, 'php-A188.png', 'https://i.ibb.co/sJtFP2Jn/php-A188.png', '2026-04-09 12:17:56', 'có cái cc'),
 (6, 6, 'Note/Link', '', '2026-04-11 02:34:19', 'ưefhjskdhfksjdf'),
 (7, 9, 'Note/Link', '', '2026-04-11 02:55:20', 'jhghjgj đạt ngu'),
-(8, 12, 'Note/Link', '', '2026-04-11 09:25:56', 'ok quýnh'),
 (9, 21, 'Note/Link', '', '2026-04-11 09:26:45', 'dạaaaa'),
 (10, 18, 'Note/Link', '', '2026-04-11 09:32:40', 'uk'),
 (11, 21, 'Note/Link', '', '2026-04-11 09:39:36', 'dạ'),
@@ -828,7 +859,8 @@ INSERT INTO `subtask_attachments` (`id`, `subtask_id`, `file_name`, `file_url`, 
 (18, 27, 'Note/Link', '', '2026-04-12 21:36:16', 'dssfsgffdfh'),
 (19, 19, 'Note/Link', '', '2026-04-12 22:20:40', 'ggggfdh'),
 (20, 26, 'Note/Link', '', '2026-04-14 23:04:43', 'bnm'),
-(21, 26, 'Note/Link', '', '2026-04-14 23:04:48', 'bnm');
+(21, 26, 'Note/Link', '', '2026-04-14 23:04:48', 'bnm'),
+(22, 35, 'Note/Link', '', '2026-04-15 09:57:31', 'fcgvhbjnkm');
 
 -- --------------------------------------------------------
 
@@ -857,8 +889,6 @@ INSERT INTO `tasks` (`id`, `department_id`, `created_by_user_id`, `title`, `desc
 (2, 1, 1, 'cxzzxc', 'zxczxczxc', 'Medium', '0000-00-00 00:00:00', 'In Progress', '2026-04-09 09:49:34'),
 (3, 1, 1, 'Đi ngủ', 'Đi ngủ đi', 'Low', '2026-04-22 00:00:00', 'Done', '2026-04-11 00:57:59'),
 (4, 3, 2, 'THIẾT KẾ GIAO DIỆN RELIOO', 'màu hường hiện đại dễ nhìn hì, có th ngu Phát đàn đắm chìm trong tình iu đừn như Phát nhé', 'High', '2026-12-04 00:00:00', 'To Do', '2026-04-11 02:53:55'),
-(5, 3, 2, 'THIẾT KẾ GIAO DIỆN RELIOO', 'màu hường hiện đại dễ nhìn hì, có th ngu Phát đàn đắm chìm trong tình iu đừn như Phát nhé', 'High', '2026-12-04 00:00:00', 'To Do', '2026-04-11 02:53:56'),
-(6, 3, 2, 'THIẾT KẾ GIAO DIỆN RELIOO', 'màu hường hiện đại dễ nhìn hì, có th ngu Phát đàn đắm chìm trong tình iu đừn như Phát nhé', 'High', '2026-12-04 00:00:00', 'To Do', '2026-04-11 02:53:56'),
 (7, 3, 2, 'Làm IT ngu', 'Vô cái lớp toàn IT ngu', 'Medium', '2026-04-12 00:00:00', 'In Progress', '2026-04-11 03:08:45'),
 (8, 3, 2, 'IT ngu', 'Vào lớp toàn IT ngu', 'High', '2026-04-12 00:00:00', 'To Do', '2026-04-11 03:10:34'),
 (9, 3, 2, 'fghjkl', '', 'Medium', '2026-04-23 00:00:00', 'To Do', '2026-04-11 03:20:44'),
@@ -868,7 +898,10 @@ INSERT INTO `tasks` (`id`, `department_id`, `created_by_user_id`, `title`, `desc
 (13, 3, 2, 'sdfsdfsdf', 'sdfsdfsdf', 'Medium', '0000-00-00 00:00:00', 'To Do', '2026-04-11 09:34:37'),
 (14, 3, 2, 'Scroll Test Task', 'Testing horizontal scroll.', 'Medium', '2026-04-20 00:00:00', 'To Do', '2026-04-11 09:53:12'),
 (15, 1, 1, 'cfgvhbjnkml', 'fghjl', 'Medium', '0000-00-00 00:00:00', 'To Do', '2026-04-11 14:03:51'),
-(16, 3, 2, 'Khai phá công nghệ, nâng tầm kinh tế', 'nghiên cứu và phát triển ET Ngu', 'High', '2026-04-19 00:00:00', 'Done', '2026-04-11 15:19:21');
+(16, 3, 2, 'Khai phá công nghệ, nâng tầm kinh tế', 'nghiên cứu và phát triển ET Ngu', 'High', '2026-04-19 00:00:00', 'Done', '2026-04-11 15:19:21'),
+(17, 1, 1, 'dâdadwdad', 'afaafasfasfafaf', 'Medium', '2026-04-22 00:00:00', 'To Do', '2026-04-15 08:55:42'),
+(18, 1, 1, 'cxzzxc', 'dạ chú', 'Medium', '0000-00-00 00:00:00', 'To Do', '2026-04-15 09:03:36'),
+(20, 1, 1, 'szvs', 'vzvzxvv', 'Medium', '0000-00-00 00:00:00', 'To Do', '2026-04-15 09:15:43');
 
 -- --------------------------------------------------------
 
@@ -946,16 +979,17 @@ INSERT INTO `users` (`id`, `department_id`, `role_id`, `username`, `password_has
 --
 ALTER TABLE `comments`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `post_id` (`post_id`),
   ADD KEY `user_id` (`user_id`),
-  ADD KEY `parent_comment_id` (`parent_comment_id`);
+  ADD KEY `parent_comment_id` (`parent_comment_id`),
+  ADD KEY `idx_comments_post_date` (`post_id`,`created_at`);
 
 --
 -- Indexes for table `comment_reactions`
 --
 ALTER TABLE `comment_reactions`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `unique_user_comment_reaction` (`comment_id`,`user_id`);
+  ADD UNIQUE KEY `unique_user_comment_reaction` (`comment_id`,`user_id`),
+  ADD KEY `idx_comment_reactions_comment` (`comment_id`,`user_id`);
 
 --
 -- Indexes for table `conversations`
@@ -968,7 +1002,7 @@ ALTER TABLE `conversations`
 --
 ALTER TABLE `conversation_members`
   ADD PRIMARY KEY (`conversation_id`,`user_id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD KEY `idx_conv_members_user` (`user_id`,`conversation_id`);
 
 --
 -- Indexes for table `departments`
@@ -987,8 +1021,8 @@ ALTER TABLE `membership_requests`
 --
 ALTER TABLE `messages`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `conversation_id` (`conversation_id`),
-  ADD KEY `sender_id` (`sender_id`);
+  ADD KEY `sender_id` (`sender_id`),
+  ADD KEY `idx_messages_conv_date` (`conversation_id`,`created_at`);
 
 --
 -- Indexes for table `notifications`
@@ -1002,7 +1036,7 @@ ALTER TABLE `notifications`
 --
 ALTER TABLE `notification_user`
   ADD PRIMARY KEY (`notification_id`,`user_id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD KEY `idx_noti_user_read` (`user_id`,`is_read`);
 
 --
 -- Indexes for table `posts`
@@ -1010,8 +1044,9 @@ ALTER TABLE `notification_user`
 ALTER TABLE `posts`
   ADD PRIMARY KEY (`id`),
   ADD KEY `author_id` (`author_id`),
-  ADD KEY `department_id` (`department_id`),
-  ADD KEY `task_report_id` (`task_report_id`);
+  ADD KEY `task_report_id` (`task_report_id`),
+  ADD KEY `idx_posts_visibility_date` (`visibility`,`created_at`),
+  ADD KEY `idx_posts_dept_visibility` (`department_id`,`visibility`);
 
 --
 -- Indexes for table `post_edit_history`
@@ -1033,7 +1068,8 @@ ALTER TABLE `post_media`
 ALTER TABLE `post_reactions`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_user_post_reaction` (`post_id`,`user_id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `idx_post_reactions_post` (`post_id`,`user_id`);
 
 --
 -- Indexes for table `roles`
@@ -1046,8 +1082,8 @@ ALTER TABLE `roles`
 --
 ALTER TABLE `subtasks`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `task_id` (`task_id`),
-  ADD KEY `assignee_id` (`assignee_id`);
+  ADD KEY `idx_subtasks_assignee_status` (`assignee_id`,`status`),
+  ADD KEY `idx_subtasks_task_status` (`task_id`,`status`);
 
 --
 -- Indexes for table `subtask_attachments`
@@ -1119,13 +1155,13 @@ ALTER TABLE `membership_requests`
 -- AUTO_INCREMENT for table `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=106;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=124;
 
 --
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=162;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=192;
 
 --
 -- AUTO_INCREMENT for table `posts`
@@ -1149,7 +1185,7 @@ ALTER TABLE `post_media`
 -- AUTO_INCREMENT for table `post_reactions`
 --
 ALTER TABLE `post_reactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=139;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=163;
 
 --
 -- AUTO_INCREMENT for table `roles`
@@ -1161,19 +1197,19 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT for table `subtasks`
 --
 ALTER TABLE `subtasks`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT for table `subtask_attachments`
 --
 ALTER TABLE `subtask_attachments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- AUTO_INCREMENT for table `tasks`
 --
 ALTER TABLE `tasks`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `task_reports`

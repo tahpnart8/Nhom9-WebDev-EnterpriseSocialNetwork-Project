@@ -84,225 +84,122 @@ class Subtask {
         return false;
     }
 
-    // Cập nhật trạng thái subtask (kéo thả hoặc nút bấm)
+    // Cập nhật trạng thái subtask (kéo thả hoặc nút bấm) - Tích hợp đồng bộ Task cha
     public function updateStatus($subtask_id, $status, $is_rejected = 0) {
         $query = "UPDATE " . $this->table_name . " SET status = :status, is_rejected = :is_rejected WHERE id = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':status', $status);
         $stmt->bindParam(':is_rejected', $is_rejected, PDO::PARAM_INT);
         $stmt->bindParam(':id', $subtask_id);
+        
+        if ($stmt->execute()) {
+            // Tự động gọi procedure đồng bộ trạng thái Task cha
+            $subtask = $this->getById($subtask_id);
+            if ($subtask) {
+                $syncQuery = "CALL sp_UpdateTaskStatusSync(:tid)";
+                $syncStmt = $this->conn->prepare($syncQuery);
+                $syncStmt->bindParam(':tid', $subtask['task_id']);
+                $syncStmt->execute();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    // Gửi minh chứng (Evidence) sử dụng Procedure sp_SubmitSubtaskEvidence
+    public function submitEvidence($subtask_id, $notes, $file_url = null) {
+        $query = "CALL sp_SubmitSubtaskEvidence(:sid, :notes, :furl)";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':sid', $subtask_id);
+        $stmt->bindParam(':notes', $notes);
+        $stmt->bindParam(':furl', $file_url);
         return $stmt->execute();
     }
 
-    // Gửi minh chứng (Evidence)
-    public function submitEvidence($subtask_id, $notes, $file_url = null) {
-        $this->conn->beginTransaction();
-        try {
-            // Cập nhật trạng thái sang Pending (Chờ duyệt)
-            $query = "UPDATE " . $this->table_name . " SET status = 'Pending', is_rejected = 0 WHERE id = :id";
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':id', $subtask_id);
-            $stmt->execute();
-
-            // Lưu minh chứng vào bảng attachments
-            if ($notes || $file_url) {
-                $q2 = "INSERT INTO subtask_attachments (subtask_id, file_name, file_url, notes) 
-                       VALUES (:sid, :fname, :furl, :notes)";
-                $s2 = $this->conn->prepare($q2);
-                $fname = $file_url ? basename($file_url) : 'Note/Link';
-                $s2->execute([
-                    ':sid' => $subtask_id,
-                    ':fname' => $fname,
-                    ':furl' => $file_url ?? '',
-                    ':notes' => $notes
-                ]);
-            }
-
-            $this->conn->commit();
-            return true;
-        } catch (Exception $e) {
-            $this->conn->rollBack();
-            return false;
-        }
-    }
-
-    // Duyệt Subtask -> Đánh dấu is_approved = 1 (Vẫn giữ ở Pending để nhân viên tự kéo sang Done)
+    // Duyệt Subtask - Tích hợp đồng bộ Task cha
     public function approve($subtask_id) {
         $query = "UPDATE " . $this->table_name . " SET is_approved = 1, is_rejected = 0 WHERE id = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $subtask_id);
-        return $stmt->execute();
-    }
-
-    // Từ chối Subtask -> Về lại Cần làm (To Do)
-    public function reject($subtask_id, $feedback) {
-        $query = "UPDATE " . $this->table_name . " SET status = 'To Do', feedback = :feedback, is_rejected = 1 WHERE id = :id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':feedback', $feedback);
-        $stmt->bindParam(':id', $subtask_id);
-        return $stmt->execute();
-    }
-
-    // Gia hạn deadline subtask trễ hạn → về To Do + nền vàng vĩnh viễn
-    public function extendDeadline($subtask_id, $newDeadline) {
-        $query = "UPDATE " . $this->table_name . " SET deadline = :deadline, status = 'To Do', is_extended = 1, is_rejected = 0 WHERE id = :id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':deadline', $newDeadline);
-        $stmt->bindParam(':id', $subtask_id);
-        return $stmt->execute();
-    }
-
-    // Chỉ lưu minh chứng (KHÔNG đổi status sang Pending)
-    public function saveEvidenceOnly($subtask_id, $notes, $file_url = null) {
-        if (!$notes && !$file_url) return false;
-        $query = "INSERT INTO subtask_attachments (subtask_id, file_name, file_url, notes) VALUES (:sid, :fname, :furl, :notes)";
-        $stmt = $this->conn->prepare($query);
-        $fname = $file_url ? basename($file_url) : 'Note/Link';
-        $stmt->execute([
-            ':sid' => $subtask_id,
-            ':fname' => $fname,
-            ':furl' => $file_url ?? '',
-            ':notes' => $notes
-        ]);
-        return true;
-    }
-
-    // Xóa Subtask
-    public function delete($subtask_id) {
-        $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':id', $subtask_id);
-        return $stmt->execute();
-    }
-
-    // Lấy subtask theo ID
-    public function getById($subtask_id) {
-        $query = "SELECT s.*, t.title as task_title, t.priority, u.full_name as assignee_name
-                  FROM " . $this->table_name . " s
-                  JOIN tasks t ON s.task_id = t.id
-                  JOIN users u ON s.assignee_id = u.id
-                  WHERE s.id = :id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':id', $subtask_id);
-        $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    // Lấy toàn bộ subtasks thuộc phòng ban (cho Leader)
-    public function getByDepartment($department_id) {
-        $query = "SELECT s.*, t.title as task_title, t.priority, t.department_id, u.full_name as assignee_name
-                  FROM " . $this->table_name . " s
-                  JOIN tasks t ON s.task_id = t.id
-                  JOIN users u ON s.assignee_id = u.id
-                  WHERE t.department_id = :dept_id
-                  ORDER BY 
-                    CASE s.status 
-                        WHEN 'To Do' THEN 1 
-                        WHEN 'In Progress' THEN 2 
-                        WHEN 'Pending' THEN 3 
-                        WHEN 'Done' THEN 4 
-                    END, s.deadline ASC";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':dept_id', $department_id);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    // CEO: lấy toàn bộ subtask
-    public function getAll() {
-        $query = "SELECT s.*, t.title as task_title, t.priority, t.department_id, 
-                  d.dept_name, u.full_name as assignee_name
-                  FROM " . $this->table_name . " s
-                  JOIN tasks t ON s.task_id = t.id
-                  LEFT JOIN departments d ON t.department_id = d.id
-                  JOIN users u ON s.assignee_id = u.id
-                  ORDER BY 
-                    CASE s.status 
-                        WHEN 'To Do' THEN 1 
-                        WHEN 'In Progress' THEN 2 
-                        WHEN 'Pending' THEN 3 
-                        WHEN 'Done' THEN 4 
-                    END, s.deadline ASC";
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    // Thống kê Subtask chung (Overdue, Total, Done, v.v...)
-    public function getSubtaskStats($department_id = null, $assignee_id = null) {
-        $query = "SELECT COUNT(s.id) as total_subtasks,
-                         SUM(CASE WHEN s.status = 'Done' THEN 1 ELSE 0 END) as done_subtasks,
-                         SUM(CASE WHEN s.deadline < NOW() AND s.status != 'Done' THEN 1 ELSE 0 END) as overdue_subtasks,
-                         SUM(CASE WHEN s.status = 'To Do' THEN 1 ELSE 0 END) as todo_subtasks,
-                         SUM(CASE WHEN s.status = 'In Progress' THEN 1 ELSE 0 END) as inprogress_subtasks,
-                         SUM(CASE WHEN s.status = 'Pending' THEN 1 ELSE 0 END) as pending_subtasks
-                  FROM " . $this->table_name . " s
-                  JOIN tasks t ON s.task_id = t.id";
         
-        $conditions = [];
-        if ($department_id) { $conditions[] = "t.department_id = :dept_id"; }
-        if ($assignee_id) { $conditions[] = "s.assignee_id = :assignee_id"; }
-
-        if (count($conditions) > 0) {
-            $query .= " WHERE " . implode(" AND ", $conditions);
+        if ($stmt->execute()) {
+            $subtask = $this->getById($subtask_id);
+            if ($subtask) {
+                $syncQuery = "CALL sp_UpdateTaskStatusSync(:tid)";
+                $syncStmt = $this->conn->prepare($syncQuery);
+                $syncStmt->bindParam(':tid', $subtask['task_id']);
+                $syncStmt->execute();
+            }
+            return true;
         }
-
-        $stmt = $this->conn->prepare($query);
-        if ($department_id) { $stmt->bindParam(':dept_id', $department_id); }
-        if ($assignee_id) { $stmt->bindParam(':assignee_id', $assignee_id); }
-        $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return false;
     }
 
-    // Lấy dữ liệu Bar Chart cho CEO: Tổng lượng việc tải trên các phòng ban
+    // Lấy dữ liệu Bar Chart cho CEO/Leader sử dụng sp_GetWorkloadStats
     public function getWorkloadByDepartment() {
-        $query = "SELECT d.dept_name, COUNT(s.id) as total_tasks
-                  FROM departments d
-                  LEFT JOIN tasks t ON t.department_id = d.id
-                  LEFT JOIN subtasks s ON s.task_id = t.id
-                  GROUP BY d.id
-                  ORDER BY total_tasks DESC";
+        $query = "CALL sp_GetWorkloadStats(NULL)";
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+        
+        // Convert format cho đồng bộ với code cũ
+        return array_map(function($item) {
+            return ['dept_name' => $item['label'], 'total_tasks' => $item['total_tasks']];
+        }, $results);
     }
 
-    // Lấy dữ liệu Bar Chart cho Leader: Lượng việc từng nhân viên trong phòng
     public function getWorkloadByAssignee($department_id) {
-        $query = "SELECT u.full_name as assignee_name, COUNT(s.id) as total_tasks
-                  FROM users u
-                  JOIN subtasks s ON s.assignee_id = u.id
-                  JOIN tasks t ON s.task_id = t.id
-                  WHERE t.department_id = :dept_id
-                  GROUP BY u.id
-                  ORDER BY total_tasks DESC";
+        $query = "CALL sp_GetWorkloadStats(:dept_id)";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':dept_id', $department_id);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+
+        return array_map(function($item) {
+            return ['assignee_name' => $item['label'], 'total_tasks' => $item['total_tasks']];
+        }, $results);
     }
 
-    // Lấy dữ liệu Việc gấp cần xử lý cho Right Sidebar
+    // Lấy dữ liệu Việc gấp cần xử lý sử dụng sp_GetUrgentTasks
     public function getUrgentSubtasksByUser($user_id) {
-        $query = "SELECT s.*, 
-                         t.title as parent_task_title,
-                         COALESCE(tc.parent_total_subtasks, 0) as parent_total_subtasks,
-                         COALESCE(tc.parent_done_subtasks, 0) as parent_done_subtasks
-                  FROM " . $this->table_name . " s
-                  JOIN tasks t ON s.task_id = t.id
-                  LEFT JOIN (
-                      SELECT task_id, COUNT(*) as parent_total_subtasks,
-                             SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as parent_done_subtasks
-                      FROM subtasks GROUP BY task_id
-                  ) tc ON tc.task_id = t.id
-                  WHERE s.assignee_id = :user_id 
-                    AND s.status IN ('To Do', 'In Progress')
-                  ORDER BY s.deadline ASC
-                  LIMIT 15";
+        $query = "CALL sp_GetUrgentTasks(:uid)";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':user_id', $user_id);
+        $stmt->bindParam(':uid', $user_id);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+
+        // Convert format để đồng bộ với UI hiện tại
+        return array_map(function($item) {
+            $item['parent_total_subtasks'] = $item['parent_total'];
+            $item['parent_done_subtasks'] = $item['parent_done'];
+            return $item;
+        }, $results);
+    }
+
+    // Thống kê Subtask chi tiết sử dụng sp_GetSubtaskStatsDetailed (KHẮC PHỤC LỖI)
+    public function getSubtaskStats($department_id = null, $assignee_id = null) {
+        $query = "CALL sp_GetSubtaskStatsDetailed(:dept_id, :uid)";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':dept_id', $department_id, $department_id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+        $stmt->bindValue(':uid', $assignee_id, $assignee_id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+        return $result;
+    }
+
+    // Tính điểm KPI nhân viên sử dụng sp_GetEmployeePerformance (TÍNH NĂNG MỚI)
+    public function getPerformance($user_id) {
+        $query = "CALL sp_GetEmployeePerformance(:uid)";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':uid', $user_id);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+        return $result;
     }
 }
 ?>
