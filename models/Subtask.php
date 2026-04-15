@@ -46,23 +46,26 @@ class Subtask {
 
     // Tạo subtask mới (Leader gán cho Staff)
     public function create($task_id, $assignee_id, $title, $description, $deadline, $priority = 'Medium') {
-        // Kiểm tra chống trùng lặp (Duplicate Prevention) do ấn đúp chuột
+        // Kiểm tra chống trùng lặp (Duplicate Prevention) 
+        // Không cho phép giao Subtask giống hệt (cùng người, tiêu đề, mô tả, deadline) nếu subtask cũ chưa Done
         $checkQuery = "SELECT id FROM " . $this->table_name . " 
                        WHERE task_id = :task_id 
                          AND assignee_id = :assignee_id 
                          AND title = :title 
                          AND description = :desc 
-                         AND created_at >= NOW() - INTERVAL 1 MINUTE";
+                         AND deadline <=> :deadline
+                         AND status != 'Done'";
         $checkStmt = $this->conn->prepare($checkQuery);
         $checkStmt->execute([
             ':task_id' => $task_id,
             ':assignee_id' => $assignee_id,
             ':title' => $title,
-            ':desc' => $description
+            ':desc' => $description,
+            ':deadline' => $deadline
         ]);
         
         if ($row = $checkStmt->fetch(PDO::FETCH_ASSOC)) {
-            return $row['id']; // Trả về Subtask ID đã tồn tại thay vì tạo mới
+            return 'DUPLICATE'; 
         }
 
         $query = "INSERT INTO " . $this->table_name . " 

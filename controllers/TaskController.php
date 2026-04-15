@@ -179,6 +179,8 @@ class TaskController
         $this->db->beginTransaction();
         try {
             $taskId = $taskModel->create($deptId, $_SESSION['user_id'], $title, $description, $priority, $deadline);
+            if ($taskId === 'DUPLICATE')
+                throw new Exception('Lỗi: Task này đã tồn tại và chưa hoàn thành (Phát hiện trùng lặp).');
             if (!$taskId)
                 throw new Exception('Lỗi tạo Task.');
 
@@ -198,7 +200,8 @@ class TaskController
                     throw new Exception("Deadline subtask '$stTitle' không được là ngày quá khứ!");
                 }
                 if (!empty($stTitle) && !empty($stAssignee)) {
-                    $subtaskModel->create($taskId, $stAssignee, $stTitle, $stDesc, $stDeadline, $stPriority);
+                    $stId = $subtaskModel->create($taskId, $stAssignee, $stTitle, $stDesc, $stDeadline, $stPriority);
+                    if ($stId === 'DUPLICATE') throw new Exception("Lỗi trùng lặp: Công việc con '$stTitle' đã tồn tại!");
                     if (!in_array($stAssignee, $notifyUserIds))
                         $notifyUserIds[] = $stAssignee;
                 }
@@ -548,7 +551,11 @@ class TaskController
                     exit;
                 }
                 if (!empty($t) && !empty($a)) {
-                    $subtaskModel->create($taskId, $a, $t, $d, $dl, $p);
+                    $res = $subtaskModel->create($taskId, $a, $t, $d, $dl, $p);
+                    if ($res === 'DUPLICATE') {
+                        echo json_encode(['success' => false, 'message' => "Lỗi trùng lặp: Việc '$t' đã tồn tại!"]);
+                        exit;
+                    }
                     $created++;
                     if (!in_array($a, $notifyUserIds))
                         $notifyUserIds[] = $a;
@@ -588,6 +595,10 @@ class TaskController
         }
 
         $subtaskId = $subtaskModel->create($taskId, $assigneeId, $title, $description, $deadline, $priority);
+        if ($subtaskId === 'DUPLICATE') {
+            echo json_encode(['success' => false, 'message' => 'Lỗi trùng lặp: Công việc này đã tồn tại và đang hoạt động!']);
+            exit;
+        }
         if ($subtaskId) {
             $taskModel = new Task($this->db);
             $task = $taskModel->getById($taskId);
