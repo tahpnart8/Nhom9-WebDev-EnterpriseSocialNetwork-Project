@@ -166,7 +166,9 @@ class Task {
         $stmt->bindValue(':dept_id', $dept_id, $dept_id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
         $stmt->bindParam(':keyword', $keyword);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+        return $results;
     }
 }
 ?>

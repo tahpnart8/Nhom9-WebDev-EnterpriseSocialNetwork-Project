@@ -117,7 +117,9 @@ class User {
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':keyword', $keyword);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+        return $results;
     }
 }
 ?>

@@ -49,7 +49,9 @@ class Post {
         $stmt->bindValue(':search', $searchQuery, $searchQuery === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
         
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+        return $results;
     }
 
     // Toggle Reaction cho Bài viết sử dụng Procedure

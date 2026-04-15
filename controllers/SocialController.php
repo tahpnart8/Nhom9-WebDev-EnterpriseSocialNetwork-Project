@@ -10,26 +10,6 @@ class SocialController {
     public function __construct() {
         $database = new Database();
         $this->db = $database->getConnection();
-        
-        // Tự động tạo bảng comment_reactions nếu chưa có (Phát triển nhanh)
-        $this->checkTables();
-    }
-
-    private function checkTables() {
-        $sql = "CREATE TABLE IF NOT EXISTS comment_reactions (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            comment_id INT NOT NULL,
-            user_id INT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY unique_user_comment_reaction (comment_id, user_id),
-            FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
-        )";
-        $this->db->exec($sql);
-        
-        try {
-            // Tự động vá DB phòng trường hợp người dùng chưa nâng cấp chuẩn ENUM
-            $this->db->exec("ALTER TABLE posts MODIFY visibility ENUM('Public', 'Department', 'Private', 'Announcement') DEFAULT 'Public'");
-        } catch (Exception $e) {}
     }
 
     public function index() {
@@ -399,15 +379,22 @@ class SocialController {
         $postModel = new Post($this->db);
         $commentModel = new Comment($this->db);
         
-        // 1. Lấy thông tin bài viết
+        // 1. Lấy thông tin bài viết (Tối ưu: LEFT JOIN thay correlated subqueries)
         $query = "SELECT p.*, u.full_name, u.avatar_url, m.media_url, m.media_type, r.role_name,
-                  (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.id) as like_count,
-                  (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.id AND user_id = :current_user) as is_liked,
-                  (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count
+                  COALESCE(pr_count.like_count, 0) as like_count,
+                  CASE WHEN my_pr.post_id IS NOT NULL THEN 1 ELSE 0 END as is_liked,
+                  COALESCE(cmt_count.comment_count, 0) as comment_count
                   FROM posts p
                   JOIN users u ON p.author_id = u.id
                   LEFT JOIN roles r ON u.role_id = r.id
                   LEFT JOIN post_media m ON p.id = m.post_id
+                  LEFT JOIN (
+                      SELECT post_id, COUNT(*) as like_count FROM post_reactions GROUP BY post_id
+                  ) pr_count ON pr_count.post_id = p.id
+                  LEFT JOIN post_reactions my_pr ON my_pr.post_id = p.id AND my_pr.user_id = :current_user
+                  LEFT JOIN (
+                      SELECT post_id, COUNT(*) as comment_count FROM comments GROUP BY post_id
+                  ) cmt_count ON cmt_count.post_id = p.id
                   WHERE p.id = :post_id";
         $stmt = $this->db->prepare($query);
         $stmt->execute([':current_user' => $_SESSION['user_id'], ':post_id' => $postId]);

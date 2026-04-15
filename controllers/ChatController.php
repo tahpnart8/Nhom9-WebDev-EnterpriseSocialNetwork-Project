@@ -217,4 +217,49 @@ class ChatController {
         echo json_encode(['unread_conversations' => (int)$count]);
         exit;
     }
+
+    // API: Delta fetching - Chỉ lấy tin nhắn MỚI hơn since_id (Real-time)
+    public function fetchNewMessages() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode([]);
+            exit;
+        }
+        
+        $msgModel = new Message($this->db);
+        $convId = $_GET['conv_id'] ?? 0;
+        $sinceId = (int)($_GET['since_id'] ?? 0);
+        
+        $messages = $msgModel->getNewMessages($convId, $sinceId, $_SESSION['user_id']);
+        
+        // Cập nhật trạng thái đã đọc khi có tin mới
+        if ($convId && !empty($messages)) {
+            $msgModel->updateLastRead($convId, $_SESSION['user_id']);
+        }
+
+        echo json_encode($messages);
+        exit;
+    }
+
+    // API: Heartbeat - Trả về counts nhanh cho notification + chat badges (Siêu nhẹ)
+    public function heartbeat() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['noti_count' => 0, 'chat_count' => 0]);
+            exit;
+        }
+
+        $query = "CALL sp_Heartbeat(:uid)";
+        $stmt = $this->db->prepare($query);
+        $stmt->bindParam(':uid', $_SESSION['user_id'], PDO::PARAM_INT);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+
+        echo json_encode([
+            'noti_count' => (int)($result['noti_count'] ?? 0),
+            'chat_count' => (int)($result['chat_count'] ?? 0)
+        ]);
+        exit;
+    }
 }

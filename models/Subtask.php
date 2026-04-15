@@ -139,6 +139,7 @@ class Subtask {
                 $syncStmt = $this->conn->prepare($syncQuery);
                 $syncStmt->bindParam(':tid', $subtask['task_id']);
                 $syncStmt->execute();
+                $syncStmt->closeCursor();
             }
             return true;
         }
@@ -152,7 +153,9 @@ class Subtask {
         $stmt->bindParam(':sid', $subtask_id);
         $stmt->bindParam(':notes', $notes);
         $stmt->bindParam(':furl', $file_url);
-        return $stmt->execute();
+        $result = $stmt->execute();
+        $stmt->closeCursor();
+        return $result;
     }
 
     // Duyệt Subtask - Tích hợp đồng bộ Task cha
@@ -168,6 +171,7 @@ class Subtask {
                 $syncStmt = $this->conn->prepare($syncQuery);
                 $syncStmt->bindParam(':tid', $subtask['task_id']);
                 $syncStmt->execute();
+                $syncStmt->closeCursor();
             }
             return true;
         }

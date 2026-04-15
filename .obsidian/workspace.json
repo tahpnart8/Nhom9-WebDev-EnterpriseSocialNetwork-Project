@@ -177,5 +177,12 @@
     }
   },
   "active": "8074edb3c5857b9b",
-  "lastOpenFiles": []
+  "lastOpenFiles": [
+    "0.planning/source_code_guide.md",
+    "src/logo.png",
+    "src",
+    "database/procedures.sql",
+    "0.planning/implementation-strategy.md",
+    "0.planning/database-optimization-plan.md"
+  ]
 }

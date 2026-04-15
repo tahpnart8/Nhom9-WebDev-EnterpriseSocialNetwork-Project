@@ -36,13 +36,23 @@ class Notification {
         
         if ($stmt->execute()) {
             $notiId = $this->conn->lastInsertId();
-            foreach ($recipientIds as $uid) {
-                if ($uid == $triggerUserId) continue;
-                $q2 = "INSERT INTO notification_user (notification_id, user_id) VALUES (:nid, :uid)";
-                $s2 = $this->conn->prepare($q2);
-                $s2->bindParam(':nid', $notiId);
-                $s2->bindParam(':uid', $uid);
-                $s2->execute();
+            // Batch INSERT thay vì N queries riêng lẻ
+            $validRecipients = array_filter($recipientIds, function($uid) use ($triggerUserId) {
+                return $uid != $triggerUserId;
+            });
+            if (!empty($validRecipients)) {
+                $values = [];
+                $params = [];
+                $i = 0;
+                foreach ($validRecipients as $uid) {
+                    $values[] = "(:nid{$i}, :uid{$i})";
+                    $params[":nid{$i}"] = $notiId;
+                    $params[":uid{$i}"] = $uid;
+                    $i++;
+                }
+                $batchQuery = "INSERT INTO notification_user (notification_id, user_id) VALUES " . implode(',', $values);
+                $batchStmt = $this->conn->prepare($batchQuery);
+                $batchStmt->execute($params);
             }
             return $notiId;
         }

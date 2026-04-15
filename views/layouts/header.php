@@ -239,10 +239,63 @@ function pollChatCount() {
 }
 
 pollNotifications();
-pollChatCount();
 switchNotiTab(_currentNotiTab); // Đồng bộ UI Tab ngay lập tức
-setInterval(pollNotifications, 30000);
-setInterval(pollChatCount, 15000);
+
+// === SMART HEARTBEAT SYSTEM ===
+// Thay vì 2 setInterval nặng (30s noti + 15s chat), dùng 1 heartbeat nhẹ mỗi 5 giây
+// Heartbeat chỉ trả về 2 số (noti_count, chat_count) → siêu nhẹ (~100 bytes)
+// Chỉ gọi full fetch khi count thay đổi
+var _hbNotiCount = -1;
+var _hbChatCount = -1;
+var _hbInterval = 5000; // 5 giây
+var _hbIdleInterval = 15000; // 15 giây khi tab ẩn
+
+function heartbeatPoll() {
+    $.getJSON('index.php?action=api_heartbeat', function(data) {
+        var newNotiCount = data.noti_count || 0;
+        var newChatCount = data.chat_count || 0;
+        
+        // Cập nhật badge chat ngay lập tức
+        if (newChatCount > 0) {
+            $('#chatBadge').text(newChatCount).show();
+        } else {
+            $('#chatBadge').hide();
+        }
+        
+        // Chỉ gọi full notification fetch khi count thay đổi
+        if (newNotiCount !== _hbNotiCount) {
+            pollNotifications();
+        } else {
+            // Chỉ cập nhật badge nhẹ (không fetch)
+            if (newNotiCount > 0) {
+                $('#notiBadge').text(newNotiCount).show();
+            } else {
+                $('#notiBadge').hide();
+            }
+        }
+        
+        _hbNotiCount = newNotiCount;
+        _hbChatCount = newChatCount;
+    });
+}
+
+// Adaptive heartbeat: nhanh khi focus, chậm khi tab ẩn
+var _hbTimer = null;
+function scheduleHeartbeat() {
+    if (_hbTimer) clearTimeout(_hbTimer);
+    var interval = document.hidden ? _hbIdleInterval : _hbInterval;
+    _hbTimer = setTimeout(function() {
+        heartbeatPoll();
+        scheduleHeartbeat();
+    }, interval);
+}
+
+document.addEventListener('visibilitychange', function() {
+    scheduleHeartbeat(); // Reschedule khi tab thay đổi visibility
+});
+
+heartbeatPoll(); // Lần đầu
+scheduleHeartbeat();
 
 // Click 1 thông báo
 $(document).on('click', '.noti-item', function(e) {

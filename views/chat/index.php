@@ -581,7 +581,7 @@ $(function() {
         scrollToBottom();
         
         $.post('index.php?action=api_send_message', { conversation_id: window.convId, content: content }, function() {
-            pollMessages();
+            pollNewMessages();
         });
     }
     
@@ -615,7 +615,7 @@ $(function() {
                 
                 $.post('index.php?action=api_send_message', { conversation_id: window.convId, type: 'image', base64: b64 }, function(res) {
                     if(!res.success) alert(res.message || 'Lỗi gửi ảnh');
-                    pollMessages();
+                    pollNewMessages();
                 });
                 $('#chatImageFile').val('');
             };
@@ -772,24 +772,26 @@ $(function() {
         $.post('index.php?action=api_update_group_settings', { conversation_id: window.convId, name: name, requires_approval: approval, avatar_base64: window.avatarBase64 }, function() { location.reload(); });
     });
 
-    function pollMessages() {
+    // === DELTA POLLING: Chỉ lấy tin nhắn mới hơn lastMessageId ===
+    var lastMessageId = 0;
+    // Khởi tạo lastMessageId từ tin nhắn cuối cùng đã render trên trang
+    $('.message-item').not('.optimistic-msg').each(function() {
+        var tid = parseInt($(this).data('id'));
+        if (!isNaN(tid) && tid > lastMessageId) lastMessageId = tid;
+    });
+
+    function pollNewMessages() {
         if (!window.convId) return;
-        $.getJSON('index.php?action=api_fetch_messages&conv_id=' + window.convId, function(msgs) {
+        $.getJSON('index.php?action=api_fetch_new_messages&conv_id=' + window.convId + '&since_id=' + lastMessageId, function(msgs) {
             var $msgsElem = $('#chatMessages');
-            if (!$msgsElem.length) return;
+            if (!$msgsElem.length || !msgs.length) return;
             
-            var currentIds = [];
-            $('.message-item').not('.optimistic-msg').each(function() {
-                var tid = parseInt($(this).data('id'));
-                if (!isNaN(tid)) currentIds.push(tid);
-            });
-            var maxId = currentIds.length ? Math.max.apply(null, currentIds) : 0;
+            // Xóa optimistic messages khi có tin thật từ server
+            $('.optimistic-msg').remove();
             
             var hasNew = false;
             msgs.forEach(function(m) {
-                if (parseInt(m.id) > maxId) {
                     hasNew = true;
-                    $('.optimistic-msg').remove();
                     
                     var isMine = (m.sender_id == <?php echo $_SESSION['user_id']; ?>);
                     var isGrp = <?php echo isset($activeConv) && $activeConv['type'] === 'Group' ? 'true' : 'false'; ?>;
@@ -826,15 +828,41 @@ $(function() {
                         `;
                     }
                     $msgsElem.append(html);
-                }
+                    // Cập nhật lastMessageId cho delta poll tiếp theo
+                    var mid = parseInt(m.id);
+                    if (mid > lastMessageId) lastMessageId = mid;
             });
             
             if (hasNew) scrollToBottom();
         });
     }
 
-    setInterval(pollMessages, 2000);
+    // === SMART ADAPTIVE POLLING (Delta Fetching) ===
+    var _pollTimer = null;
+    var _activePollInterval = 1000;  // 1 giây khi đang chat (tab focus)
+    var _idlePollInterval = 5000;    // 5 giây khi tab ẩn
+    
+    function getCurrentPollInterval() {
+        return document.hidden ? _idlePollInterval : _activePollInterval;
+    }
+
+    function schedulePoll() {
+        if (_pollTimer) clearTimeout(_pollTimer);
+        _pollTimer = setTimeout(function() {
+            pollNewMessages();
+            schedulePoll(); // Lặp adaptive
+        }, getCurrentPollInterval());
+    }
+
+    // Khi tab focus/blur → tự động thay đổi tốc độ
+    document.addEventListener('visibilitychange', function() {
+        schedulePoll(); // Reschedule ngay khi visibility thay đổi
+    });
+
+    // Bắt đầu polling
+    if (window.convId) schedulePoll();
 });
 </script>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>
+

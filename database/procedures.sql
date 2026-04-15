@@ -226,4 +226,102 @@ BEGIN
     END IF;
 END$$
 
+-- ================================================================
+-- CHAT & REAL-TIME PROCEDURES (Tối ưu lần 2 — 2026-04-15)
+-- ================================================================
+
+-- 17. Lấy tin nhắn hội thoại (CÓ alias sender_name/sender_avatar)
+DROP PROCEDURE IF EXISTS sp_GetConversationMessages$$
+CREATE PROCEDURE sp_GetConversationMessages(
+    IN p_conv_id INT, 
+    IN p_limit INT,
+    IN p_viewer_id INT
+)
+BEGIN
+    IF EXISTS (SELECT 1 FROM conversation_members WHERE conversation_id = p_conv_id AND user_id = p_viewer_id) THEN
+        SELECT m.*, u.full_name as sender_name, u.avatar_url as sender_avatar 
+        FROM messages m 
+        JOIN users u ON m.sender_id = u.id
+        WHERE m.conversation_id = p_conv_id 
+        ORDER BY m.created_at ASC LIMIT p_limit;
+    END IF;
+END$$
+
+-- 18. Delta Fetch: Chỉ lấy tin mới hơn since_id (Real-time polling siêu nhẹ)
+DROP PROCEDURE IF EXISTS sp_CheckNewMessages$$
+CREATE PROCEDURE sp_CheckNewMessages(
+    IN p_conv_id INT, 
+    IN p_since_id INT, 
+    IN p_viewer_id INT
+)
+BEGIN
+    IF EXISTS (SELECT 1 FROM conversation_members WHERE conversation_id = p_conv_id AND user_id = p_viewer_id) THEN
+        SELECT m.id, m.sender_id, m.content, m.created_at, 
+               u.full_name as sender_name, u.avatar_url as sender_avatar
+        FROM messages m 
+        JOIN users u ON m.sender_id = u.id
+        WHERE m.conversation_id = p_conv_id AND m.id > p_since_id
+        ORDER BY m.created_at ASC;
+    END IF;
+END$$
+
+-- 19. Danh sách hội thoại (thay thế raw SQL phức tạp)
+DROP PROCEDURE IF EXISTS sp_GetConversationList$$
+CREATE PROCEDURE sp_GetConversationList(IN p_user_id INT)
+BEGIN
+    SELECT c.id, c.type, c.name as group_name, c.avatar_url as group_avatar, 
+           c.created_by, c.requires_approval,
+           lm.content as last_message,
+           lm.created_at as last_time,
+           CASE WHEN c.type = 'Direct' THEN partner_u.full_name ELSE NULL END as partner_name,
+           CASE WHEN c.type = 'Direct' THEN partner_u.avatar_url ELSE NULL END as partner_avatar,
+           CASE WHEN c.type = 'Direct' THEN partner_cm.user_id ELSE NULL END as partner_id,
+           (SELECT u2.avatar_url FROM conversation_members cm2 JOIN users u2 ON cm2.user_id = u2.id 
+            WHERE cm2.conversation_id = c.id AND c.type = 'Group' ORDER BY cm2.user_id LIMIT 1) as group_avatar_1,
+           (SELECT u3.avatar_url FROM conversation_members cm3 JOIN users u3 ON cm3.user_id = u3.id 
+            WHERE cm3.conversation_id = c.id AND c.type = 'Group' ORDER BY cm3.user_id LIMIT 1 OFFSET 1) as group_avatar_2,
+           COALESCE(unread.cnt, 0) as unread_count
+    FROM conversations c
+    JOIN conversation_members cm ON c.id = cm.conversation_id AND cm.user_id = p_user_id
+    LEFT JOIN (
+        SELECT m1.conversation_id, m1.content, m1.created_at
+        FROM messages m1
+        INNER JOIN (SELECT conversation_id, MAX(id) as max_id FROM messages GROUP BY conversation_id) m2 
+        ON m1.id = m2.max_id
+    ) lm ON lm.conversation_id = c.id
+    LEFT JOIN conversation_members partner_cm ON partner_cm.conversation_id = c.id 
+        AND partner_cm.user_id != p_user_id AND c.type = 'Direct'
+    LEFT JOIN users partner_u ON partner_u.id = partner_cm.user_id
+    LEFT JOIN (
+        SELECT m.conversation_id, COUNT(*) as cnt
+        FROM messages m
+        JOIN conversation_members cmr ON m.conversation_id = cmr.conversation_id AND cmr.user_id = p_user_id
+        WHERE m.created_at > cmr.last_read_at AND m.sender_id != p_user_id
+        GROUP BY m.conversation_id
+    ) unread ON unread.conversation_id = c.id
+    ORDER BY lm.created_at DESC;
+END$$
+
+-- 20. Heartbeat: Đếm nhanh notification + chat unread (cho badge header)
+DROP PROCEDURE IF EXISTS sp_Heartbeat$$
+CREATE PROCEDURE sp_Heartbeat(IN p_user_id INT)
+BEGIN
+    SELECT
+        (SELECT COUNT(*) FROM notification_user WHERE user_id = p_user_id AND is_read = 0) as noti_count,
+        (SELECT COUNT(DISTINCT c.id) FROM conversations c
+         JOIN conversation_members cm ON c.id = cm.conversation_id
+         JOIN messages m ON c.id = m.conversation_id
+         WHERE cm.user_id = p_user_id AND m.created_at > cm.last_read_at AND m.sender_id != p_user_id
+        ) as chat_count;
+END$$
+
+-- 21. Đánh dấu đã đọc tin nhắn  
+DROP PROCEDURE IF EXISTS sp_MarkMessagesAsRead$$
+CREATE PROCEDURE sp_MarkMessagesAsRead(IN p_conv_id INT, IN p_user_id INT)
+BEGIN
+    UPDATE conversation_members 
+    SET last_read_at = NOW() 
+    WHERE conversation_id = p_conv_id AND user_id = p_user_id;
+END$$
+
 DELIMITER ;
