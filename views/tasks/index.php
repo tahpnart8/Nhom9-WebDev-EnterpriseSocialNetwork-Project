@@ -798,6 +798,57 @@ function renderSubActions(s) {
     return '';
 }
 
+// ================= DYNAMIC TASK SEARCH HANDLING =================
+window.searchTasks = function(keyword) {
+    if (!keyword) {
+        $('.task-card').removeClass('search-highlight d-none');
+        return;
+    }
+
+    keyword = keyword.toLowerCase();
+    let firstMatch = null;
+    let foundCount = 0;
+
+    $('.task-card').each(function() {
+        const $card = $(this);
+        const cardName = $card.find('.card-name').text().toLowerCase();
+        const cardLabel = $card.find('.card-label').text().toLowerCase();
+        const cardDesc = $card.find('.card-desc-preview').text().toLowerCase();
+        const cardAssignee = $card.find('.assignee').text().toLowerCase();
+
+        if (cardName.includes(keyword) || cardLabel.includes(keyword) || cardDesc.includes(keyword) || cardAssignee.includes(keyword)) {
+            $card.addClass('search-highlight').removeClass('d-none');
+            foundCount++;
+            if (!firstMatch) firstMatch = $card;
+        } else {
+            $card.removeClass('search-highlight');
+            // We could hide non-matches, but user asked for "lướt tới vị trí" (scroll to position), 
+            // which implies they are still there in context. So I won't hide them unless foundCount is high.
+        }
+    });
+
+    if (firstMatch) {
+        // Switch view if needed? Most cards are in both views but let's ensure the current one works.
+        // Scroll logic
+        const container = firstMatch.closest('.card-list')[0];
+        if (container) {
+            container.scrollTo({
+                top: firstMatch[0].offsetTop - 20,
+                behavior: 'smooth'
+            });
+        }
+        
+        $('html, body').animate({
+            scrollTop: firstMatch.offset().top - 150
+        }, 500);
+
+        // Optionally show a toast
+        toastr.info(`Đã tìm thấy ${foundCount} công việc phù hợp.`, 'Tìm kiếm công việc');
+    } else {
+        toastr.warning('Không tìm thấy công việc nào khớp với từ khóa.', 'Tìm kiếm');
+    }
+};
+
 // ===== TASK DETAIL MODAL =====
 function openTaskDetail(tid) {
     var modal = new bootstrap.Modal(document.getElementById('taskDetailModal'));

@@ -46,6 +46,7 @@ $routes = [
     'api_fetch_post_likers' => [$socialController, 'fetchPostLikers'],
     'api_fetch_comment_likers' => [$socialController, 'fetchCommentLikers'],
     'api_get_post_details' => [$socialController, 'fetchPostDetails'],
+    'api_search_posts' => [$socialController, 'apiSearchPosts'],
 
     'tasks' => [$taskController, 'index'],
     'api_create_task' => [$taskController, 'createTask'],

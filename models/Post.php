@@ -37,7 +37,7 @@ class Post {
         return $stmt->execute();
     }
 
-    public function getFeed($role_id, $department_id, $current_user_id, $channel = 'public', $dept_filter_id = null) {
+    public function getFeed($role_id, $department_id, $current_user_id, $channel = 'public', $dept_filter_id = null, $searchQuery = null) {
         $where = " p.visibility = 'Public' ";
         
         if ($channel === 'announcement') {
@@ -52,6 +52,12 @@ class Post {
             } else {
                 $where = " p.visibility = 'Department' AND p.department_id = " . intval($department_id);
             }
+        }
+
+        $params = [':current_user' => $current_user_id];
+        if ($searchQuery) {
+            $where .= " AND (p.content_html LIKE :q OR u.full_name LIKE :q) ";
+            $params[':q'] = "%$searchQuery%";
         }
         
         $query = "SELECT p.*, u.full_name, u.avatar_url, m.media_url, m.media_type, r.role_name,
@@ -73,8 +79,7 @@ class Post {
                   ORDER BY p.created_at DESC LIMIT 50";
                   
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':current_user', $current_user_id);
-        $stmt->execute();
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

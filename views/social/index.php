@@ -466,6 +466,66 @@
             }
         }
     });
+
+    // ================= DYNAMIC SEARCH HANDLING =================
+    window.searchSocialFeed = function(keyword) {
+        if (!keyword) {
+            location.href = 'index.php?action=social';
+            return;
+        }
+
+        const $container = $('#feedContainer');
+        $container.fadeOut(200, function() {
+            $container.html('<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Đang tìm kiếm bài viết...</p></div>').fadeIn(200);
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const channel = urlParams.get('channel') || 'public';
+            const deptId = urlParams.get('dept_id') || '';
+
+            $.getJSON('index.php?action=api_search_posts', { q: keyword, channel: channel, dept_id: deptId }, function(res) {
+                if (res.success) {
+                    if (res.data.length === 0) {
+                        $container.html('<div class="relioo-card p-5 text-center text-muted"><i class="bi bi-search fs-1 opacity-25 d-block mb-3"></i><h5>Không tìm thấy kết quả phù hợp</h5><p>Thử tìm kiếm với từ khóa khác hoặc quay lại <a href="index.php?action=social">bảng tin chính</a>.</p></div>');
+                    } else {
+                        // In reality, we would render the posts here. 
+                        // For simplicity and to keep the UI consistent with existing PHP rendering, 
+                        // we can either reload the page with the Q param (user said "load lại trang nhưng nhanh")
+                        // or re-render using a JS template.
+                        // The user said "load lại trang nhưng nhanh", often this implies a reload with the query.
+                        // However, to make it TRULY fast, let's use the query param to reload if it's not already there.
+                        
+                        const currentUrl = new URL(window.location.href);
+                        if (currentUrl.searchParams.get('q') !== keyword) {
+                            currentUrl.searchParams.set('q', keyword);
+                            window.location.href = currentUrl.toString();
+                        } else {
+                            // If already on the page with that Q, just hide spinner (shouldn't happen with our header logic)
+                            location.reload();
+                        }
+                    }
+                }
+            });
+        });
+    };
+
+    // Highlight matching text if search query exists
+    $(function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const q = urlParams.get('q');
+        if (q) {
+            const regex = new RegExp(`(${q})`, 'gi');
+            $('.post-content-text').each(function() {
+                const html = $(this).html();
+                $(this).html(html.replace(regex, '<mark class="bg-warning-subtle text-dark p-0 rounded">$1</mark>'));
+            });
+            
+            // Scroll to the first match if it exists
+            const firstMatch = $('.post-content-text mark').first();
+            if (firstMatch.length) {
+                $('html, body').animate({ scrollTop: firstMatch.offset().top - 150 }, 500);
+            }
+        }
+    });
 </script>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>

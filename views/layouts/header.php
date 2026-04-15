@@ -67,9 +67,19 @@
                 
                 <!-- Middle: Search Bar (Centered) -->
                 <div class="search-wrapper d-none d-md-block">
-                    <div class="topbar-search-form">
+                    <div class="topbar-search-form" id="searchContainer">
                         <i class="bi bi-search"></i>
-                        <input type="text" class="form-control" placeholder="Tìm kiếm nội dung, dự án...">
+                        <input type="text" class="form-control" id="globalSearchInput" name="q" placeholder="Tìm kiếm nội dung, dự án..." autocomplete="off">
+                        <!-- Search History Dropdown -->
+                        <div id="searchHistoryDropdown" class="search-history-dropdown shadow-lg border-0 d-none">
+                            <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                                <span class="fw-bold small text-muted text-uppercase">Tìm kiếm gần đây</span>
+                                <button class="btn btn-sm btn-link text-danger p-0 text-decoration-none small" id="clearAllHistory">Xóa tất cả</button>
+                            </div>
+                            <div id="historyItemsList" class="py-2">
+                                <!-- Items loaded via JS -->
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -453,5 +463,117 @@ function cancelModalReply() {
 
 $('#markAllRead').on('click', function() {
     $.post('index.php?action=api_mark_all_read', function() { pollNotifications(); });
+});
+
+// ================= GLOBAL SEARCH & HISTORY LOGIC =================
+$(document).ready(function() {
+    const $searchInput = $('#globalSearchInput');
+    const $historyDropdown = $('#searchHistoryDropdown');
+    const $historyList = $('#historyItemsList');
+    const COOKIE_NAME = 'relioo_search_history';
+
+    function getHistory() {
+        const cookie = document.cookie.split('; ').find(row => row.startsWith(COOKIE_NAME + '='));
+        if (cookie) {
+            try {
+                return JSON.parse(decodeURIComponent(cookie.split('=')[1]));
+            } catch (e) {
+                return [];
+            }
+        }
+        return [];
+    }
+
+    function saveHistory(history) {
+        document.cookie = COOKIE_NAME + '=' + encodeURIComponent(JSON.stringify(history)) + '; path=/; max-age=' + (30 * 24 * 60 * 60);
+    }
+
+    function renderHistory() {
+        const history = getHistory();
+        if (history.length === 0) {
+            $historyList.html('<div class="p-4 text-center text-muted small">Chưa có tìm kiếm nào gần đây</div>');
+            return;
+        }
+
+        let html = '';
+        history.forEach((item, index) => {
+            html += `<div class="history-item" data-keyword="${item}">
+                        <i class="bi bi-clock-history"></i>
+                        <span class="keyword">${item}</span>
+                        <i class="bi bi-x remove-history" data-index="${index}"></i>
+                    </div>`;
+        });
+        $historyList.html(html);
+    }
+
+    $searchInput.on('focus', function() {
+        renderHistory();
+        $historyDropdown.removeClass('d-none');
+    });
+
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('#searchContainer').length) {
+            $historyDropdown.addClass('d-none');
+        }
+    });
+
+    $searchInput.on('keypress', function(e) {
+        if (e.which === 13) {
+            const keyword = $(this).val().trim();
+            if (keyword) {
+                let history = getHistory();
+                history = history.filter(item => item !== keyword);
+                history.unshift(keyword);
+                history = history.slice(0, 8);
+                saveHistory(history);
+                executeSearch(keyword);
+            }
+        }
+    });
+
+    $(document).on('click', '.history-item', function(e) {
+        if ($(e.target).hasClass('remove-history')) {
+            e.stopPropagation();
+            const index = $(e.target).data('index');
+            let history = getHistory();
+            history.splice(index, 1);
+            saveHistory(history);
+            renderHistory();
+            return;
+        }
+        const keyword = $(this).data('keyword');
+        $searchInput.val(keyword);
+        executeSearch(keyword);
+        $historyDropdown.addClass('d-none');
+    });
+
+    $('#clearAllHistory').on('click', function(e) {
+        e.preventDefault();
+        saveHistory([]);
+        renderHistory();
+    });
+
+    function executeSearch(keyword) {
+        // Kiểm tra xem đang ở trang nào để xử lý logic tìm kiếm phù hợp
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get('action') || 'dashboard';
+
+        if (action === 'social') {
+            // Logic cho trang Bảng tin
+            if (typeof window.searchSocialFeed === 'function') {
+                window.searchSocialFeed(keyword);
+            } else {
+                window.location.href = 'index.php?action=social&q=' + encodeURIComponent(keyword);
+            }
+        } else if (action === 'tasks' || action === 'project_tasks') {
+            // Logic cho trang Công việc
+            if (typeof window.searchTasks === 'function') {
+                window.searchTasks(keyword);
+            }
+        } else {
+            // Chuyển hướng sang trang tìm kiếm chung hoặc trang bảng tin nếu không rõ context
+            window.location.href = 'index.php?action=social&q=' + encodeURIComponent(keyword);
+        }
+    }
 });
 </script>

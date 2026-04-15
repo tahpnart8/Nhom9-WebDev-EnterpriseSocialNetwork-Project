@@ -43,6 +43,7 @@ class SocialController {
         
         $channel = $_GET['channel'] ?? 'public';
         $dept_id_filter = $_GET['dept_id'] ?? null;
+        $searchQuery = $_GET['q'] ?? null;
         
         $departments = [];
         if (($channel === 'department') && ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 4)) {
@@ -52,9 +53,28 @@ class SocialController {
         }
 
         // Fetch feed using Role ID & Department ID & Current User ID
-        $feed = $postModel->getFeed($_SESSION['role_id'], $_SESSION['department_id'] ?? null, $_SESSION['user_id'], $channel, $dept_id_filter);
+        $feed = $postModel->getFeed($_SESSION['role_id'], $_SESSION['department_id'] ?? null, $_SESSION['user_id'], $channel, $dept_id_filter, $searchQuery);
         
         require_once __DIR__ . '/../views/social/index.php';
+    }
+
+    // API: Tìm kiếm bài viết (cho "Tải trang nhưng nhanh")
+    public function apiSearchPosts() {
+        header('Content-Type: application/json');
+        if(!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'message' => 'Chưa đăng nhập']);
+            exit;
+        }
+
+        $postModel = new Post($this->db);
+        $searchQuery = $_GET['q'] ?? '';
+        $channel = $_GET['channel'] ?? 'public';
+        $dept_id_filter = $_GET['dept_id'] ?? null;
+
+        $posts = $postModel->getFeed($_SESSION['role_id'], $_SESSION['department_id'] ?? null, $_SESSION['user_id'], $channel, $dept_id_filter, $searchQuery);
+        
+        echo json_encode(['success' => true, 'data' => $posts]);
+        exit;
     }
 
     public function createPost() {
