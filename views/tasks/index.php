@@ -759,7 +759,6 @@
     var STAFF_LIST = <?php echo json_encode($staffList); ?>;
     var USER_ID = <?php echo $_SESSION['user_id']; ?>;
     var ROLE_ID = <?php echo $_SESSION['role_id']; ?>;
-    var DEPT_ID = <?php echo $_SESSION['department_id'] ?? 'null'; ?>;
     var SERVER_NOW = new Date("<?php echo date('Y-m-d H:i:s'); ?>");
     var TODAY = "<?php echo date('Y-m-d'); ?>";
 
@@ -1066,14 +1065,8 @@
             if (isOverdue) statusBadge += ' <span class="badge bg-danger">Trễ hạn</span>';
             if (s.is_extended == 1) statusBadge += ' <span class="badge bg-warning text-dark">Đã gia hạn</span>';
 
-            let canEdit = (ROLE_ID == 1 || ROLE_ID == 4 || (ROLE_ID == 2 && s.department_id == DEPT_ID));
-            let editBtn = canEdit ? `<i class="bi bi-pencil-square text-primary ms-2 pointer" onclick="editSubtask(${s.id})" title="Chỉnh sửa"></i>` : '';
-
             $('#subtaskBody').html(`
-            <div class="d-flex justify-content-between align-items-start">
-                <h5 class="fw-bold mb-1">${s.title}</h5>
-                ${editBtn}
-            </div>
+            <h5 class="fw-bold mb-1">${s.title}</h5>
             <p class="text-muted small mb-3"><i class="bi bi-folder me-1"></i>${s.task_title}</p>
             ${feedbackHtml}
             <div class="bg-light p-3 rounded-3 mb-3 small">
@@ -1277,14 +1270,8 @@
                 }
             }
 
-            let canEditTask = (ROLE_ID == 1 || ROLE_ID == 4 || (ROLE_ID == 2 && task.department_id == DEPT_ID));
-            let editTaskBtn = canEditTask ? `<i class="bi bi-pencil-square text-primary ms-2 pointer" onclick="editTask(${task.id})" title="Chỉnh sửa Task"></i>` : '';
-
             $('#taskBody').html(`<div class="row"><div class="col-md-5 border-end">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-                <h5 class="fw-bold mb-0">${task.title}</h5>
-                ${editTaskBtn}
-            </div>
+            <h5 class="fw-bold mb-2">${task.title}</h5>
             <div class="small text-muted mb-3" style="white-space:pre-wrap">${task.description || '<span class="text-muted">Không có mô tả</span>'}</div>
             <div class="bg-light p-3 rounded-3 small mb-3">
                 <div class="d-flex justify-content-between mb-2"><span>Người tạo:</span><b class="text-primary"><i class="bi bi-person me-1"></i>${task.creator_name || 'N/A'}</b></div>
@@ -1479,132 +1466,6 @@
                     Swal.fire({ title: 'Đã lưu!', text: res.message, icon: 'success', timer: 1500, showConfirmButton: false }).then(() => location.reload());
                 }
                 else Swal.fire({ title: 'Lỗi!', text: res.message, icon: 'error' });
-            }
-        });
-    // ===== EDIT SUBTASK =====
-    function editSubtask(id) {
-        $.getJSON('index.php?action=api_subtask_detail&id=' + id, function (res) {
-            if (!res.success) return;
-            let s = res.data;
-            let staffOpts = STAFF_LIST.map(u => `<option value="${u.id}" ${u.id == s.assignee_id ? 'selected' : ''}>${u.full_name}${u.dept_name ? ' (' + u.dept_name + ')' : ''}</option>`).join('');
-            
-            let html = `
-            <form id="editSubtaskForm">
-                <input type="hidden" name="id" value="${s.id}">
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">TÊN CÔNG VIỆC</label>
-                    <input type="text" name="title" class="form-control rounded-3" value="${s.title}" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">MÔ TẢ</label>
-                    <textarea name="description" class="form-control rounded-3" rows="3">${s.description || ''}</textarea>
-                </div>
-                <div class="row mb-3 g-2">
-                    <div class="col-6">
-                        <label class="form-label small fw-bold">NGƯỜI GIAO</label>
-                        <select name="assignee_id" class="form-select rounded-3">${staffOpts}</select>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label small fw-bold">ƯU TIÊN</label>
-                        <select name="priority" class="form-select rounded-3">
-                            <option value="Low" ${s.priority == 'Low' ? 'selected' : ''}>Thấp</option>
-                            <option value="Medium" ${s.priority == 'Medium' ? 'selected' : ''}>Trung bình</option>
-                            <option value="High" ${s.priority == 'High' ? 'selected' : ''}>Cao</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">HẠN CHÓT</label>
-                    <input type="date" name="deadline" class="form-control rounded-3 date-no-past" value="${s.deadline ? s.deadline.split(' ')[0] : ''}" min="${TODAY}">
-                </div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-primary flex-fill rounded-pill fw-bold" onclick="saveSubtaskEdit(${s.id})">LƯU THAY ĐỔI</button>
-                    <button type="button" class="btn btn-outline-secondary flex-fill rounded-pill fw-bold" onclick="openSubtaskDetail(${s.id})">HỦY</button>
-                </div>
-            </form>`;
-            $('#subtaskBody').html(html);
-        });
-    }
-
-    function saveSubtaskEdit(id) {
-        let title = $('#editSubtaskForm input[name="title"]').val().trim();
-        let deadline = $('#editSubtaskForm input[name="deadline"]').val();
-
-        if (!title || !deadline) {
-            Swal.fire({ title: 'Thiếu thông tin!', text: 'Vui lòng nhập tiêu đề và hạn chót.', icon: 'warning' });
-            return;
-        }
-
-        let fd = new FormData(document.getElementById('editSubtaskForm'));
-        $.ajax({
-            url: 'index.php?action=api_update_subtask', type: 'POST', data: fd, processData: false, contentType: false, dataType: 'json',
-            success: function (res) {
-                if (res.success) {
-                    Swal.fire({ title: 'Thành công!', text: res.message, icon: 'success', timer: 1500, showConfirmButton: false }).then(() => openSubtaskDetail(id));
-                } else {
-                    Swal.fire({ title: 'Lỗi!', text: res.message, icon: 'error' });
-                }
-            }
-        });
-    }
-
-    // ===== EDIT TASK =====
-    function editTask(id) {
-        $.getJSON('index.php?action=api_task_detail&id=' + id, function (res) {
-            if (!res.success) return;
-            let t = res.data;
-            let html = `
-            <form id="editTaskForm">
-                <input type="hidden" name="id" value="${t.id}">
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">TIÊU ĐỀ TASK</label>
-                    <input type="text" name="title" class="form-control rounded-3" value="${t.title}" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">MÔ TẢ</label>
-                    <textarea name="description" class="form-control rounded-3" rows="4">${t.description || ''}</textarea>
-                </div>
-                <div class="row mb-3 g-2">
-                    <div class="col-6">
-                        <label class="form-label small fw-bold">ƯU TIÊN</label>
-                        <select name="priority" class="form-select rounded-3">
-                            <option value="Low" ${t.priority == 'Low' ? 'selected' : ''}>Thấp</option>
-                            <option value="Medium" ${t.priority == 'Medium' ? 'selected' : ''}>Trung bình</option>
-                            <option value="High" ${t.priority == 'High' ? 'selected' : ''}>Cao</option>
-                        </select>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label small fw-bold">HẠN CHÓT</label>
-                        <input type="date" name="deadline" class="form-control rounded-3 date-no-past" value="${t.deadline ? t.deadline.split(' ')[0] : ''}" min="${TODAY}">
-                    </div>
-                </div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-primary flex-fill rounded-pill fw-bold" onclick="saveTaskEdit(${t.id})">LƯU THAY ĐỔI</button>
-                    <button type="button" class="btn btn-outline-secondary flex-fill rounded-pill fw-bold" onclick="openTaskDetail(${t.id})">HỦY</button>
-                </div>
-            </form>`;
-            $('#taskBody').html(html);
-        });
-    }
-
-    function saveTaskEdit(id) {
-        let title = $('#editTaskForm input[name="title"]').val().trim();
-        let deadline = $('#editTaskForm input[name="deadline"]').val();
-
-        if (!title || !deadline) {
-            Swal.fire({ title: 'Thiếu thông tin!', text: 'Vui lòng nhập tiêu đề và hạn chót.', icon: 'warning' });
-            return;
-        }
-
-        let fd = new FormData(document.getElementById('editTaskForm'));
-        $.ajax({
-            url: 'index.php?action=api_update_task', type: 'POST', data: fd, processData: false, contentType: false, dataType: 'json',
-            success: function (res) {
-                if (res.success) {
-                    Swal.fire({ title: 'Thành công!', text: res.message, icon: 'success', timer: 1500, showConfirmButton: false }).then(() => openTaskDetail(id));
-                } else {
-                    Swal.fire({ title: 'Lỗi!', text: res.message, icon: 'error' });
-                }
             }
         });
     }

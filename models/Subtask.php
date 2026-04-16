@@ -48,7 +48,7 @@ class Subtask {
 
     // Lấy subtask theo ID
     public function getById($subtask_id) {
-        $query = "SELECT s.*, t.title as task_title, t.priority, u.full_name as assignee_name, t.department_id as department_id
+        $query = "SELECT s.*, t.title as task_title, t.priority, u.full_name as assignee_name
                   FROM " . $this->table_name . " s
                   JOIN tasks t ON s.task_id = t.id
                   JOIN users u ON s.assignee_id = u.id
@@ -134,35 +134,6 @@ class Subtask {
         if ($stmt->execute()) {
             // Tự động gọi procedure đồng bộ trạng thái Task cha
             $subtask = $this->getById($subtask_id);
-            if ($subtask) {
-                $syncQuery = "CALL sp_UpdateTaskStatusSync(:tid)";
-                $syncStmt = $this->conn->prepare($syncQuery);
-                $syncStmt->bindParam(':tid', $subtask['task_id']);
-                $syncStmt->execute();
-                $syncStmt->closeCursor();
-            }
-            return true;
-        }
-        return false;
-    }
-
-    // Cập nhật thông tin chi tiết Subtask (Cho Quản lý/Leader)
-    public function updateSubtask($id, $assignee_id, $title, $description, $deadline, $priority) {
-        $query = "UPDATE " . $this->table_name . " 
-                  SET assignee_id = :assignee_id, title = :title, description = :description, 
-                      deadline = :deadline, priority = :priority 
-                  WHERE id = :id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':assignee_id', $assignee_id);
-        $stmt->bindParam(':title', $title);
-        $stmt->bindParam(':description', $description);
-        $stmt->bindParam(':deadline', $deadline);
-        $stmt->bindParam(':priority', $priority);
-        $stmt->bindParam(':id', $id);
-        
-        if ($stmt->execute()) {
-            // Đồng bộ lại trạng thái Task cha nếu cần (mặc dù edit info thường không đổi status nhưng tốt nhất cứ sync)
-            $subtask = $this->getById($id);
             if ($subtask) {
                 $syncQuery = "CALL sp_UpdateTaskStatusSync(:tid)";
                 $syncStmt = $this->conn->prepare($syncQuery);

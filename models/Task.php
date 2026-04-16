@@ -84,20 +84,6 @@ class Task {
         return false;
     }
 
-    // Cập nhật thông tin chi tiết Task (Cho Quản lý/Leader)
-    public function updateTask($task_id, $title, $description, $priority, $deadline) {
-        $query = "UPDATE " . $this->table_name . " 
-                  SET title = :title, description = :description, priority = :priority, deadline = :deadline 
-                  WHERE id = :id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':title', $title);
-        $stmt->bindParam(':description', $description);
-        $stmt->bindParam(':priority', $priority);
-        $stmt->bindParam(':deadline', $deadline);
-        $stmt->bindParam(':id', $task_id);
-        return $stmt->execute();
-    }
-
     // Cập nhật trạng thái Task
     public function updateStatus($task_id, $status) {
         $query = "UPDATE " . $this->table_name . " SET status = :status WHERE id = :id";

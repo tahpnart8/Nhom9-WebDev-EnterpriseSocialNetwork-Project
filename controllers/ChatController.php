@@ -23,8 +23,6 @@ class ChatController {
     // Trang Chat chính
     public function index() {
         $this->checkAuth();
-        session_write_close(); // Unlock session for parallel processing
-        
         $pageTitle = "Tin nhắn";
         
         $msgModel = new Message($this->db);
@@ -59,14 +57,10 @@ class ChatController {
             $msgModel->updateLastRead($activeConvId, $_SESSION['user_id']);
         }
 
-        // Tối ưu hóa tải cho SPA: Bỏ qua query Sidebar nếu load bằng AJAX
-        $conversations = [];
-        $allUsers = [];
-        if (!$isAjaxNav) {
-            $conversations = $msgModel->getConversations($_SESSION['user_id']);
-            $allUsersStmt = $userModel->getAllUsersWithDetails();
-            $allUsers = $allUsersStmt->fetchAll(PDO::FETCH_ASSOC);
-        }
+        // Tối ưu hóa tải cho SPA
+        $conversations = $msgModel->getConversations($_SESSION['user_id']);
+        $allUsersStmt = $userModel->getAllUsersWithDetails();
+        $allUsers = $allUsersStmt->fetchAll(PDO::FETCH_ASSOC);
         
         require_once __DIR__ . '/../views/chat/index.php';
     }
@@ -145,7 +139,6 @@ class ChatController {
             echo json_encode(['success' => false]);
             exit;
         }
-        session_write_close(); // Unlock session for async image uploading
         
         $msgModel = new Message($this->db);
         $convId = $_POST['conversation_id'] ?? 0;
@@ -180,7 +173,6 @@ class ChatController {
             echo json_encode([]);
             exit;
         }
-        session_write_close();
         
         $msgModel = new Message($this->db);
         $convId = $_GET['conv_id'] ?? 0;
@@ -202,7 +194,6 @@ class ChatController {
             echo json_encode(['unread_conversations' => 0]);
             exit;
         }
-        session_write_close();
 
         $msgModel = new Message($this->db);
         $count = $msgModel->getTotalUnreadConversationCount($_SESSION['user_id']);
@@ -217,7 +208,6 @@ class ChatController {
             echo json_encode([]);
             exit;
         }
-        session_write_close();
         
         $msgModel = new Message($this->db);
         $convId = $_GET['conv_id'] ?? 0;
@@ -241,7 +231,6 @@ class ChatController {
             echo json_encode(['noti_count' => 0, 'chat_count' => 0]);
             exit;
         }
-        session_write_close();
 
         $query = "CALL sp_Heartbeat(:uid)";
         $stmt = $this->db->prepare($query);
