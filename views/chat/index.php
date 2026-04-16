@@ -750,7 +750,7 @@
     </div>
 
     <!-- Cột Giữa -->
-    <div class="chat-main">
+    <div class="chat-main" data-active-conv="<?php echo $activeConvId ?? ''; ?>">
         <?php if ($activeConvId): ?>
             <div class="chat-main-header">
                 <?php
@@ -1062,7 +1062,74 @@
 
 <script>
     $(function () {
-        window.convId = <?php echo json_encode($activeConvId); ?>;
+        // --- CLEANUP SECTION --- 
+        // Xóa sạch các event cũ (namespaced) và Timer cũ để tránh lặp khi load SPA nhiều lần
+        $(document).off('.reliooChat'); 
+        $(window).off('.reliooChat');
+        if (window._chatPollTimer) { clearTimeout(window._chatPollTimer); window._chatPollTimer = null; }
+        if (window._chatSidebarRefreshTimeout) { clearTimeout(window._chatSidebarRefreshTimeout); }
+
+        // LUÔN LUÔN in ra int (số nguyên) hoặc từ null để tránh lỗi Regex khi Load SPA
+        window.convId = <?php echo $activeConvId ? (int)$activeConvId : 'null'; ?>;
+        
+        var _isLoadingOlder = false;
+        var _currentOffset = 30; // Mặc định đã load 30
+        
+        function bindChatScroll() {
+            _isLoadingOlder = false;
+            _currentOffset = 30;
+            
+            // Hủy bind cũ nếu có để tránh lặp
+            $('#chatMessages').off('scroll').on('scroll', function() {
+                if ($(this).scrollTop() === 0 && !_isLoadingOlder && window.convId) {
+                    _isLoadingOlder = true;
+                    var $msgsElem = $(this);
+                    if ($msgsElem.find('.message-item').length < 30) {
+                         _isLoadingOlder = false; return; // Ít hơn 30 nghĩa là không còn tin cũ
+                    }
+                    var oldScrollHeight = $msgsElem[0].scrollHeight;
+                    
+                    $.getJSON('index.php?action=api_fetch_older_messages&conv_id=' + window.convId + '&offset=' + _currentOffset, function(msgs) {
+                        if (msgs && msgs.length > 0) {
+                            _currentOffset += 30;
+                            var rawHtml = '';
+                            msgs.forEach(function (m) {
+                                var isMine = (m.sender_id == <?php echo $_SESSION['user_id']; ?>);
+                                var isGrp = <?php echo isset($activeConv) && $activeConv['type'] === 'Group' ? 'true' : 'false'; ?>;
+                                var contentEscaped = '';
+                                var imgClass = '';
+                                var imgMatch = m.content.match(/^\[IMAGE:(.*?)\]$/);
+                                if (imgMatch) {
+                                    imgClass = ' bg-transparent p-0 shadow-none ';
+                                    var safeUrl = $('<span>').text(imgMatch[1]).html();
+                                    contentEscaped = '<a href="' + safeUrl + '" target="_blank"><img src="' + safeUrl + '" style="max-width:200px; max-height:200px; border-radius:12px; object-fit:cover; display:block; border: 1px solid #e0e0e0;"></a>';
+                                } else {
+                                    contentEscaped = $('<span>').text(m.content).html();
+                                }
+                                
+                                var html = '';
+                                if (isGrp && !isMine) {
+                                    var avatarUrl = m.sender_avatar ? m.sender_avatar : 'https://placehold.co/32x32';
+                                    var nameHtml = '<div class="w-100 mb-1"><a href="index.php?action=profile&id=' + m.sender_id + '" class="text-muted text-decoration-none" style="font-size:0.75rem; margin-left:36px; font-weight: 500; text-transform: capitalize;">' + $('<span>').text(m.sender_name).html() + '</a></div>';
+                                    html = nameHtml + `<div class="msg-bubble-wrapper msg-other-wrapper show-avatar message-item" data-id="${m.id}"><a href="index.php?action=profile&id=${m.sender_id}"><img src="${avatarUrl}" class="msg-sender-avatar" title="${$('<span>').text(m.sender_name).html()}"></a><div class="msg-bubble msg-other rad-bot-left rad-top-left ${imgClass}" title="${m.created_at.substr(11, 5)}">${contentEscaped}</div></div>`;
+                                } else {
+                                    var wrapCls = isMine ? 'msg-mine-wrapper' : 'msg-other-wrapper';
+                                    var bubCls = isMine ? 'msg-mine rad-top-right rad-bot-right' : 'msg-other rad-top-left rad-bot-left';
+                                    html = `<div class="msg-bubble-wrapper ${wrapCls} message-item" data-id="${m.id}"><div class="msg-bubble ${bubCls} ${imgClass}" title="${m.created_at.substr(11, 5)}">${contentEscaped}</div></div>`;
+                                }
+                                rawHtml += html;
+                            });
+                            $msgsElem.prepend(rawHtml);
+                            $msgsElem.scrollTop($msgsElem[0].scrollHeight - oldScrollHeight);
+                        }
+                        _isLoadingOlder = false;
+                    });
+                }
+            });
+        }
+        
+        // Khởi chạy bind ở trang load đầu tiên
+        bindChatScroll();
 
         function scrollToBottom() {
             var $msgs = $('#chatMessages');
@@ -1071,7 +1138,7 @@
         scrollToBottom();
 
         // Toggle biểu tượng Send/Like
-        $(document).on('input', '#chatInput', function () {
+        $(document).on('input.reliooChat', '#chatInput', function () {
             if ($(this).val().trim().length > 0) {
                 $('#sendIcon').removeClass('d-none');
                 $('#likeIcon').addClass('d-none');
@@ -1082,12 +1149,12 @@
         });
 
         // Bật tắt Sidebar Phải
-        $(document).on('click', '#btnToggleRightSidebar, #btnToggleRightSidebar2', function () {
+        $(document).on('click.reliooChat', '#btnToggleRightSidebar, #btnToggleRightSidebar2', function () {
             $('#rightSidebar').toggleClass('hidden');
         });
 
         // SPA CHAT NAVIGATION
-        $(document).on('click', '.chat-item', function (e) {
+        $(document).on('click.reliooChat', '.chat-item', function (e) {
             var url = $(this).attr('href');
             if (!url || !url.includes('action=chat')) return;
             e.preventDefault();
@@ -1122,14 +1189,9 @@
                     $('#rightSidebar').addClass('hidden');
                 }
 
-                // Cập nhật mã hội thoại để có thể gửi tin nhắn ngay lập tức
-                var scriptContent = $frag.find('script').last().text();
-                var convMatch = scriptContent.match(/window\.convId = (\d+|null);/);
-                if (convMatch && convMatch[1] !== 'null') {
-                    window.convId = parseInt(convMatch[1]);
-                } else {
-                    window.convId = null;
-                }
+                // Lấy ID chat chuẩn theo PHP render
+                var newConvId = $frag.find('.chat-main').attr('data-active-conv');
+                window.convId = newConvId ? parseInt(newConvId) : null;
 
                 if (window.convId) {
                     fetchGroupRequests();
@@ -1137,6 +1199,7 @@
                 }
 
                 scrollToBottom();
+                bindChatScroll(); // Khôi phục event scroll bị mất do tải lại `.chat-main`
                 $('#chatInput').trigger('input');
             });
         });
@@ -1164,11 +1227,11 @@
             });
         }
 
-        $(document).on('click', '#btnSendMsg', sendMsg);
-        $(document).on('keypress', '#chatInput', function (e) { if (e.which === 13) sendMsg(); });
+        $(document).on('click.reliooChat', '#btnSendMsg', sendMsg);
+        $(document).on('keypress.reliooChat', '#chatInput', function (e) { if (e.which === 13) sendMsg(); });
 
         // Upload ảnh/file
-        $(document).on('change', '#chatImageFile', function (e) {
+        $(document).on('change.reliooChat', '#chatImageFile', function (e) {
             var file = e.target.files[0];
             if (!file || !window.convId) return;
 
@@ -1192,6 +1255,7 @@
                     $msgs.append(optHtml);
                     scrollToBottom();
 
+                    // TRÁNH GỬI TRÙNG: Chỉ gửi nếu convId hợp lệ
                     $.post('index.php?action=api_send_message', { conversation_id: window.convId, type: 'image', base64: b64 }, function (res) {
                         if (!res.success) alert(res.message || 'Lỗi gửi ảnh');
                         pollNewMessages();
@@ -1202,7 +1266,7 @@
             reader.readAsDataURL(file);
         });
 
-        $(document).on('click', '.chat-filter-tabs span', function () {
+        $(document).on('click.reliooChat', '.chat-filter-tabs span', function () {
             var filter = $(this).data('filter');
             $('.chat-filter-tabs span').removeClass('active text-primary').addClass('text-muted');
             $(this).addClass('active text-primary').removeClass('text-muted');
@@ -1218,7 +1282,7 @@
             }
         });
 
-        $(document).on('input', '#chatSearchInput', function () {
+        $(document).on('input.reliooChat', '#chatSearchInput', function () {
             var q = $(this).val().toLowerCase().trim();
             if (q === '') {
                 $('#activeConvsArea .chat-item').show();
@@ -1239,10 +1303,10 @@
         });
 
         window.avatarBase64 = null;
-        $(document).on('click', '#btnGroupAvatarTrigger', function (e) {
+        $(document).on('click.reliooChat', '#btnGroupAvatarTrigger', function (e) {
             if (e.target.id !== 'groupAvatarFile' && $('#groupAvatarFile').length) $('#groupAvatarFile').click();
         });
-        $(document).on('change', '#groupAvatarFile', function (e) {
+        $(document).on('change.reliooChat', '#groupAvatarFile', function (e) {
             var file = e.target.files[0];
             if (!file) return;
             var reader = new FileReader();
@@ -1269,7 +1333,7 @@
             reader.readAsDataURL(file);
         });
 
-        $(document).on('click', '#btnSearchConversation', function (e) {
+        $(document).on('click.reliooChat', '#btnSearchConversation', function (e) {
             e.stopPropagation();
             var query = prompt("Nhập từ khoá tìm kiếm tin nhắn trong đoạn chat này:");
             if (!query) return;
@@ -1294,14 +1358,14 @@
                 }
                 toastr.success('Đã chọn bôi vàng ' + count + ' tin nhắn khớp (Click ngoài màn hình để tắt)');
                 setTimeout(function () {
-                    $(document).one('click', function () {
+                    $(document).one('click.reliooChat', function () {
                         $('.msg-bubble').css('background', '').css('color', '');
                     });
                 }, 100);
             }
         });
 
-        $(document).on('click', '#btnDoCreateGroup', function () {
+        $(document).on('click.reliooChat', '#btnDoCreateGroup', function () {
             var name = $('#groupNameInput').val().trim();
             var members = [];
             $('.group-member-check:checked').each(function () { members.push($(this).val()); });
@@ -1332,20 +1396,20 @@
         }
         fetchGroupRequests();
 
-        $(document).on('click', '.btn-approve, .btn-reject', function () {
+        $(document).on('click.reliooChat', '.btn-approve, .btn-reject', function () {
             var rid = $(this).data('id');
             var status = $(this).hasClass('btn-approve') ? 'approved' : 'rejected';
             $.post('index.php?action=api_handle_membership_request', { request_id: rid, status: status }, function () { fetchGroupRequests(); });
         });
 
-        $(document).on('click', '#btnAddMemberToggle', function () { $('#addMemberArea').slideToggle(); });
-        $(document).on('click', '#btnDoAddMembers', function () {
+        $(document).on('click.reliooChat', '#btnAddMemberToggle', function () { $('#addMemberArea').slideToggle(); });
+        $(document).on('click.reliooChat', '#btnDoAddMembers', function () {
             var members = $('#newMembersSelect').val();
             if (!members.length) return;
             $.post('index.php?action=api_manage_members', { conversation_id: window.convId, members: members }, function () { location.reload(); });
         });
 
-        $(document).on('click', '#btnSaveGroupSettings', function () {
+        $(document).on('click.reliooChat', '#btnSaveGroupSettings', function () {
             var name = $('#editGroupName').val();
             var approval = $('#requireApprovalSwitch').length ? ($('#requireApprovalSwitch').is(':checked') ? 1 : 0) : 0;
             $.post('index.php?action=api_update_group_settings', { conversation_id: window.convId, name: name, requires_approval: approval, avatar_base64: window.avatarBase64 }, function () { location.reload(); });
@@ -1359,9 +1423,13 @@
             if (!isNaN(tid) && tid > lastMessageId) lastMessageId = tid;
         });
 
+        var _isPolling = false;
         function pollNewMessages() {
-            if (!window.convId) return;
+            if (!window.convId || _isPolling) return;
+            _isPolling = true;
+
             $.getJSON('index.php?action=api_fetch_new_messages&conv_id=' + window.convId + '&since_id=' + lastMessageId, function (msgs) {
+                _isPolling = false;
                 var $msgsElem = $('#chatMessages');
                 if (!$msgsElem.length || !msgs.length) return;
 
@@ -1370,6 +1438,9 @@
 
                 var hasNew = false;
                 msgs.forEach(function (m) {
+                    // TRÁNH TRÙNG LẶP: Nếu ID này đã tồn tại trong DOM thì không append nữa
+                    if ($msgsElem.find('.message-item[data-id="' + m.id + '"]').length > 0) return;
+
                     hasNew = true;
 
                     var isMine = (m.sender_id == <?php echo $_SESSION['user_id']; ?>);
@@ -1417,7 +1488,6 @@
         }
 
         // === SMART ADAPTIVE POLLING (Delta Fetching) ===
-        var _pollTimer = null;
         var _activePollInterval = 1000;  // 1 giây khi đang chat (tab focus)
         var _idlePollInterval = 5000;    // 5 giây khi tab ẩn
 
@@ -1426,20 +1496,34 @@
         }
 
         function schedulePoll() {
-            if (_pollTimer) clearTimeout(_pollTimer);
-            _pollTimer = setTimeout(function () {
+            if (window._chatPollTimer) clearTimeout(window._chatPollTimer);
+            window._chatPollTimer = setTimeout(function () {
                 pollNewMessages();
                 schedulePoll(); // Lặp adaptive
             }, getCurrentPollInterval());
         }
 
         // Khi tab focus/blur → tự động thay đổi tốc độ
-        document.addEventListener('visibilitychange', function () {
+        $(window).on('visibilitychange.reliooChat', function () {
             schedulePoll(); // Reschedule ngay khi visibility thay đổi
         });
 
         // Bắt đầu polling
         if (window.convId) schedulePoll();
+
+        // Lắng nghe sự kiện từ Header (Sp_Heartbeat detects message anywhere)
+        $(window).on('global_new_message.reliooChat', function(e) {
+            // Tránh refresh sidebar liên tục nếu có nhiều tin nhắn dồn dập
+            if (window._chatSidebarRefreshTimeout) clearTimeout(window._chatSidebarRefreshTimeout);
+            window._chatSidebarRefreshTimeout = setTimeout(function() {
+                var ajaxUrl = window.location.href + (window.location.href.includes('?') ? '&' : '?') + 'ajax=spanav';
+                $.get(ajaxUrl, function (data) {
+                    var $frag = $('<div>').html(data);
+                    var newSidebar = $frag.find('#activeConvsArea').html();
+                    $('#activeConvsArea').html(newSidebar);
+                });
+            }, 500);
+        });
     });
 </script>
 

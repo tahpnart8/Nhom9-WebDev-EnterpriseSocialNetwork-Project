@@ -262,20 +262,24 @@ END$$
 -- CHAT & REAL-TIME PROCEDURES (Tối ưu lần 2 — 2026-04-15)
 -- ================================================================
 
--- 17. Lấy tin nhắn hội thoại (CÓ alias sender_name/sender_avatar)
+-- 17. Lấy tin nhắn hội thoại (CÓ alias sender_name/sender_avatar) - Đã hỗ trợ Lazy Load 30 tin
 DROP PROCEDURE IF EXISTS sp_GetConversationMessages$$
 CREATE PROCEDURE sp_GetConversationMessages(
     IN p_conv_id INT, 
     IN p_limit INT,
+    IN p_offset INT,
     IN p_viewer_id INT
 )
 BEGIN
     IF EXISTS (SELECT 1 FROM conversation_members WHERE conversation_id = p_conv_id AND user_id = p_viewer_id) THEN
-        SELECT m.*, u.full_name as sender_name, u.avatar_url as sender_avatar 
-        FROM messages m 
-        JOIN users u ON m.sender_id = u.id
-        WHERE m.conversation_id = p_conv_id 
-        ORDER BY m.created_at ASC LIMIT p_limit;
+        SELECT * FROM (
+            SELECT m.*, u.full_name as sender_name, u.avatar_url as sender_avatar 
+            FROM messages m 
+            JOIN users u ON m.sender_id = u.id
+            WHERE m.conversation_id = p_conv_id 
+            ORDER BY m.id DESC LIMIT p_limit OFFSET p_offset
+        ) AS tmp
+        ORDER BY tmp.id ASC;
     END IF;
 END$$
 
@@ -344,7 +348,11 @@ BEGIN
          JOIN conversation_members cm ON c.id = cm.conversation_id
          JOIN messages m ON c.id = m.conversation_id
          WHERE cm.user_id = p_user_id AND m.created_at > cm.last_read_at AND m.sender_id != p_user_id
-        ) as chat_count;
+        ) as chat_count,
+        (SELECT MAX(m.id) FROM messages m 
+         JOIN conversation_members cm ON m.conversation_id = cm.conversation_id 
+         WHERE cm.user_id = p_user_id
+        ) as last_msg_id;
 END$$
 
 -- 21. Đánh dấu đã đọc tin nhắn  

@@ -358,6 +358,13 @@
                     $.getJSON('index.php?action=api_heartbeat', function (data) {
                         var newNotiCount = data.noti_count || 0;
                         var newChatCount = data.chat_count || 0;
+                        var newLastMsgId = data.last_msg_id || 0;
+
+                        // Nếu có message mới, dispatch event cho trang Chat cập nhật
+                        if (window._hbLastMsgId !== undefined && newLastMsgId > window._hbLastMsgId) {
+                            window.dispatchEvent(new CustomEvent('global_new_message', {detail: newLastMsgId}));
+                        }
+                        window._hbLastMsgId = newLastMsgId;
 
                         // Cập nhật badge chat ngay lập tức
                         if (newChatCount > 0) {

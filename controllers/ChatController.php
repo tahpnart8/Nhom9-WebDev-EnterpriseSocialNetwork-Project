@@ -241,8 +241,39 @@ class ChatController {
 
         echo json_encode([
             'noti_count' => (int)($result['noti_count'] ?? 0),
-            'chat_count' => (int)($result['chat_count'] ?? 0)
+            'chat_count' => (int)($result['chat_count'] ?? 0),
+            'last_msg_id' => (int)($result['last_msg_id'] ?? 0)
         ]);
         exit;
     }
+
+    // API: Lazy Loading - Tải thêm tin nhắn cũ
+    public function fetchOlderMessages() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode([]); exit;
+        }
+        
+        $msgModel = new Message($this->db);
+        $convId = $_GET['conv_id'] ?? 0;
+        $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
+        
+        // Tải 30 bản ghi cũ hơn mỗi lần
+        $messages = $msgModel->getMessages($convId, $_SESSION['user_id'], 30, $offset);
+        echo json_encode($messages);
+        exit;
+    }
+
+    // API: Lấy lại danh sách cột Sidebar Trái (Dành cho Real-time Update danh sách chat)
+    public function fetchSidebarChats() {
+        if (!isset($_SESSION['user_id'])) exit;
+        $msgModel = new Message($this->db);
+        $conversations = $msgModel->getConversations($_SESSION['user_id']);
+        
+        // Trả về HTML đã gen từ view hoặc mảng dữ liệu (Ở đây tốt nhất là trả về danh sách dữ liệu JSON để dễ build bằng JS)
+        header('Content-Type: application/json');
+        echo json_encode($conversations);
+        exit;
+    }
 }
+

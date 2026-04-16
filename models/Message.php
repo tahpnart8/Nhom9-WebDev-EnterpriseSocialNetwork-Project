@@ -46,11 +46,12 @@ class Message {
     }
 
     // Lấy tin nhắn trong hội thoại (Có kiểm tra quyền truy cập)
-    public function getMessages($conversationId, $userId, $limit = 50) {
-        $query = "CALL sp_GetConversationMessages(:cid, :lim, :uid)";
+    public function getMessages($conversationId, $userId, $limit = 30, $offset = 0) {
+        $query = "CALL sp_GetConversationMessages(:cid, :lim, :off, :uid)";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':cid', $conversationId);
+        $stmt->bindParam(':cid', $conversationId, PDO::PARAM_INT);
         $stmt->bindParam(':lim', $limit, PDO::PARAM_INT);
+        $stmt->bindParam(':off', $offset, PDO::PARAM_INT);
         $stmt->bindParam(':uid', $userId, PDO::PARAM_INT);
         $stmt->execute();
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);

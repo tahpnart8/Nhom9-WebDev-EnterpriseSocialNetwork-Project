@@ -152,6 +152,10 @@ class TaskController
             echo json_encode(['success' => false, 'message' => 'Mô tả Task không được để trống!']);
             exit;
         }
+        if (empty($deadline)) {
+            echo json_encode(['success' => false, 'message' => 'Deadline không được để trống!']);
+            exit;
+        }
         if ($deadline && $deadline < date('Y-m-d')) {
             echo json_encode(['success' => false, 'message' => 'Hạn chót không được là ngày trong quá khứ!']);
             exit;
