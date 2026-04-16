@@ -32,6 +32,38 @@ class Department {
         return $stmt->fetchColumn();
     }
 
+    public function searchDepartments($keyword, $limit = null, $offset = null) {
+        // Tối ưu: chỉ tìm theo tên phòng ban và mô tả
+        $query = "SELECT id, dept_name, description, created_at FROM " . $this->table_name . " 
+                   WHERE dept_name LIKE :keyword OR description LIKE :keyword 
+                   ORDER BY dept_name ASC";
+        
+        if ($limit !== null && $offset !== null) {
+            $query .= " LIMIT :limit OFFSET :offset";
+        }
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':keyword', '%' . $keyword . '%');
+        
+        if ($limit !== null && $offset !== null) {
+            $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+        }
+        
+        $stmt->execute();
+        return $stmt;
+    }
+
+    public function getSearchCount($keyword) {
+        $query = "SELECT COUNT(*) FROM " . $this->table_name . " 
+                   WHERE dept_name LIKE :keyword OR description LIKE :keyword";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':keyword', '%' . $keyword . '%');
+        $stmt->execute();
+        return $stmt->fetchColumn();
+    }
+
     public function create($data) {
         $query = "INSERT INTO " . $this->table_name . " (dept_name, description, created_at) 
                   VALUES (:name, :desc, NOW())";

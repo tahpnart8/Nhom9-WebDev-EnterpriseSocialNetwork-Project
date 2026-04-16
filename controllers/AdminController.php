@@ -18,11 +18,10 @@ class AdminController {
 
     public function users() {
         $this->checkAdminAccess();
-        $pageTitle = "Quản lý nhân sự";
+        $pageTitle = "Quản lý Nhân sự";
         
         $database = new Database();
         $db = $database->getConnection();
-        
         $userModel = new User($db);
         
         // Pagination Logic
@@ -31,10 +30,20 @@ class AdminController {
         if ($currentPage < 1) $currentPage = 1;
         $offset = ($currentPage - 1) * $limit;
         
-        $totalUsers = $userModel->getTotalCount();
-        $totalPages = ceil($totalUsers / $limit);
-
-        $stmt = $userModel->getAllUsersWithDetails($limit, $offset);
+        // Search Logic - chỉ search khi có query, không load tất cả
+        $searchQuery = $_GET['q'] ?? '';
+        if (!empty($searchQuery)) {
+            // Search users - chỉ search theo query được cung cấp
+            $totalUsers = $userModel->getSearchCount($searchQuery);
+            $totalPages = ceil($totalUsers / $limit);
+            $stmt = $userModel->searchUsers($searchQuery, $limit, $offset);
+        } else {
+            // Get all users - chỉ khi không có search query mới load
+            $totalUsers = $userModel->getTotalCount();
+            $totalPages = ceil($totalUsers / $limit);
+            $stmt = $userModel->getAllUsersWithDetails($limit, $offset);
+        }
+        
         $usersList = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Lấy danh sách phòng ban và vai trò cho Modal Thêm mới
@@ -165,11 +174,12 @@ class AdminController {
     public function departments() {
         $this->checkAdminAccess();
         $pageTitle = "Phòng ban / Đơn vị";
-
+        
         $database = new Database();
         $db = $database->getConnection();
         
         $deptModel = new Department($db);
+        $taskModel = new Task($db);
 
         // Pagination Logic
         $limit = 5;
@@ -177,12 +187,23 @@ class AdminController {
         if ($currentPage < 1) $currentPage = 1;
         $offset = ($currentPage - 1) * $limit;
 
-        $totalDepts = $deptModel->getTotalCount();
-        $totalPages = ceil($totalDepts / $limit);
-
-        $stmt = $deptModel->getAll($limit, $offset);
+        // Search Logic
+        $searchQuery = $_GET['q'] ?? '';
+        if (!empty($searchQuery)) {
+            // Search departments
+            $totalDepts = $deptModel->getSearchCount($searchQuery);
+            $totalPages = ceil($totalDepts / $limit);
+            $stmt = $deptModel->searchDepartments($searchQuery, $limit, $offset);
+        } else {
+            // Get all departments
+            $totalDepts = $deptModel->getTotalCount();
+            $totalPages = ceil($totalDepts / $limit);
+            $stmt = $deptModel->getAll($limit, $offset);
+        }
+        
         $deptList = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // Truyền taskModel vào view
         require_once __DIR__ . '/../views/admin/departments.php';
     }
 

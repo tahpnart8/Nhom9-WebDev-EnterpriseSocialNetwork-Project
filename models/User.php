@@ -49,7 +49,7 @@ class User {
                   FROM " . $this->table_name . " u 
                   LEFT JOIN departments d ON u.department_id = d.id 
                   LEFT JOIN roles r ON u.role_id = r.id
-                  ORDER BY u.id DESC";
+                  ORDER BY u.id ASC";
         
         if ($limit !== null && $offset !== null) {
             $query .= " LIMIT :limit OFFSET :offset";
@@ -187,6 +187,42 @@ class User {
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $id);
         return $stmt->execute();
+    }
+
+    public function searchUsers($keyword, $limit = null, $offset = null) {
+        // Tối ưu: chỉ tìm theo tên, tài khoản, phòng ban - không tìm email
+        $query = "SELECT u.id, u.username, u.full_name, u.email, u.avatar_url, u.department_id, u.role_id, d.dept_name, r.role_name, u.is_active 
+                   FROM " . $this->table_name . " u 
+                   LEFT JOIN departments d ON u.department_id = d.id 
+                   LEFT JOIN roles r ON u.role_id = r.id
+                   WHERE u.full_name LIKE :keyword OR u.username LIKE :keyword OR d.dept_name LIKE :keyword
+                   ORDER BY u.full_name ASC";
+        
+        if ($limit !== null && $offset !== null) {
+            $query .= " LIMIT :limit OFFSET :offset";
+        }
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':keyword', '%' . $keyword . '%');
+        
+        if ($limit !== null && $offset !== null) {
+            $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+        }
+        
+        $stmt->execute();
+        return $stmt;
+    }
+
+    public function getSearchCount($keyword) {
+        $query = "SELECT COUNT(*) FROM " . $this->table_name . " u 
+                   LEFT JOIN departments d ON u.department_id = d.id 
+                   WHERE u.full_name LIKE :keyword OR u.username LIKE :keyword OR d.dept_name LIKE :keyword";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':keyword', '%' . $keyword . '%');
+        $stmt->execute();
+        return $stmt->fetchColumn();
     }
 
     public function getCountByDepartment($deptId) {

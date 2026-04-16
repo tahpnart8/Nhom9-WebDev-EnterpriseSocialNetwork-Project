@@ -163,12 +163,25 @@ class Task {
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':user_id', $user_id);
         $stmt->bindParam(':role_id', $role_id);
-        $stmt->bindValue(':dept_id', $dept_id, $dept_id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+        $stmt->bindValue(':dept_id', $dept_id, $dept_id === null ? PDO::PARAM_INT : PDO::PARAM_INT);
         $stmt->bindParam(':keyword', $keyword);
         $stmt->execute();
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         return $results;
+    }
+
+    public function getUrgentTasks() {
+        $query = "SELECT t.*, u.full_name as assignee_name 
+                  FROM " . $this->table_name . " t
+                  LEFT JOIN users u ON t.created_by_user_id = u.id
+                  WHERE t.priority = 'High' 
+                     OR (t.deadline < NOW() AND t.status != 'Done')
+                  ORDER BY t.priority DESC, t.deadline ASC
+                  LIMIT 5";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }
 ?>

@@ -153,35 +153,8 @@
                     <h3 class="fw-bold mb-0 text-dark"><?php echo htmlspecialchars($pageTitle ?? 'Tổng quan'); ?></h3>
                 </div>
 
-                <!-- Middle: Search Bar (Centered) -->
-                <?php
-                $currentAction = $_GET['action'] ?? 'dashboard';
-                $hideSearch = in_array($currentAction, ['dashboard', 'profile']);
-                ?>
-                <?php if (!$hideSearch): ?>
-                    <div class="search-wrapper d-none d-md-block">
-                        <div class="topbar-search-form">
-                            <i class="bi bi-search"></i>
-                            <input type="text" class="form-control" placeholder="Tìm kiếm nội dung, dự án..."
-                                value="<?php echo htmlspecialchars($_GET['q'] ?? ''); ?>">
-                            <i class="bi bi-x-circle-fill clear-search-input"
-                                style="display: <?php echo isset($_GET['q']) && $_GET['q'] !== '' ? 'block' : 'none'; ?>;"></i>
-                        </div>
-
-                        <!-- Search Results / History Dropdown -->
-                        <div class="search-history-dropdown shadow-lg">
-                            <div class="history-header">
-                                <span>TÌM KIẾM GẦN ĐÂY</span>
-                                <button id="clearHistoryBtn">Xóa tất cả</button>
-                            </div>
-                            <div id="historyList">
-                                <!-- JS dynamic render -->
-                            </div>
-                        </div>
-                    </div>
-                <?php else: ?>
-                    <div class="flex-grow-1"></div> <!-- Spacer when search is hidden -->
-                <?php endif; ?>
+                <!-- Spacer - không còn thanh tìm kiếm toàn cầu -->
+                <div class="flex-grow-1"></div>
 
                 <!-- Right: Utility Actions -->
                 <div class="topbar-utility-actions">
