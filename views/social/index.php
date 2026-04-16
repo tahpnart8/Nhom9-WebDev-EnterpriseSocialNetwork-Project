@@ -18,8 +18,8 @@
     .cursor-pointer:hover { text-decoration: underline; }
 </style>
 
-<div class="row g-4 position-relative">
-    <div class="col-12" style="padding-bottom: 50px;">
+<div class="d-flex flex-column h-100 position-relative">
+    <div class="col-12 flex-shrink-0">
         <!-- Tabs Chuyển Kênh -->
         <ul class="nav nav-pills mb-4 gap-2 bg-white p-2 rounded shadow-sm border">
             <li class="nav-item">
@@ -56,7 +56,10 @@
             </form>
         </div>
         <?php endif; ?>
+    </div> <!-- End Fixed Filter Area -->
 
+    <!-- Scrollable glass panel for content (Post creation + Feed) -->
+    <div class="glass-panel-scrollable mt-2">
         <?php 
         $canPost = false;
         $postVisibility = 'Public';
@@ -192,7 +195,7 @@
             </div>
             <?php endforeach; ?>
         </div>
-    </div>
+    </div> <!-- End Scrollable Area -->
 </div>
 
 <!-- Modal Chỉnh sửa bài viết -->

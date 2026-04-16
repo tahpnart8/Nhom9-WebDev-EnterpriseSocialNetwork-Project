@@ -1,5 +1,6 @@
 <?php include __DIR__ . '/../layouts/header.php'; ?>
 
+<div class="glass-panel-scrollable h-100 p-3 pt-4">
 <div class="row g-4">
     <div class="col-md-8">
         <div class="relioo-card p-4 h-100">
@@ -73,6 +74,7 @@
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>

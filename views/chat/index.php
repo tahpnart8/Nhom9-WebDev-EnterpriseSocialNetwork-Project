@@ -25,7 +25,7 @@
     display: none !important; /* Hide global search in Chat as it has its own search */
 }
 
-.chat-layout { display: flex; height: calc(100vh - 66px); background: var(--ms-bg); overflow: hidden; margin: 0; border-top: 1px solid #e0e0e0; font-family: system-ui, -apple-system, sans-serif; }
+.chat-layout { display: flex; height: 100%; flex: 1; background: var(--ms-bg); overflow: hidden; margin: 0; border-top: 1px solid #e0e0e0; font-family: system-ui, -apple-system, sans-serif; }
 
 /* Trái */
 .chat-sidebar { width: 360px; border-right: 1px solid #e0e0e0; display: flex; flex-direction: column; background: #fff; flex-shrink: 0; }

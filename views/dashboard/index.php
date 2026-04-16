@@ -1,5 +1,6 @@
 <?php include __DIR__ . '/../layouts/header.php'; ?>
 
+<div class="glass-panel-scrollable h-100">
 <div class="row g-4 mt-1">
     <div class="col-12">
         <div class="alert border-0 bg-primary relioo-card p-4 d-flex align-items-center gap-4 mb-0 shadow-sm" style="background-color: var(--primary-color) !important;">
@@ -147,6 +148,7 @@
             </div>
         </div>
     <?php endif; ?>
+</div>
 </div>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>

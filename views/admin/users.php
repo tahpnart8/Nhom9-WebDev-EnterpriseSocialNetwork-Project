@@ -1,5 +1,6 @@
 <?php include __DIR__ . '/../layouts/header.php'; ?>
 
+<div class="glass-panel-scrollable h-100 p-3 pt-4">
 <div class="row g-4">
     <div class="col-12">
         <div class="relioo-card p-4">
@@ -80,6 +81,7 @@
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <!-- Modal Thêm Nhân Sư Mẫu -->

@@ -111,6 +111,7 @@ $coverUrl = !empty($user['cover_url']) ? $user['cover_url'] : 'https://placehold
     }
 </style>
 
+<div class="glass-panel-scrollable h-100">
 <div class="profile-container pb-5">
 
     <!-- Cover Photo Area -->
@@ -292,6 +293,7 @@ $coverUrl = !empty($user['cover_url']) ? $user['cover_url'] : 'https://placehold
             </div>
         <?php endif; ?>
     </div>
+</div>
 </div>
 
 <!-- ===== MODALS ===== -->

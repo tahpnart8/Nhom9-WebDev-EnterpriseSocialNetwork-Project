@@ -9,9 +9,18 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    height: calc(100vh - 120px);
+    flex: 1;
+    min-height: 0;
     min-width: 0;
     width: 100%;
+    /* Glass style */
+    background: rgba(255, 255, 255, 0.45);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-bottom: none;
+    border-radius: 1.5rem 1.5rem 0 0;
+    padding: 1.5rem;
 }
 
 /* ===== TABS ===== */

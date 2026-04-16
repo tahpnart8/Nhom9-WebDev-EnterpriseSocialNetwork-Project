@@ -60,21 +60,19 @@
 body {
     font-family: 'Inter', sans-serif;
     color: var(--text-main);
-    overflow-x: hidden;
+    overflow: hidden; /* Lock master scrolling */
     padding: 12px;
     background: linear-gradient(135deg, #ff7e7e, #ffb2b2, #d8b4e2);
-    background-attachment: fixed;
-    min-height: 100vh;
+    height: 100vh; /* Fixed height to match viewport */
 }
 
 /* Master Layout Wrapper */
 #app-wrapper {
     display: flex;
     width: 100%;
-    min-height: calc(100vh - 24px);
-    background-color: var(--bg-color);
+    height: calc(100vh - 24px);
+    background-color: transparent; /* Changed to let gradient shine through */
     border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     overflow: hidden;
 }
 
@@ -246,11 +244,33 @@ body {
     margin-left: var(--sidebar-width);
     margin-right: var(--right-sidebar-width);
     padding: 2rem;
-    min-height: 100vh;
+    padding-bottom: 0px; /* Let inner scrollable panel hit bottom */
+    height: calc(100vh - 24px); /* Fixed height */
+    display: flex;
+    flex-direction: column;
     min-width: 0;
-    /* QUAN TRỌNG: cho phép flex item co lại nhỏ hơn content */
     max-width: calc(100vw - var(--sidebar-width) - var(--right-sidebar-width));
 }
+
+/* Glassmorphism Content Panel */
+.glass-panel-scrollable {
+    flex: 1;
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.45);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-bottom: none;
+    border-radius: 1.5rem 1.5rem 0 0;
+    padding: 1.5rem;
+    /* Clean custom scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.15) transparent;
+}
+.glass-panel-scrollable::-webkit-scrollbar { width: 6px; }
+.glass-panel-scrollable::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 10px; }
+.glass-panel-scrollable::-webkit-scrollbar-track { background: transparent; }
+
 
 /* Right Sidebar */
 .right-sidebar {
@@ -277,8 +297,8 @@ body {
 
 /* Glassmorphism Topbar & Balanced Navigation */
 .top-bar-sticky {
-    position: sticky;
-    top: 0;
+    position: relative; /* Since container is flex column now, no need for sticky */
+    flex-shrink: 0; /* Prevent shrinking */
     z-index: 1040;
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(12px) saturate(180%);
@@ -295,6 +315,7 @@ body {
     align-items: center;
     justify-content: space-between;
     transition: all 0.3s ease;
+    border-radius: 1rem 1rem 0 0;
 }
 
 .search-wrapper {
