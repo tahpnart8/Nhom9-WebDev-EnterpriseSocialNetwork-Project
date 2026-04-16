@@ -106,25 +106,25 @@ BEGIN
         ORDER BY s.deadline ASC LIMIT 10;
         
     ELSEIF p_role_id = 2 THEN
-        -- Leader: Việc cá nhân tuân thủ luật 4 ngày + Toàn bộ Pending thuộc phòng ban
+        -- Leader: Việc cá nhân tuân thủ luật 4 ngày + Toàn bộ Pending thuộc phòng ban + Yêu cầu gia hạn
         SELECT s.*, t.title as parent_task_title, COALESCE(tc.total, 0) as parent_total, COALESCE(tc.done, 0) as parent_done
         FROM subtasks s JOIN tasks t ON s.task_id = t.id
         LEFT JOIN (SELECT task_id, COUNT(*) as total, SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as done FROM subtasks GROUP BY task_id) tc ON tc.task_id = t.id
         WHERE 
             (s.assignee_id = p_user_id AND s.status IN ('To Do', 'In Progress') AND s.deadline >= NOW() AND s.deadline <= DATE_ADD(NOW(), INTERVAL 4 DAY))
             OR
-            (t.department_id = p_dept_id AND s.status = 'Pending')
+            (t.department_id = p_dept_id AND (s.status = 'Pending' OR s.extension_requested_at IS NOT NULL))
         ORDER BY s.deadline ASC LIMIT 10;
         
     ELSE
-        -- CEO (1) hoặc Admin (4): Việc cá nhân tuân thủ luật 4 ngày + Toàn bộ Pending toàn công ty
+        -- CEO (1) hoặc Admin (4): Việc cá nhân tuân thủ luật 4 ngày + Toàn bộ Pending toàn công ty + Yêu cầu gia hạn
         SELECT s.*, t.title as parent_task_title, COALESCE(tc.total, 0) as parent_total, COALESCE(tc.done, 0) as parent_done
         FROM subtasks s JOIN tasks t ON s.task_id = t.id
         LEFT JOIN (SELECT task_id, COUNT(*) as total, SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as done FROM subtasks GROUP BY task_id) tc ON tc.task_id = t.id
         WHERE 
             (s.assignee_id = p_user_id AND s.status IN ('To Do', 'In Progress') AND s.deadline >= NOW() AND s.deadline <= DATE_ADD(NOW(), INTERVAL 4 DAY))
             OR
-            (s.status = 'Pending')
+            (s.status = 'Pending' OR s.extension_requested_at IS NOT NULL)
         ORDER BY s.deadline ASC LIMIT 10;
     END IF;
 END$$

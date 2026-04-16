@@ -1,4 +1,7 @@
 <?php
+// Thiết lập múi giờ Việt Nam
+date_default_timezone_set('Asia/Ho_Chi_Minh');
+
 // Front Controller Pattern (Bộ định tuyến chính)
 session_start();
 
@@ -62,6 +65,7 @@ $routes = [
     'api_task_detail' => [$taskController, 'getTaskDetail'],
     'api_delete_task' => [$taskController, 'deleteTask'],
     'api_extend_subtask' => [$taskController, 'extendSubtask'],
+    'api_request_extension' => [$taskController, 'requestExtension'],
     'api_save_evidence' => [$taskController, 'saveEvidence'],
     'api_generate_subtask_report' => [$taskController, 'generateSubtaskReport'],
     'api_save_subtask_report' => [$taskController, 'saveSubtaskReport'],

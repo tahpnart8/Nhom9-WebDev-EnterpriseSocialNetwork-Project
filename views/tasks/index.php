@@ -288,7 +288,7 @@
 
 <!-- ==================== MODALS ==================== -->
 <!-- Subtask Detail -->
-<div class="modal fade" id="subtaskDetailModal" tabindex="-1">
+<div class="modal fade" id="subtaskDetailModal">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 1.2rem;">
             <div class="modal-header border-0 pb-0">
@@ -300,7 +300,7 @@
     </div>
 </div>
 <!-- Task Detail -->
-<div class="modal fade" id="taskDetailModal" tabindex="-1">
+<div class="modal fade" id="taskDetailModal">
     <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 1.2rem;">
             <div class="modal-header border-0 pb-0">
@@ -312,7 +312,7 @@
     </div>
 </div>
 <!-- Create Task -->
-<div class="modal fade" id="createTaskModal" tabindex="-1">
+<div class="modal fade" id="createTaskModal">
     <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
             <div class="modal-header border-0"><h6 class="modal-title fw-bold">TẠO TASK MỚI</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
@@ -337,7 +337,7 @@
     </div>
 </div>
 <!-- Add Subtask -->
-<div class="modal fade" id="addSubtaskModal" tabindex="-1">
+<div class="modal fade" id="addSubtaskModal">
     <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
             <div class="modal-header border-0"><h6 class="modal-title fw-bold">THÊM CÔNG VIỆC CON</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
@@ -357,7 +357,7 @@
 </div>
 
 <!-- MODAL BÁO CÁO CÔNG VIỆC BẰNG AI -->
-<div class="modal fade" id="subtaskReportModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+<div class="modal fade" id="subtaskReportModal" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-gradient-primary text-white">
@@ -407,7 +407,7 @@
 </div>
 
 <!-- MODAL TỔNG KẾT DỰ ÁN BẰNG AI (Cho Trưởng phòng) -->
-<div class="modal fade" id="taskSummaryModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+<div class="modal fade" id="taskSummaryModal" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-gradient-success text-white">
@@ -445,7 +445,8 @@
 var STAFF_LIST = <?php echo json_encode($staffList); ?>;
 var USER_ID = <?php echo $_SESSION['user_id']; ?>;
 var ROLE_ID = <?php echo $_SESSION['role_id']; ?>;
-var TODAY = new Date().toISOString().split('T')[0];
+var SERVER_NOW = new Date("<?php echo date('Y-m-d H:i:s'); ?>");
+var TODAY = "<?php echo date('Y-m-d'); ?>";
 
 // ===== MIN DATE: không cho chọn ngày quá khứ =====
 $(function() {
@@ -652,6 +653,7 @@ function handleDragError(msg) {
     else if (msg === 'no_evidence') Swal.fire({title:'Chưa có minh chứng!', text:'Bổ sung minh chứng trước khi gửi duyệt.', icon:'warning'});
     else if (msg === 'permission_denied') Swal.fire({title:'Không có quyền!', text:'Chỉ người được giao mới thao tác được.', icon:'error'});
     else if (msg === 'locked_pending') Swal.fire({title:'Đang chờ duyệt!', text:'Chờ Trưởng phòng phê duyệt.', icon:'info'});
+    else if (msg === 'overdue_locked') Swal.fire({title:'Đã trễ hạn!', text:'Bạn cần gửi "Yêu cầu gia hạn" và được cấp trên phê duyệt mới có thể tiếp tục.', icon:'warning'});
     else if (msg !== 'confirm_pending') Swal.fire({title:'Lỗi!', text: msg || 'Có lỗi xảy ra.', icon:'error'});
 }
 
@@ -719,8 +721,8 @@ function openSubtaskDetail(id) {
     $.getJSON('index.php?action=api_subtask_detail&id='+id, function(res) {
         if(!res.success) return;
         let s = res.data;
-        let now = new Date();
-        let isOverdue = s.deadline && new Date(s.deadline) < now && s.status !== 'Done';
+        let deadlineStr = s.deadline ? s.deadline.replace(' ', 'T') : null;
+        let isOverdue = deadlineStr && new Date(deadlineStr) < SERVER_NOW && s.status !== 'Done';
 
         let feedbackHtml = (s.is_rejected == 1 && s.feedback) ? `<div class="alert alert-danger py-2 small fw-bold"><i class="bi bi-exclamation-triangle me-1"></i>Lý do từ chối: ${s.feedback}</div>` : '';
 
@@ -755,7 +757,7 @@ function openSubtaskDetail(id) {
                 <div class="d-flex justify-content-between mb-2"><span>Người làm:</span><b>${s.assignee_name}</b></div>
                 <div class="d-flex justify-content-between mb-2"><span>Trạng thái:</span><span>${statusBadge}</span></div>
                 <div class="d-flex justify-content-between mb-2"><span>Ưu tiên:</span><span class="priority-badge ${pClass}">${pLabel}</span></div>
-                <div class="d-flex justify-content-between"><span>Hạn chót:</span><b class="${isOverdue?'text-danger':''}">${s.deadline ? new Date(s.deadline).toLocaleDateString('vi-VN') : 'Không có'}</b></div>
+                <div class="d-flex justify-content-between"><span>Hạn chót:</span><b class="${isOverdue?'text-danger':''}">${deadlineStr ? new Date(deadlineStr).toLocaleString('vi-VN') : 'Không có'}</b></div>
             </div>
             <div class="mb-3"><h6 class="extra-small fw-bold text-muted mb-1 uppercase">MÔ TẢ</h6><div class="small p-2 bg-light rounded-3" style="white-space:pre-wrap">${s.description || '<span class="text-muted">Không có mô tả.</span>'}</div></div>
             ${attachmentsHtml}
@@ -765,12 +767,29 @@ function openSubtaskDetail(id) {
 }
 
 function renderSubActions(s) {
-    let now = new Date();
-    let isOverdue = s.deadline && new Date(s.deadline) < now && s.status !== 'Done';
+    let deadlineStr = s.deadline ? s.deadline.replace(' ', 'T') : null;
+    let isOverdue = deadlineStr && new Date(deadlineStr) < SERVER_NOW && s.status !== 'Done';
 
-    if(s.assignee_id == USER_ID) {
-        if(s.status == 'To Do') return `<button class="btn btn-primary w-100 rounded-pill fw-bold" onclick="doStatus(${s.id}, 'In Progress')">BẮT ĐẦU LÀM</button>`;
-        if(s.status == 'In Progress') {
+    // Xử lý với người được giao (Assignee)
+    if (s.assignee_id == USER_ID) {
+        // Nếu đang trễ hạn -> Chỉ được yêu cầu gia hạn
+        if (isOverdue) {
+            if (s.extension_requested_at) {
+                return `<div class="alert alert-info py-2 text-center small fw-bold mb-0">
+                    <i class="bi bi-clock-history me-1"></i> Đang chờ gia hạn...
+                </div>`;
+            }
+            return `<div class="text-center">
+                <div class="alert alert-danger py-2 small fw-bold mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Đã quá hạn! Cần gia hạn để tiếp tục.</div>
+                <button class="btn btn-warning w-100 rounded-pill fw-bold" onclick="requestExtension(${s.id})">
+                    <i class="bi bi-calendar-plus me-1"></i>YÊU CẦU GIA HẠN
+                </button>
+            </div>`;
+        }
+
+        // Nếu chưa trễ hạn -> Thực hiện bình thường
+        if (s.status == 'To Do') return `<button class="btn btn-primary w-100 rounded-pill fw-bold" onclick="doStatus(${s.id}, 'In Progress')">BẮT ĐẦU LÀM</button>`;
+        if (s.status == 'In Progress') {
             return `
                 <form id="evidForm">
                     <label class="small fw-bold mb-1">Minh chứng làm việc</label>
@@ -783,17 +802,24 @@ function renderSubActions(s) {
                 </form>`;
         }
     }
+
     // Leader/CEO: Duyệt/Từ chối (chỉ khi KHÔNG trễ hạn)
-    if((ROLE_ID==1||ROLE_ID==2||ROLE_ID==4) && s.status=='Pending' && !isOverdue) {
+    if ((ROLE_ID == 1 || ROLE_ID == 2 || ROLE_ID == 4) && s.status == 'Pending' && !isOverdue) {
         return `<div class="d-flex gap-2"><button class="btn btn-success flex-fill rounded-pill fw-bold" onclick="approve(${s.id})">DUYỆT</button><button class="btn btn-danger flex-fill rounded-pill fw-bold" onclick="reject(${s.id})">TỪ CHỐI</button></div>`;
     }
-    // Leader/CEO: Subtask trễ hạn → Nút GIA HẠN
-    if((ROLE_ID==1||ROLE_ID==2||ROLE_ID==4) && isOverdue) {
+
+    // Leader/CEO: Subtask trễ hạn hoặc có yêu cầu gia hạn -> Nút GIA HẠN
+    if ((ROLE_ID == 1 || ROLE_ID == 2 || ROLE_ID == 4) && (isOverdue || s.extension_requested_at)) {
+        let msg = isOverdue ? 'Subtask đã trễ hạn!' : 'Nhân viên yêu cầu gia hạn!';
+        let reqDateStr = s.requested_deadline ? s.requested_deadline.replace(' ', 'T') : null;
+        let reasonHtml = s.extension_reason ? `<div class="small mb-2 text-start p-2 bg-light rounded border">Lý do: <i>"${s.extension_reason}"</i><br>Muốn gia hạn đến: <b>${reqDateStr ? new Date(reqDateStr).toLocaleDateString('vi-VN') : ''}</b></div>` : '';
         return `<div class="text-center">
-            <div class="alert alert-danger py-2 small fw-bold mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Subtask đã trễ hạn!</div>
+            <div class="alert alert-warning py-2 small fw-bold mb-2"><i class="bi bi-exclamation-triangle me-1"></i>${msg}</div>
+            ${reasonHtml}
             <button class="btn btn-warning w-100 rounded-pill fw-bold" onclick="extendSubtask(${s.id})"><i class="bi bi-calendar-plus me-1"></i>GIA HẠN THỜI GIAN</button>
         </div>`;
     }
+
     if (s.status == 'Done') return `<div class="alert alert-success py-2 text-center fw-bold mb-0"><i class="bi bi-check-circle me-1"></i>Đã hoàn thành!</div>`;
     return '';
 }
@@ -882,7 +908,7 @@ function openTaskDetail(tid) {
     $('#taskBody').html('<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>');
     $.getJSON('index.php?action=api_task_detail&id='+tid, function(res) {
         if (!res.success) return;
-        let task = res.data, now = new Date();
+        let task = res.data, now = SERVER_NOW;
         let sCount = task.subtask_count||0, dCount = task.done_count||0;
         let pct = sCount > 0 ? Math.round((dCount/sCount)*100) : 0;
         let pClass='priority-medium', pLabel='Trung bình';
@@ -892,7 +918,8 @@ function openTaskDetail(tid) {
         let subtaskListHtml = '';
         if (task.subtasks && task.subtasks.length > 0) {
             task.subtasks.forEach(s => {
-                let isOD = s.deadline && new Date(s.deadline) < now && s.status !== 'Done';
+                let sDeadlineStr = s.deadline ? s.deadline.replace(' ', 'T') : null;
+                let isOD = sDeadlineStr && new Date(sDeadlineStr) < now && s.status !== 'Done';
                 let cc = 'st-todo';
                 if (s.status==='Done') cc='st-done'; else if (isOD) cc='st-overdue'; else if (s.status==='In Progress'||s.status==='Pending') cc='st-progress';
                 let sb = `<span class="badge bg-secondary" style="font-size:0.58rem">${s.status}</span>`;
@@ -902,7 +929,7 @@ function openTaskDetail(tid) {
                 if (isOD) sb='<span class="badge bg-danger" style="font-size:0.58rem">Trễ hạn</span>';
                 let delBtn = (ROLE_ID<=2||ROLE_ID==4) ? `<i class="bi bi-trash text-danger ms-2 pointer" onclick="event.stopPropagation();deleteSub(${s.id})" title="Xóa"></i>` : '';
                 subtaskListHtml += `<div class="subtask-list-item ${cc}" onclick="bootstrap.Modal.getInstance(document.getElementById('taskDetailModal')).hide();setTimeout(()=>openSubtaskDetail(${s.id}),300);">
-                    <div><span class="fw-bold">${s.title}</span><div class="text-muted" style="font-size:0.68rem"><i class="bi bi-person"></i> ${s.assignee_name}${s.deadline?' · <i class="bi bi-clock"></i> '+new Date(s.deadline).toLocaleDateString('vi-VN'):''}</div></div>
+                    <div><span class="fw-bold">${s.title}</span><div class="text-muted" style="font-size:0.68rem"><i class="bi bi-person"></i> ${s.assignee_name}${sDeadlineStr?' · <i class="bi bi-clock"></i> '+new Date(sDeadlineStr).toLocaleDateString('vi-VN'):''}</div></div>
                     <div class="d-flex align-items-center">${sb}${delBtn}</div></div>`;
             });
         } else subtaskListHtml = '<p class="p-3 text-muted text-center small">Chưa có việc con nào.</p>';
@@ -934,7 +961,7 @@ function openTaskDetail(tid) {
                 <div class="d-flex justify-content-between mb-2"><span>Người tạo:</span><b class="text-primary"><i class="bi bi-person me-1"></i>${task.creator_name||'N/A'}</b></div>
                 <div class="d-flex justify-content-between mb-2"><span>Phòng ban:</span><b>${task.dept_name||'N/A'}</b></div>
                 <div class="d-flex justify-content-between mb-2"><span>Ưu tiên:</span><span class="priority-badge ${pClass}">${pLabel}</span></div>
-                <div class="d-flex justify-content-between mb-2"><span>Hạn chót:</span><b>${task.deadline?new Date(task.deadline).toLocaleDateString('vi-VN'):'Không có'}</b></div>
+                <div class="d-flex justify-content-between mb-2"><span>Hạn chót:</span><b>${task.deadline?new Date(task.deadline.replace(' ', 'T')).toLocaleDateString('vi-VN'):'Không có'}</b></div>
                 <div class="d-flex justify-content-between"><span>Trạng thái:</span><span class="badge ${task.status=='Done'?'bg-success':'bg-primary'}">${task.status}</span></div>
             </div>
             <div class="mb-2"><div class="d-flex justify-content-between small fw-bold mb-1"><span>Tiến độ</span><span>${pct}%</span></div>
@@ -1037,6 +1064,65 @@ function extendSubtask(id) {
                 if(res.success) Swal.fire({title:'Đã gia hạn!', text: res.message, icon:'success', timer:1500, showConfirmButton:false}).then(()=>location.reload());
                 else Swal.fire({title:'Lỗi!', text:res.message, icon:'error'});
             }, 'json');
+        }
+    });
+}
+
+function requestExtension(id) {
+    // Đóng modal chi tiết để tránh lỗi kẹt focus của Bootstrap
+    const detailModalEl = document.getElementById('subtaskDetailModal');
+    const bModal = bootstrap.Modal.getInstance(detailModalEl);
+    if (bModal) bModal.hide();
+
+    // Bước 1: Chọn ngày
+    Swal.fire({
+        title: 'Yêu cầu gia hạn (1/2)',
+        text: 'Vui lòng chọn ngày bạn mong muốn hoàn thành:',
+        input: 'date',
+        inputAttributes: { min: TODAY },
+        showCancelButton: true,
+        confirmButtonText: 'Tiếp tục',
+        cancelButtonText: 'Hủy',
+        reverseButtons: true,
+        inputValidator: (value) => {
+            if (!value) return 'Vui lòng chọn ngày!';
+        }
+    }).then((resDate) => {
+        if (resDate.isConfirmed) {
+            // Bước 2: Nhập lý do (Sử dụng input textarea bản gốc của Swal để tránh lỗi focus)
+            Swal.fire({
+                title: 'Giải trình lý do (2/2)',
+                input: 'textarea',
+                inputPlaceholder: 'Giải trình lý do trễ hạn và cam kết tiến độ...',
+                inputAttributes: { 'aria-label': 'Lý do gia hạn' },
+                showCancelButton: true,
+                confirmButtonText: 'Gửi yêu cầu',
+                cancelButtonText: 'Quay lại',
+                reverseButtons: true,
+                inputValidator: (value) => {
+                    if (!value) return 'Vui lòng nhập lý do!';
+                }
+            }).then((resReason) => {
+                if (resReason.isConfirmed) {
+                    $.post('index.php?action=api_request_extension', {
+                        subtask_id: id,
+                        target_date: resDate.value,
+                        reason: resReason.value
+                    }, function(res) {
+                        if(res.success) {
+                            Swal.fire({title:'Đã gửi!', text: res.message, icon:'success', timer:2000, showConfirmButton:false}).then(()=>location.reload());
+                        } else {
+                            Swal.fire({title:'Lỗi!', text: res.message, icon:'error'}).then(() => { if (bModal) bModal.show(); });
+                        }
+                    }, 'json');
+                } else if (resReason.dismiss === Swal.DismissReason.cancel) {
+                    // Nếu bấm quay lại thì hiện lại modal ban đầu
+                    if (bModal) bModal.show();
+                }
+            });
+        } else if (resDate.dismiss === Swal.DismissReason.cancel) {
+            // Nếu bấm hủy thì hiện lại modal ban đầu
+            if (bModal) bModal.show();
         }
     });
 }

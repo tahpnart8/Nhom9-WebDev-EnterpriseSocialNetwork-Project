@@ -199,11 +199,33 @@ class Subtask {
         return $stmt->execute();
     }
 
-    // Gia hạn deadline subtask trễ hạn - đưa về To Do
+    // Gia hạn deadline subtask trễ hạn - đưa về To Do + Xóa trắng bản ghi yêu cầu
     public function extendDeadline($subtask_id, $new_deadline) {
-        $query = "UPDATE " . $this->table_name . " SET deadline = :deadline, status = 'To Do', is_rejected = 0, is_extended = 1 WHERE id = :id";
+        $query = "UPDATE " . $this->table_name . " 
+                  SET deadline = :deadline, 
+                      status = 'To Do', 
+                      is_rejected = 0, 
+                      is_extended = 1,
+                      extension_requested_at = NULL,
+                      requested_deadline = NULL,
+                      extension_reason = NULL
+                  WHERE id = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':deadline', $new_deadline);
+        $stmt->bindParam(':id', $subtask_id);
+        return $stmt->execute();
+    }
+
+    // Gửi yêu cầu gia hạn subtask trễ hạn
+    public function requestExtension($subtask_id, $target_date, $reason) {
+        $query = "UPDATE " . $this->table_name . " 
+                  SET extension_requested_at = NOW(), 
+                      requested_deadline = :deadline, 
+                      extension_reason = :reason 
+                  WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':deadline', $target_date);
+        $stmt->bindParam(':reason', $reason);
         $stmt->bindParam(':id', $subtask_id);
         return $stmt->execute();
     }

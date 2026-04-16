@@ -273,6 +273,13 @@ class TaskController
             exit;
         }
 
+        // Kiểm tra trễ hạn (Overdue check) - Nhân viên/Quản lý được giao phải gia hạn mới được gửi duyệt
+        $now = date('Y-m-d H:i:s');
+        if (!empty($subtask['deadline']) && $subtask['deadline'] < $now && $subtask['status'] != 'Done') {
+            echo json_encode(['success' => false, 'message' => 'Công việc đã trễ hạn! Bạn không thể gửi duyệt, hãy gửi "Yêu cầu gia hạn" tới cấp trên.']);
+            exit;
+        }
+
         // Upload file nếu có
         if (isset($_FILES['evidence_file']) && $_FILES['evidence_file']['error'] === UPLOAD_ERR_OK) {
             require_once __DIR__ . '/../models/CloudStorage.php';
@@ -426,6 +433,16 @@ class TaskController
         if (!$subtask) {
             echo json_encode(['success' => false, 'message' => 'Lỗi dữ liệu!']);
             exit;
+        }
+
+        // Kiểm tra trễ hạn (Overdue check)
+        $now = date('Y-m-d H:i:s');
+        if (!empty($subtask['deadline']) && $subtask['deadline'] < $now && $subtask['status'] != 'Done') {
+            // Nếu là người thực hiện, chặn lại
+            if ($subtask['assignee_id'] == $_SESSION['user_id']) {
+                echo json_encode(['success' => false, 'message' => 'overdue_locked']);
+                exit;
+            }
         }
 
         // Khóa Done
@@ -702,6 +719,65 @@ class TaskController
             echo json_encode(['success' => true, 'message' => 'Đã gia hạn! Subtask quay về cột Cần làm.']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi gia hạn!']);
+        }
+        exit;
+    }
+
+    // ========== API: YÊU CẦU GIA HẠN SUBTASK (Staff) ==========
+    public function requestExtension()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        $subtaskId = $_POST['subtask_id'] ?? 0;
+        $targetDate = $_POST['target_date'] ?? null;
+        $reason = htmlspecialchars(trim($_POST['reason'] ?? ''));
+
+        if (empty($targetDate) || empty($reason)) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng nhập lý do và ngày mong muốn!']);
+            exit;
+        }
+
+        $subtaskModel = new Subtask($this->db);
+        $subtask = $subtaskModel->getById($subtaskId);
+        if (!$subtask) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy công việc!']);
+            exit;
+        }
+
+        if ($subtask['assignee_id'] != $_SESSION['user_id']) {
+            echo json_encode(['success' => false, 'message' => 'Bạn không phải là người thực hiện công việc này!']);
+            exit;
+        }
+
+        if ($subtaskModel->requestExtension($subtaskId, $targetDate, $reason)) {
+            $taskModel = new Task($this->db);
+            $task = $taskModel->getById($subtask['task_id']);
+            $notifyIds = [];
+            if ($task['created_by_user_id'])
+                $notifyIds[] = $task['created_by_user_id'];
+
+            // Trưởng phòng cũng nhận thông báo
+            $stmt = $this->db->prepare("SELECT id FROM users WHERE department_id = ? AND role_id = 2");
+            $stmt->execute([$task['department_id']]);
+            $leaders = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            foreach ($leaders as $l) {
+                if (!in_array($l, $notifyIds))
+                    $notifyIds[] = $l;
+            }
+
+            NotificationController::pushNotification(
+                $this->db,
+                'extension_request',
+                $_SESSION['user_id'],
+                $_SESSION['full_name'] . " yêu cầu gia hạn Subtask '" . $subtask['title'] . "' đến " . date('d/m/Y', strtotime($targetDate)) . ". Lý do: " . $reason,
+                "index.php?action=tasks&subtask_id=" . $subtaskId,
+                $notifyIds
+            );
+
+            echo json_encode(['success' => true, 'message' => 'Đã gửi yêu cầu gia hạn tới Quản lý/CEO!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi gửi yêu cầu!']);
         }
         exit;
     }

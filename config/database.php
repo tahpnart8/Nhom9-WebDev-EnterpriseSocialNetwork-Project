@@ -29,6 +29,8 @@ class Database {
             $this->conn = new PDO($dsn, $user, $pass);
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+            // Thiết lập múi giờ cho MySQL
+            $this->conn->exec("SET time_zone = '+07:00';");
         } catch(PDOException $exception) {
             die("Lỗi kết nối CSDL! <br> Host đang thử: <b>$host</b> <br> Database: <b>$db</b> <br> Lỗi: " . $exception->getMessage());
         }
