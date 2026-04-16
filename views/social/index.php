@@ -1,70 +1,133 @@
 <?php include __DIR__ . '/../layouts/header.php'; ?>
 
 <style>
-    .post-actions .btn { transition: all 0.2s ease; }
-    .post-actions .btn.active { color: #ef4444 !important; }
-    .post-actions .btn.active i::before { content: "\f415"; }
-    .comment-section { background-color: #f8fafc; border-top: 1px solid #e2e8f0; }
-    .comment-item { margin-bottom: 1rem; }
-    .comment-avatar { width: 32px; height: 32px; font-size: 12px; }
-    .comment-bubble { background-color: white; padding: 0.6rem 1rem; border-radius: 1rem; border: 1px solid #e2e8f0; position: relative; }
-    .comment-actions { font-size: 0.75rem; margin-top: 0.25rem; padding-left: 0.5rem; }
-    .comment-actions a { color: #64748b; text-decoration: none; font-weight: 600; margin-right: 1rem; }
-    .comment-actions a:hover { color: #3b82f6; }
-    .comment-actions a.active { color: #ef4444; }
-    .reply-list { margin-left: 3rem; margin-top: 0.5rem; border-left: 2px solid #e2e8f0; padding-left: 1rem; }
-    .liker-list-item:hover { background-color: #f8fafc; }
-    .cursor-pointer { cursor: pointer; }
-    .cursor-pointer:hover { text-decoration: underline; }
+    .post-actions .btn {
+        transition: all 0.2s ease;
+    }
+
+    .post-actions .btn.active {
+        color: #ef4444 !important;
+    }
+
+    .post-actions .btn.active i::before {
+        content: "\f415";
+    }
+
+    .comment-section {
+        background-color: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .comment-item {
+        margin-bottom: 1rem;
+    }
+
+    .comment-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+    }
+
+    .comment-bubble {
+        background-color: white;
+        padding: 0.6rem 1rem;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        position: relative;
+    }
+
+    .comment-actions {
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+        padding-left: 0.5rem;
+    }
+
+    .comment-actions a {
+        color: #64748b;
+        text-decoration: none;
+        font-weight: 600;
+        margin-right: 1rem;
+    }
+
+    .comment-actions a:hover {
+        color: #3b82f6;
+    }
+
+    .comment-actions a.active {
+        color: #ef4444;
+    }
+
+    .reply-list {
+        margin-left: 3rem;
+        margin-top: 0.5rem;
+        border-left: 2px solid #e2e8f0;
+        padding-left: 1rem;
+    }
+
+    .liker-list-item:hover {
+        background-color: #f8fafc;
+    }
+
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+    .cursor-pointer:hover {
+        text-decoration: underline;
+    }
 </style>
 
-<div class="d-flex flex-column h-100 position-relative">
+<div class="d-flex flex-column h-100 position-relative" style="gap: var(--app-gap);">
     <div class="col-12 flex-shrink-0">
         <!-- Tabs Chuyển Kênh -->
-        <ul class="nav nav-pills mb-4 gap-2 bg-white p-2 rounded shadow-sm border">
+        <ul class="nav nav-pills gap-2 bg-white p-2 rounded shadow-sm border mb-0">
             <li class="nav-item">
-                <a class="nav-link fw-medium px-4 <?php echo $channel === 'public' ? 'active' : 'text-dark'; ?>" href="index.php?action=social&channel=public">
+                <a class="nav-link fw-medium px-4 <?php echo $channel === 'public' ? 'active' : 'text-dark'; ?>"
+                    href="index.php?action=social&channel=public">
                     🌍 Kênh Công Khai
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link fw-medium px-4 <?php echo $channel === 'department' ? 'active' : 'text-dark'; ?>" href="index.php?action=social&channel=department">
+                <a class="nav-link fw-medium px-4 <?php echo $channel === 'department' ? 'active' : 'text-dark'; ?>"
+                    href="index.php?action=social&channel=department">
                     🏢 Kênh Phòng Ban
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link fw-medium px-4 <?php echo $channel === 'announcement' ? 'active' : 'text-dark'; ?>" href="index.php?action=social&channel=announcement">
+                <a class="nav-link fw-medium px-4 <?php echo $channel === 'announcement' ? 'active' : 'text-dark'; ?>"
+                    href="index.php?action=social&channel=announcement">
                     📢 Thông Báo
                 </a>
             </li>
         </ul>
 
         <?php if ($channel === 'department' && ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 4)): ?>
-        <div class="mb-4">
-            <form id="deptFilterForm" action="index.php" method="GET" class="d-flex align-items-center gap-2">
-                <input type="hidden" name="action" value="social">
-                <input type="hidden" name="channel" value="department">
-                <label class="fw-bold text-muted small mb-0">Lọc phòng ban:</label>
-                <select name="dept_id" class="form-select form-select-sm border shadow-sm rounded w-auto" onchange="document.getElementById('deptFilterForm').submit();">
-                    <option value="">Tất cả phòng ban</option>
-                    <?php foreach ($departments as $dept): ?>
-                        <option value="<?php echo $dept['id']; ?>" <?php echo $dept_id_filter == $dept['id'] ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($dept['dept_name']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </form>
-        </div>
+            <div class="mb-0">
+                <form id="deptFilterForm" action="index.php" method="GET" class="d-flex align-items-center gap-2">
+                    <input type="hidden" name="action" value="social">
+                    <input type="hidden" name="channel" value="department">
+                    <label class="fw-bold text-muted small mb-0">Lọc phòng ban:</label>
+                    <select name="dept_id" class="form-select form-select-sm border shadow-sm rounded w-auto"
+                        onchange="document.getElementById('deptFilterForm').submit();">
+                        <option value="">Tất cả phòng ban</option>
+                        <?php foreach ($departments as $dept): ?>
+                            <option value="<?php echo $dept['id']; ?>" <?php echo $dept_id_filter == $dept['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($dept['dept_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </form>
+            </div>
         <?php endif; ?>
     </div> <!-- End Fixed Filter Area -->
 
     <!-- Scrollable glass panel for content (Post creation + Feed) -->
-    <div class="glass-panel-scrollable mt-2">
-        <?php 
+    <div class="glass-panel-scrollable">
+        <?php
         $canPost = false;
         $postVisibility = 'Public';
         $postPlaceholder = "Chia sẻ một ý tưởng...";
-        
+
         if ($channel === 'public') {
             $canPost = true;
             $postVisibility = 'Public';
@@ -82,117 +145,159 @@
             }
         }
         ?>
-        
+
         <?php if ($canPost): ?>
-        <!-- Khung Đăng Bài -->
-        <div class="relioo-card p-4 mb-4 border-top border-3 border-primary shadow-sm" style="background: linear-gradient(180deg, #fdfdff 0%, #ffffff 100%);">
-            <form id="createPostForm" enctype="multipart/form-data">
-                <input type="hidden" name="visibility" value="<?php echo $postVisibility; ?>">
-                <div class="d-flex gap-3 mb-3">
-                    <div class="avatar-circle shadow-sm flex-shrink-0" style="width: 44px; height: 44px; font-size: 14px;">
-                        <?php if(!empty($_SESSION['avatar_url'])): ?>
-                            <img src="<?php echo htmlspecialchars($_SESSION['avatar_url']); ?>" class="w-100 h-100 rounded-circle" style="object-fit:cover">
-                        <?php else: ?>
-                            <?php echo mb_substr(trim($_SESSION['full_name'] ?? 'User'), 0, 1, 'UTF-8'); ?>
-                        <?php endif; ?>
+            <!-- Khung Đăng Bài -->
+            <div class="relioo-card p-4 mb-4 border-top border-3 border-primary shadow-sm"
+                style="background: linear-gradient(180deg, #fdfdff 0%, #ffffff 100%);">
+                <form id="createPostForm" enctype="multipart/form-data">
+                    <input type="hidden" name="visibility" value="<?php echo $postVisibility; ?>">
+                    <div class="d-flex gap-3 mb-3">
+                        <div class="avatar-circle shadow-sm flex-shrink-0"
+                            style="width: 44px; height: 44px; font-size: 14px;">
+                            <?php if (!empty($_SESSION['avatar_url'])): ?>
+                                <img src="<?php echo htmlspecialchars($_SESSION['avatar_url']); ?>"
+                                    class="w-100 h-100 rounded-circle" style="object-fit:cover">
+                            <?php else: ?>
+                                <?php echo mb_substr(trim($_SESSION['full_name'] ?? 'User'), 0, 1, 'UTF-8'); ?>
+                            <?php endif; ?>
+                        </div>
+                        <textarea class="form-control bg-light border-0 px-3 py-3 rounded-3" id="postContent" name="content"
+                            rows="3" placeholder="<?php echo $postPlaceholder; ?>" required
+                            style="resize: none;"></textarea>
                     </div>
-                    <textarea class="form-control bg-light border-0 px-3 py-3 rounded-3" id="postContent" name="content" rows="3" placeholder="<?php echo $postPlaceholder; ?>" required style="resize: none;"></textarea>
-                </div>
-                <div class="d-flex justify-content-between align-items-center mt-3">
-                    <div class="d-flex gap-2">
-                        <label class="btn btn-sm btn-light text-primary border rounded-pill px-3 shadow-sm" style="cursor: pointer;">
-                            <i class="bi bi-images me-1"></i> Ảnh/Video
-                            <input type="file" name="attachment" accept="image/*,video/mp4" class="d-none" id="attachmentFile">
-                        </label>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div class="d-flex gap-2">
+                            <label class="btn btn-sm btn-light text-primary border rounded-pill px-3 shadow-sm"
+                                style="cursor: pointer;">
+                                <i class="bi bi-images me-1"></i> Ảnh/Video
+                                <input type="file" name="attachment" accept="image/*,video/mp4" class="d-none"
+                                    id="attachmentFile">
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 fw-medium shadow-sm"
+                            id="btn-submit-post">
+                            <span class="spinner-border spinner-border-sm d-none me-1" id="post-spinner"></span> Đăng bài
+                        </button>
                     </div>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-medium shadow-sm" id="btn-submit-post">
-                        <span class="spinner-border spinner-border-sm d-none me-1" id="post-spinner"></span> Đăng bài
-                    </button>
-                </div>
-                <div id="fileNameDisplay" class="small text-muted mt-2 ps-2 d-none"><i class="bi bi-paperclip text-primary"></i> <span></span></div>
-            </form>
-        </div>
+                    <div id="fileNameDisplay" class="small text-muted mt-2 ps-2 d-none"><i
+                            class="bi bi-paperclip text-primary"></i> <span></span></div>
+                </form>
+            </div>
         <?php endif; ?>
 
         <!-- Feed Container -->
         <div id="feedContainer">
-            <?php foreach($feed as $post): ?>
-            <div class="relioo-card p-0 mb-4 bg-white overflow-hidden shadow-sm border" data-post-id="<?php echo $post['id']; ?>">
-                <div class="p-4 pb-2">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div class="d-flex align-items-center gap-3">
-                            <?php if(!empty($post['avatar_url'])): ?>
-                                <img src="<?php echo htmlspecialchars($post['avatar_url']); ?>" class="avatar-circle shadow-sm" style="object-fit: cover;">
-                            <?php else: ?>
-                                <div class="avatar-circle shadow-sm"><?php echo mb_substr(trim($post['full_name']), 0, 1, 'UTF-8'); ?></div>
-                            <?php endif; ?>
-                            <div>
-                                <h6 class="mb-0 fw-bold text-dark post-author-name"><?php echo htmlspecialchars($post['full_name']); ?></h6>
-                                <p class="text-muted small mb-0 d-flex gap-2 align-items-center">
-                                    <span><?php echo htmlspecialchars($post['role_name']); ?></span> • <span><?php echo date('H:i d/m/Y', strtotime($post['created_at'])); ?></span> •
-                                    <?php 
-                                    if ($post['visibility'] == 'Public') echo '<i class="bi bi-globe" title="Công khai"></i>';
-                                    elseif ($post['visibility'] == 'Department') echo '<i class="bi bi-building" title="Nội bộ phòng ban"></i>';
-                                    elseif ($post['visibility'] == 'Announcement') echo '<i class="bi bi-megaphone-fill text-danger" title="Thông báo"></i>';
-                                    ?>
-                                    <?php if(($post['is_ai_generated'] ?? 0)): ?>
-                                    <span class="badge rounded-pill ml-2" style="background-color: #8b5cf6; font-size: 0.65rem;"><i class="bi bi-stars"></i> Viết bởi Relioo AI</span>
-                                    <?php endif; ?>
-                                </p>
+            <?php foreach ($feed as $post): ?>
+                <div class="relioo-card p-0 mb-4 bg-white overflow-hidden shadow-sm border"
+                    data-post-id="<?php echo $post['id']; ?>">
+                    <div class="p-4 pb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <?php if (!empty($post['avatar_url'])): ?>
+                                    <img src="<?php echo htmlspecialchars($post['avatar_url']); ?>"
+                                        class="avatar-circle shadow-sm" style="object-fit: cover;">
+                                <?php else: ?>
+                                    <div class="avatar-circle shadow-sm">
+                                        <?php echo mb_substr(trim($post['full_name']), 0, 1, 'UTF-8'); ?></div>
+                                <?php endif; ?>
+                                <div>
+                                    <h6 class="mb-0 fw-bold text-dark post-author-name">
+                                        <?php echo htmlspecialchars($post['full_name']); ?></h6>
+                                    <p class="text-muted small mb-0 d-flex gap-2 align-items-center">
+                                        <span><?php echo htmlspecialchars($post['role_name']); ?></span> •
+                                        <span><?php echo date('H:i d/m/Y', strtotime($post['created_at'])); ?></span> •
+                                        <?php
+                                        if ($post['visibility'] == 'Public')
+                                            echo '<i class="bi bi-globe" title="Công khai"></i>';
+                                        elseif ($post['visibility'] == 'Department')
+                                            echo '<i class="bi bi-building" title="Nội bộ phòng ban"></i>';
+                                        elseif ($post['visibility'] == 'Announcement')
+                                            echo '<i class="bi bi-megaphone-fill text-danger" title="Thông báo"></i>';
+                                        ?>
+                                        <?php if (($post['is_ai_generated'] ?? 0)): ?>
+                                            <span class="badge rounded-pill ml-2"
+                                                style="background-color: #8b5cf6; font-size: 0.65rem;"><i
+                                                    class="bi bi-stars"></i> Viết bởi Relioo AI</span>
+                                        <?php endif; ?>
+                                    </p>
+                                </div>
                             </div>
+                            <?php
+                            $isAuthor = ($post['author_id'] == $_SESSION['user_id']);
+                            $isAdminOrCEO = ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 4);
+                            if ($isAuthor || $isAdminOrCEO): ?>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-light border-0 text-muted" data-bs-toggle="dropdown"><i
+                                            class="bi bi-three-dots fs-5"></i></button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border">
+                                        <?php if ($isAuthor): ?>
+                                            <li><a class="dropdown-item btn-edit-post" href="#"
+                                                    data-id="<?php echo $post['id']; ?>"><i class="bi bi-pencil me-2"></i>Chỉnh
+                                                    sửa</a></li><?php endif; ?>
+                                        <li><a class="dropdown-item text-danger btn-delete-post" href="#"
+                                                data-id="<?php echo $post['id']; ?>"><i class="bi bi-trash me-2"></i>Xóa bài
+                                                viết</a></li>
+                                    </ul>
+                                </div>
+                            <?php endif; ?>
                         </div>
-                        <?php 
-                        $isAuthor = ($post['author_id'] == $_SESSION['user_id']);
-                        $isAdminOrCEO = ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 4);
-                        if($isAuthor || $isAdminOrCEO): ?>
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-light border-0 text-muted" data-bs-toggle="dropdown"><i class="bi bi-three-dots fs-5"></i></button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border">
-                                <?php if($isAuthor): ?><li><a class="dropdown-item btn-edit-post" href="#" data-id="<?php echo $post['id']; ?>"><i class="bi bi-pencil me-2"></i>Chỉnh sửa</a></li><?php endif; ?>
-                                <li><a class="dropdown-item text-danger btn-delete-post" href="#" data-id="<?php echo $post['id']; ?>"><i class="bi bi-trash me-2"></i>Xóa bài viết</a></li>
-                            </ul>
-                        </div>
+                        <?php if (($post['is_ai_generated'] ?? 0)): ?>
+                            <div class="mb-3 text-dark post-content-text" style="line-height: 1.6;">
+                                <?php echo $post['content_html']; ?></div>
+                        <?php else: ?>
+                            <p class="mb-3 text-dark post-content-text" style="line-height: 1.6;">
+                                <?php echo nl2br($post['content_html']); ?></p>
                         <?php endif; ?>
                     </div>
-                    <?php if(($post['is_ai_generated'] ?? 0)): ?>
-                        <div class="mb-3 text-dark post-content-text" style="line-height: 1.6;"><?php echo $post['content_html']; ?></div>
-                    <?php else: ?>
-                        <p class="mb-3 text-dark post-content-text" style="line-height: 1.6;"><?php echo nl2br($post['content_html']); ?></p>
-                    <?php endif; ?>
-                </div>
-                <?php if($post['media_url']): ?><div class="bg-light text-center border-top border-bottom"><img src="<?php echo htmlspecialchars($post['media_url']); ?>" class="img-fluid" style="max-height: 400px;"></div><?php endif; ?>
-                
-                <div class="p-2 px-4 bg-white post-actions">
-                    <div class="d-flex justify-content-between border-top pt-2">
-                        <div class="d-flex align-items-center gap-1 flex-fill justify-content-center">
-                            <button class="btn btn-sm btn-light border-0 text-muted fw-medium rounded py-2 btn-toggle-react <?php echo $post['is_liked'] ? 'active' : ''; ?>" data-id="<?php echo $post['id']; ?>">
-                                <i class="bi bi-heart fs-6"></i> Tim
-                            </button>
-                            <span class="small text-muted cursor-pointer btn-view-post-likers" data-id="<?php echo $post['id']; ?>"><span class="like-count"><?php echo $post['like_count'] ?: ''; ?></span></span>
-                        </div>
-                        <button class="btn btn-sm btn-light border-0 text-muted fw-medium rounded py-2 px-3 flex-fill d-flex justify-content-center align-items-center gap-2 btn-show-comments" data-id="<?php echo $post['id']; ?>">
-                            <i class="bi bi-chat fs-6"></i> <span class="comment-count"><?php echo $post['comment_count'] ?: ''; ?></span> Bình luận
-                        </button>
-                    </div>
-                </div>
+                    <?php if ($post['media_url']): ?>
+                        <div class="bg-light text-center border-top border-bottom"><img
+                                src="<?php echo htmlspecialchars($post['media_url']); ?>" class="img-fluid"
+                                style="max-height: 400px;"></div><?php endif; ?>
 
-                <div class="comment-section p-4 d-none" id="comment-section-<?php echo $post['id']; ?>">
-                    <div class="comment-list mb-4"></div>
-                    <div class="d-flex gap-2">
-                        <div class="avatar-circle shadow-sm flex-shrink-0 comment-avatar">
-                            <?php if(!empty($_SESSION['avatar_url'])): ?>
-                                <img src="<?php echo htmlspecialchars($_SESSION['avatar_url']); ?>" class="w-100 h-100 rounded-circle" style="object-fit:cover">
-                            <?php else: ?>
-                                <?php echo mb_substr(trim($_SESSION['full_name'] ?? 'U'), 0, 1, 'UTF-8'); ?>
-                            <?php endif; ?>
+                    <div class="p-2 px-4 bg-white post-actions">
+                        <div class="d-flex justify-content-between border-top pt-2">
+                            <div class="d-flex align-items-center gap-1 flex-fill justify-content-center">
+                                <button
+                                    class="btn btn-sm btn-light border-0 text-muted fw-medium rounded py-2 btn-toggle-react <?php echo $post['is_liked'] ? 'active' : ''; ?>"
+                                    data-id="<?php echo $post['id']; ?>">
+                                    <i class="bi bi-heart fs-6"></i> Tim
+                                </button>
+                                <span class="small text-muted cursor-pointer btn-view-post-likers"
+                                    data-id="<?php echo $post['id']; ?>"><span
+                                        class="like-count"><?php echo $post['like_count'] ?: ''; ?></span></span>
+                            </div>
+                            <button
+                                class="btn btn-sm btn-light border-0 text-muted fw-medium rounded py-2 px-3 flex-fill d-flex justify-content-center align-items-center gap-2 btn-show-comments"
+                                data-id="<?php echo $post['id']; ?>">
+                                <i class="bi bi-chat fs-6"></i> <span
+                                    class="comment-count"><?php echo $post['comment_count'] ?: ''; ?></span> Bình luận
+                            </button>
                         </div>
-                        <div class="flex-grow-1 position-relative">
-                            <input type="text" class="form-control form-control-sm rounded-pill border-0 bg-white shadow-sm px-3 input-comment" placeholder="Viết bình luận..." data-post-id="<?php echo $post['id']; ?>">
-                            <button class="btn btn-link btn-sm position-absolute end-0 top-50 translate-middle-y text-primary btn-send-comment" style="padding-right: 15px;"><i class="bi bi-send-fill"></i></button>
+                    </div>
+
+                    <div class="comment-section p-4 d-none" id="comment-section-<?php echo $post['id']; ?>">
+                        <div class="comment-list mb-4"></div>
+                        <div class="d-flex gap-2">
+                            <div class="avatar-circle shadow-sm flex-shrink-0 comment-avatar">
+                                <?php if (!empty($_SESSION['avatar_url'])): ?>
+                                    <img src="<?php echo htmlspecialchars($_SESSION['avatar_url']); ?>"
+                                        class="w-100 h-100 rounded-circle" style="object-fit:cover">
+                                <?php else: ?>
+                                    <?php echo mb_substr(trim($_SESSION['full_name'] ?? 'U'), 0, 1, 'UTF-8'); ?>
+                                <?php endif; ?>
+                            </div>
+                            <div class="flex-grow-1 position-relative">
+                                <input type="text"
+                                    class="form-control form-control-sm rounded-pill border-0 bg-white shadow-sm px-3 input-comment"
+                                    placeholder="Viết bình luận..." data-post-id="<?php echo $post['id']; ?>">
+                                <button
+                                    class="btn btn-link btn-sm position-absolute end-0 top-50 translate-middle-y text-primary btn-send-comment"
+                                    style="padding-right: 15px;"><i class="bi bi-send-fill"></i></button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
             <?php endforeach; ?>
         </div>
     </div> <!-- End Scrollable Area -->
@@ -202,9 +307,17 @@
 <div class="modal fade" id="editPostModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 1.2rem;">
-            <div class="modal-header border-0 pb-0"><h6 class="modal-title fw-bold text-primary">CHỈNH SỬA BÀI VIẾT</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body pt-3"><input type="hidden" id="editPostId"><textarea class="form-control bg-light border-0 px-3 py-3 rounded-3" id="editPostContent" rows="5" style="resize: none;"></textarea></div>
-            <div class="modal-footer border-0"><button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Hủy</button><button type="button" class="btn btn-primary rounded-pill px-4 fw-medium" id="btn-save-edit-post">Lưu thay đổi</button></div>
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-bold text-primary">CHỈNH SỬA BÀI VIẾT</h6><button type="button"
+                    class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-3"><input type="hidden" id="editPostId"><textarea
+                    class="form-control bg-light border-0 px-3 py-3 rounded-3" id="editPostContent" rows="5"
+                    style="resize: none;"></textarea></div>
+            <div class="modal-footer border-0"><button type="button" class="btn btn-light rounded-pill px-4"
+                    data-bs-dismiss="modal">Hủy</button><button type="button"
+                    class="btn btn-primary rounded-pill px-4 fw-medium" id="btn-save-edit-post">Lưu thay đổi</button>
+            </div>
         </div>
     </div>
 </div>
@@ -213,9 +326,15 @@
 <div class="modal fade" id="editCommentModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
-            <div class="modal-header border-0 pb-0"><h6 class="modal-title fw-bold text-primary">CHỈNH SỬA BÌNH LUẬN</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body pt-3"><input type="hidden" id="editCommentId"><input type="hidden" id="editCommentPostId"><textarea class="form-control bg-light border-0 px-3 py-2 rounded-3" id="editCommentContent" rows="3" style="resize: none;"></textarea></div>
-            <div class="modal-footer border-0"><button type="button" class="btn btn-primary rounded-pill px-4 btn-sm" id="btn-save-edit-comment">Cập nhật</button></div>
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-bold text-primary">CHỈNH SỬA BÌNH LUẬN</h6><button type="button"
+                    class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-3"><input type="hidden" id="editCommentId"><input type="hidden"
+                    id="editCommentPostId"><textarea class="form-control bg-light border-0 px-3 py-2 rounded-3"
+                    id="editCommentContent" rows="3" style="resize: none;"></textarea></div>
+            <div class="modal-footer border-0"><button type="button" class="btn btn-primary rounded-pill px-4 btn-sm"
+                    id="btn-save-edit-comment">Cập nhật</button></div>
         </div>
     </div>
 </div>
@@ -240,48 +359,48 @@
     const isAdminOrCEO = <?php echo ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 4) ? 'true' : 'false'; ?>;
 
     // Logic Đăng/Sửa bài viết (Giữ nguyên)
-    $('#attachmentFile').on('change', function() { if(this.files.length > 0) $('#fileNameDisplay span').text(this.files[0].name).parent().removeClass('d-none'); });
-    $('#createPostForm').on('submit', function(e) {
+    $('#attachmentFile').on('change', function () { if (this.files.length > 0) $('#fileNameDisplay span').text(this.files[0].name).parent().removeClass('d-none'); });
+    $('#createPostForm').on('submit', function (e) {
         e.preventDefault(); let formData = new FormData(this);
         let btn = $('#btn-submit-post');
         btn.prop('disabled', true);
-        $.ajax({ 
-            url: 'index.php?action=api_create_post', 
-            type: 'POST', 
-            data: formData, 
-            processData: false, 
-            contentType: false, 
+        $.ajax({
+            url: 'index.php?action=api_create_post',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
             dataType: 'json',
-            success: function(res) { 
+            success: function (res) {
                 if (res.success) {
-                    location.reload(); 
+                    location.reload();
                 } else {
                     alert(res.message);
                     btn.prop('disabled', false);
                 }
             },
-            error: function() {
+            error: function () {
                 alert("Đã xảy ra lỗi HTTP. Vui lòng xem console.");
                 btn.prop('disabled', false);
             }
         });
     });
-    $(document).on('click', '.btn-delete-post', function(e) {
+    $(document).on('click', '.btn-delete-post', function (e) {
         e.preventDefault(); if (!confirm('Xóa bài viết này?')) return;
-        $.post('index.php?action=api_delete_post', { post_id: $(this).data('id') }, function(res) { if(res.success) location.reload(); });
+        $.post('index.php?action=api_delete_post', { post_id: $(this).data('id') }, function (res) { if (res.success) location.reload(); });
     });
-    $(document).on('click', '.btn-edit-post', function(e) {
+    $(document).on('click', '.btn-edit-post', function (e) {
         e.preventDefault(); let id = $(this).data('id'); let content = $(this).closest('.relioo-card').find('.post-content-text').text().trim();
         $('#editPostId').val(id); $('#editPostContent').val(content); $('#editPostModal').modal('show');
     });
-    $('#btn-save-edit-post').on('click', function() {
-        $.post('index.php?action=api_edit_post', { post_id: $('#editPostId').val(), content: $('#editPostContent').val() }, function(res) { if(res.success) location.reload(); });
+    $('#btn-save-edit-post').on('click', function () {
+        $.post('index.php?action=api_edit_post', { post_id: $('#editPostId').val(), content: $('#editPostContent').val() }, function (res) { if (res.success) location.reload(); });
     });
 
     // Logic Tim bài viết
-    $(document).on('click', '.btn-toggle-react', function() {
+    $(document).on('click', '.btn-toggle-react', function () {
         let $btn = $(this); let postId = $btn.data('id'); let $count = $btn.siblings('.btn-view-post-likers').find('.like-count');
-        $.post('index.php?action=api_toggle_post_reaction', { post_id: postId }, function(res) {
+        $.post('index.php?action=api_toggle_post_reaction', { post_id: postId }, function (res) {
             if (res.success) {
                 let c = parseInt($count.text() || 0);
                 if ($btn.hasClass('active')) { $btn.removeClass('active'); $count.text(c > 1 ? c - 1 : ''); }
@@ -291,14 +410,14 @@
     });
 
     // Logic Bình luận
-    $(document).on('click', '.btn-show-comments', function() {
+    $(document).on('click', '.btn-show-comments', function () {
         let postId = $(this).data('id'); let $section = $('#comment-section-' + postId);
         $section.toggleClass('d-none'); if (!$section.hasClass('d-none')) loadComments(postId);
     });
 
     function loadComments(postId) {
         let $list = $('#comment-section-' + postId + ' .comment-list');
-        $.getJSON('index.php?action=api_fetch_comments&post_id=' + postId, function(res) {
+        $.getJSON('index.php?action=api_fetch_comments&post_id=' + postId, function (res) {
             if (res.success) {
                 $list.empty(); if (res.data.length === 0) $list.html('<p class="text-center text-muted small py-2">Chưa có bình luận.</p>');
                 res.data.forEach(c => $list.append(renderComment(c, postId)));
@@ -330,9 +449,9 @@
                         <div class="comment-actions">${actions}</div>
                         <div class="reply-list">
                             ${c.replies.map(r => {
-                                let rIsOwner = (r.user_id == currentUserId);
-                                let rCanDelete = (rIsOwner || isAdminOrCEO);
-                                return `
+            let rIsOwner = (r.user_id == currentUserId);
+            let rCanDelete = (rIsOwner || isAdminOrCEO);
+            return `
                                 <div class="comment-item mt-2" id="comment-${r.id}">
                                     <div class="d-flex gap-2">
                                         ${r.avatar_url ? `<img src="${r.avatar_url}" class="avatar-circle comment-avatar shadow-sm" style="width: 24px; height: 24px; object-fit:cover;">` : `<div class="avatar-circle comment-avatar shadow-sm" style="width: 24px; height: 24px; font-size: 10px;">${r.full_name.charAt(0)}</div>`}
@@ -351,40 +470,40 @@
                                         </div>
                                     </div>
                                 </div>`;
-                            }).join('')}
+        }).join('')}
                         </div>
                     </div>
                 </div>
             </div>`;
     }
 
-    $(document).on('keypress', '.input-comment', function(e) {
+    $(document).on('keypress', '.input-comment', function (e) {
         if (e.which == 13) {
             let $in = $(this); let pid = $in.data('post-id'); let content = $in.val();
             if (!content.trim()) return;
-            $.post('index.php?action=api_add_comment', { post_id: pid, content: content, parent_id: $in.data('parent-id') || null }, function() {
+            $.post('index.php?action=api_add_comment', { post_id: pid, content: content, parent_id: $in.data('parent-id') || null }, function () {
                 $in.val('').data('parent-id', null).attr('placeholder', 'Viết bình luận...'); loadComments(pid);
             });
         }
     });
 
-    $(document).on('click', '.btn-comment-reply', function(e) {
+    $(document).on('click', '.btn-comment-reply', function (e) {
         e.preventDefault(); let pid = $(this).data('post-id');
         $('#comment-section-' + pid + ' .input-comment').data('parent-id', $(this).data('id')).attr('placeholder', 'Trả lời ' + $(this).data('name') + '...').focus();
     });
 
-    $(document).on('click', '.btn-comment-react', function(e) {
+    $(document).on('click', '.btn-comment-react', function (e) {
         e.preventDefault(); let pid = $(this).closest('.comment-section').attr('id').split('-').pop();
-        $.post('index.php?action=api_toggle_comment_reaction', { comment_id: $(this).data('id') }, function() { loadComments(pid); });
+        $.post('index.php?action=api_toggle_comment_reaction', { comment_id: $(this).data('id') }, function () { loadComments(pid); });
     });
 
-    $(document).on('click', '.btn-delete-comment', function(e) {
-        e.preventDefault(); if(!confirm('Xóa bình luận này?')) return;
+    $(document).on('click', '.btn-delete-comment', function (e) {
+        e.preventDefault(); if (!confirm('Xóa bình luận này?')) return;
         let pid = $(this).data('post-id');
-        $.post('index.php?action=api_delete_comment', { comment_id: $(this).data('id') }, function() { loadComments(pid); });
+        $.post('index.php?action=api_delete_comment', { comment_id: $(this).data('id') }, function () { loadComments(pid); });
     });
 
-    $(document).on('click', '.btn-edit-comment', function(e) {
+    $(document).on('click', '.btn-edit-comment', function (e) {
         e.preventDefault();
         let id = $(this).data('id'); let pid = $(this).data('post-id');
         let content = $(this).closest('.flex-grow-1').find('.comment-text').first().text();
@@ -392,24 +511,24 @@
         $('#editCommentModal').modal('show');
     });
 
-    $('#btn-save-edit-comment').on('click', function() {
+    $('#btn-save-edit-comment').on('click', function () {
         let id = $('#editCommentId').val(); let pid = $('#editCommentPostId').val(); let content = $('#editCommentContent').val();
-        $.post('index.php?action=api_edit_comment', { comment_id: id, content: content }, function() {
+        $.post('index.php?action=api_edit_comment', { comment_id: id, content: content }, function () {
             $('#editCommentModal').modal('hide'); loadComments(pid);
         });
     });
 
     // MỚI: Xem danh sách người thích
-    $(document).on('click', '.btn-view-post-likers, .btn-view-comment-likers', function() {
+    $(document).on('click', '.btn-view-post-likers, .btn-view-comment-likers', function () {
         let id = $(this).data('id');
         let isPost = $(this).hasClass('btn-view-post-likers');
         let url = isPost ? 'index.php?action=api_fetch_post_likers&post_id=' + id : 'index.php?action=api_fetch_comment_likers&comment_id=' + id;
-        
+
         let $container = $('.likers-container');
         $container.html('<div class="text-center py-4"><span class="spinner-border spinner-border-sm text-muted"></span></div>');
         $('#likersModal').modal('show');
 
-        $.getJSON(url, function(res) {
+        $.getJSON(url, function (res) {
             if (res.success) {
                 $container.empty();
                 if (res.data.length === 0) {
@@ -431,7 +550,7 @@
         });
     });
     // Deep-linking xử lý khi vào từ thông báo
-    $(window).on('load', function() {
+    $(window).on('load', function () {
         const hash = window.location.hash; // #comment-ID
         const urlParams = new URLSearchParams(window.location.search);
         const urlPostId = urlParams.get('post_id');
@@ -439,18 +558,18 @@
         if (hash && hash.startsWith('#comment-')) {
             const commentId = hash.replace('#comment-', '');
             const postItem = $(`[data-post-id="${urlPostId}"]`);
-            
+
             if (postItem.length) {
                 // 1. Cuộn đến bài viết trước
                 $('html, body').animate({ scrollTop: postItem.offset().top - 100 }, 500);
-                
+
                 // 2. Mở phần bình luận
                 let $section = $('#comment-section-' + urlPostId);
                 $section.removeClass('d-none');
-                
+
                 // 3. Tải bình luận và cuộn đến bình luận cụ thể
                 loadComments(urlPostId);
-                
+
                 // Đợi AJAX load xong thì cuộn tiếp
                 setTimeout(() => {
                     const $comment = $('#comment-' + commentId);
@@ -471,21 +590,21 @@
     });
 
     // ================= DYNAMIC SEARCH HANDLING =================
-    window.searchSocialFeed = function(keyword) {
+    window.searchSocialFeed = function (keyword) {
         if (!keyword) {
             location.href = 'index.php?action=social';
             return;
         }
 
         const $container = $('#feedContainer');
-        $container.fadeOut(200, function() {
+        $container.fadeOut(200, function () {
             $container.html('<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Đang tìm kiếm bài viết...</p></div>').fadeIn(200);
-            
+
             const urlParams = new URLSearchParams(window.location.search);
             const channel = urlParams.get('channel') || 'public';
             const deptId = urlParams.get('dept_id') || '';
 
-            $.getJSON('index.php?action=api_search_posts', { q: keyword, channel: channel, dept_id: deptId }, function(res) {
+            $.getJSON('index.php?action=api_search_posts', { q: keyword, channel: channel, dept_id: deptId }, function (res) {
                 if (res.success) {
                     if (res.data.length === 0) {
                         $container.html('<div class="relioo-card p-5 text-center text-muted"><i class="bi bi-search fs-1 opacity-25 d-block mb-3"></i><h5>Không tìm thấy kết quả phù hợp</h5><p>Thử tìm kiếm với từ khóa khác hoặc quay lại <a href="index.php?action=social">bảng tin chính</a>.</p></div>');
@@ -504,15 +623,15 @@
     };
 
     // ================= SAFE HIGHLIGHTING SYSTEM =================
-    $(function() {
+    $(function () {
         const urlParams = new URLSearchParams(window.location.search);
         const q = urlParams.get('q');
         if (q && q.trim().length > 0) {
             const regex = new RegExp(`(${q})`, 'gi');
-            
+
             // Hàm đệ quy để highlight chỉ trong text nodes
             function highlightTextNodes(element, regex) {
-                $(element).contents().each(function() {
+                $(element).contents().each(function () {
                     if (this.nodeType === 3) { // Text node
                         const text = this.nodeValue;
                         if (regex.test(text)) {
@@ -527,10 +646,10 @@
             }
 
             // Áp dụng cho Nội dung bài viết và Tên tác giả
-            $('.post-content-text, .post-author-name').each(function() {
+            $('.post-content-text, .post-author-name').each(function () {
                 highlightTextNodes(this, regex);
             });
-            
+
             // Cuộn đến kết quả đầu tiên
             const firstMatch = $('mark').first();
             if (firstMatch.length) {

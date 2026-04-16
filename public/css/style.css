@@ -16,6 +16,7 @@
     --border-soft: #fadae1;
     --sidebar-width: 250px;
     --right-sidebar-width: 320px;
+    --app-gap: 12px;
 }
 
 /* Explicit Bootstrap UI overrides for Pink Theme */
@@ -25,7 +26,8 @@
     color: white !important;
 }
 
-.btn-primary:hover, .btn-primary:focus {
+.btn-primary:hover,
+.btn-primary:focus {
     background-color: #f7383b !important;
     border-color: #f7383b !important;
 }
@@ -52,7 +54,8 @@
     border-color: var(--primary-color) !important;
 }
 
-.nav-pills .nav-link.active, .nav-pills .show > .nav-link {
+.nav-pills .nav-link.active,
+.nav-pills .show>.nav-link {
     background-color: var(--primary-color) !important;
     color: white !important;
 }
@@ -60,37 +63,37 @@
 body {
     font-family: 'Inter', sans-serif;
     color: var(--text-main);
-    overflow: hidden; /* Lock master scrolling */
-    padding: 12px;
+    overflow: hidden;
+    /* Lock master scrolling */
+    padding: var(--app-gap);
     background: linear-gradient(135deg, #ff7e7e, #ffb2b2, #d8b4e2);
-    height: 100vh; /* Fixed height to match viewport */
+    height: 100vh;
+    /* Fixed height to match viewport */
 }
 
 /* Master Layout Wrapper */
 #app-wrapper {
     display: flex;
+    gap: var(--app-gap);
     width: 100%;
-    height: calc(100vh - 24px);
-    background-color: transparent; /* Changed to let gradient shine through */
-    border-radius: 16px;
+    height: calc(100vh - (var(--app-gap) * 2));
+    background-color: transparent;
     overflow: hidden;
 }
 
 /* Sidebar Component */
 .sidebar {
     width: var(--sidebar-width);
-    background-color: var(--card-bg);
-    border-right: 1px solid var(--border-soft);
-    position: fixed;
-    left: 12px;
-    top: 12px;
-    height: calc(100vh - 24px);
-    border-radius: 16px;
+    background-color: #ffffff;
+    height: 100%;
+    border-radius: 12px;
+    flex-shrink: 0;
     z-index: 1040;
     display: flex;
     flex-direction: column;
     padding: 1.5rem 1rem;
     overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
 .sidebar::-webkit-scrollbar {
@@ -241,81 +244,78 @@ body {
 /* Main Content Structure */
 #main-content {
     flex-grow: 1;
-    margin-left: var(--sidebar-width);
-    margin-right: var(--right-sidebar-width);
-    padding: 2rem;
-    padding-bottom: 0px; /* Let inner scrollable panel hit bottom */
-    height: calc(100vh - 24px); /* Fixed height */
     display: flex;
     flex-direction: column;
+    gap: var(--app-gap);
+    height: 100%;
     min-width: 0;
-    max-width: calc(100vw - var(--sidebar-width) - var(--right-sidebar-width));
+    padding: 0;
+    overflow: hidden;
 }
 
-/* Glassmorphism Content Panel */
+/* White Content Panel */
 .glass-panel-scrollable {
     flex: 1;
     overflow-y: auto;
-    background: rgba(255, 255, 255, 0.45);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    border-bottom: none;
-    border-radius: 1.5rem 1.5rem 0 0;
+    background: #ffffff;
+    border-radius: 12px;
     padding: 1.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
     /* Clean custom scrollbar */
     scrollbar-width: thin;
-    scrollbar-color: rgba(0,0,0,0.15) transparent;
+    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
 }
-.glass-panel-scrollable::-webkit-scrollbar { width: 6px; }
-.glass-panel-scrollable::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 10px; }
-.glass-panel-scrollable::-webkit-scrollbar-track { background: transparent; }
+
+.glass-panel-scrollable::-webkit-scrollbar {
+    width: 6px;
+}
+
+.glass-panel-scrollable::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+}
+
+.glass-panel-scrollable::-webkit-scrollbar-track {
+    background: transparent;
+}
 
 
 /* Right Sidebar */
 .right-sidebar {
     width: var(--right-sidebar-width);
     background-color: transparent;
-    position: fixed;
-    height: calc(100vh - 24px);
-    right: 12px;
-    top: 12px;
+    height: 100%;
+    flex-shrink: 0;
     z-index: 1030;
     display: flex;
     flex-direction: column;
-    padding: 1.5rem 1rem;
+    gap: var(--app-gap);
+    padding: 0;
     overflow-y: auto;
 }
 
 /* Helper utility for rounded clean cards */
 .relioo-card {
-    background: var(--card-bg);
-    border-radius: 1rem;
-    border: 1px solid var(--border-soft);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
 }
 
-/* Glassmorphism Topbar & Balanced Navigation */
+/* Fixed Topbar */
 .top-bar-sticky {
-    position: relative; /* Since container is flex column now, no need for sticky */
-    flex-shrink: 0; /* Prevent shrinking */
+    position: sticky;
+    top: 0;
+    flex-shrink: 0;
     z-index: 1040;
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(12px) saturate(180%);
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
-    border-bottom: 1px solid rgba(229, 231, 235, 0.7);
-    margin-right: -2rem;
-    /* Chỉ bù lề phải để sát mép khung */
-    margin-left: -2rem;
-    /* Chỉ bù lề trái để sát mép khung */
-    margin-top: -2rem;
-    margin-bottom: 2rem;
-    padding: 1rem 2.75rem;
+    background: #ffffff;
+    padding: 1rem 2rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
     transition: all 0.3s ease;
-    border-radius: 1rem 1rem 0 0;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
 .search-wrapper {
@@ -343,7 +343,8 @@ body {
 
 .topbar-search-form .form-control {
     padding-left: 2.75rem;
-    padding-right: 3rem; /* Space for the clear button */
+    padding-right: 3rem;
+    /* Space for the clear button */
     background-color: #f1f5f9;
     border: 1px solid transparent;
     border-radius: 50rem;
@@ -364,7 +365,8 @@ body {
 .clear-search-input {
     right: 1.2rem !important;
     left: auto !important;
-    color: #3b82f6 !important; /* Blue color as seen in screenshot */
+    color: #3b82f6 !important;
+    /* Blue color as seen in screenshot */
     cursor: pointer;
 }
 
@@ -395,9 +397,11 @@ body {
 
 .history-header {
     display: flex;
-    justify-content: center; /* Center the text */
+    justify-content: center;
+    /* Center the text */
     align-items: center;
-    position: relative; /* Anchor for absolute button */
+    position: relative;
+    /* Anchor for absolute button */
     padding-bottom: 0.75rem;
     border-bottom: 1px solid var(--border-soft);
     margin-bottom: 0.75rem;
@@ -429,7 +433,8 @@ body {
 
 .history-item {
     display: flex;
-    justify-content: space-between; /* Pin X to the right */
+    justify-content: space-between;
+    /* Pin X to the right */
     align-items: center;
     padding: 0.6rem 0.75rem;
     border-radius: 0.5rem;
@@ -499,5 +504,6 @@ body {
     box-shadow: 0 0 15px rgba(255, 105, 180, 0.4) !important;
     transform: translateY(-3px) scale(1.01) !important;
     z-index: 5;
-    background-color: #fff0f5 !important; /* Lavender Blush */
+    background-color: #fff0f5 !important;
+    /* Lavender Blush */
 }
