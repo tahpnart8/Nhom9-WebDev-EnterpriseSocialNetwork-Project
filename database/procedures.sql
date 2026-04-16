@@ -88,13 +88,45 @@ BEGIN
 END$$
 
 DROP PROCEDURE IF EXISTS sp_GetUrgentTasks$$
-CREATE PROCEDURE sp_GetUrgentTasks(IN p_user_id INT)
+CREATE PROCEDURE sp_GetUrgentTasks(
+    IN p_user_id INT,
+    IN p_role_id INT,
+    IN p_dept_id INT
+)
 BEGIN
-    SELECT s.*, t.title as parent_task_title, COALESCE(tc.total, 0) as parent_total, COALESCE(tc.done, 0) as parent_done
-    FROM subtasks s JOIN tasks t ON s.task_id = t.id
-    LEFT JOIN (SELECT task_id, COUNT(*) as total, SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as done FROM subtasks GROUP BY task_id) tc ON tc.task_id = t.id
-    WHERE s.assignee_id = p_user_id AND s.status IN ('To Do', 'In Progress')
-    ORDER BY s.deadline ASC LIMIT 10;
+    IF p_role_id = 3 THEN
+        -- Staff: Cần làm/Đang làm của chính mình (chưa quá hạn & còn lại < 4 ngày)
+        SELECT s.*, t.title as parent_task_title, COALESCE(tc.total, 0) as parent_total, COALESCE(tc.done, 0) as parent_done
+        FROM subtasks s JOIN tasks t ON s.task_id = t.id
+        LEFT JOIN (SELECT task_id, COUNT(*) as total, SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as done FROM subtasks GROUP BY task_id) tc ON tc.task_id = t.id
+        WHERE s.assignee_id = p_user_id 
+          AND s.status IN ('To Do', 'In Progress')
+          AND s.deadline >= NOW() 
+          AND s.deadline <= DATE_ADD(NOW(), INTERVAL 4 DAY)
+        ORDER BY s.deadline ASC LIMIT 10;
+        
+    ELSEIF p_role_id = 2 THEN
+        -- Leader: Việc cá nhân tuân thủ luật 4 ngày + Toàn bộ Pending thuộc phòng ban
+        SELECT s.*, t.title as parent_task_title, COALESCE(tc.total, 0) as parent_total, COALESCE(tc.done, 0) as parent_done
+        FROM subtasks s JOIN tasks t ON s.task_id = t.id
+        LEFT JOIN (SELECT task_id, COUNT(*) as total, SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as done FROM subtasks GROUP BY task_id) tc ON tc.task_id = t.id
+        WHERE 
+            (s.assignee_id = p_user_id AND s.status IN ('To Do', 'In Progress') AND s.deadline >= NOW() AND s.deadline <= DATE_ADD(NOW(), INTERVAL 4 DAY))
+            OR
+            (t.department_id = p_dept_id AND s.status = 'Pending')
+        ORDER BY s.deadline ASC LIMIT 10;
+        
+    ELSE
+        -- CEO (1) hoặc Admin (4): Việc cá nhân tuân thủ luật 4 ngày + Toàn bộ Pending toàn công ty
+        SELECT s.*, t.title as parent_task_title, COALESCE(tc.total, 0) as parent_total, COALESCE(tc.done, 0) as parent_done
+        FROM subtasks s JOIN tasks t ON s.task_id = t.id
+        LEFT JOIN (SELECT task_id, COUNT(*) as total, SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as done FROM subtasks GROUP BY task_id) tc ON tc.task_id = t.id
+        WHERE 
+            (s.assignee_id = p_user_id AND s.status IN ('To Do', 'In Progress') AND s.deadline >= NOW() AND s.deadline <= DATE_ADD(NOW(), INTERVAL 4 DAY))
+            OR
+            (s.status = 'Pending')
+        ORDER BY s.deadline ASC LIMIT 10;
+    END IF;
 END$$
 
 DROP PROCEDURE IF EXISTS sp_SubmitSubtaskEvidence$$

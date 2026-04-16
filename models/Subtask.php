@@ -249,10 +249,12 @@ class Subtask {
     }
 
     // Lấy dữ liệu Việc gấp cần xử lý sử dụng sp_GetUrgentTasks
-    public function getUrgentSubtasksByUser($user_id) {
-        $query = "CALL sp_GetUrgentTasks(:uid)";
+    public function getUrgentSubtasks($user_id, $role_id, $department_id) {
+        $query = "CALL sp_GetUrgentTasks(:uid, :rid, :did)";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':uid', $user_id);
+        $stmt->bindParam(':rid', $role_id);
+        $stmt->bindParam(':did', $department_id);
         $stmt->execute();
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();

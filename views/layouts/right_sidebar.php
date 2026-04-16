@@ -118,6 +118,7 @@
 <script>
 $(document).ready(function() {
     function formatTimeLeft(seconds) {
+        if (seconds > 315360000) return 'Chưa thiết lập';
         if (seconds < 0) return 'Đã trễ hạn!';
         if (seconds < 60) return 'còn ' + seconds + ' giây';
         if (seconds < 3600) return 'còn ' + Math.floor(seconds / 60) + ' phút';
@@ -144,13 +145,17 @@ $(document).ready(function() {
                     var numberColor = st.badge_color === 'danger' ? '#ef4444' : (st.badge_color === 'warning' ? '#eab308' : '#22c55e');
                     
                     html += `
-                    <div class="urgent-task-item bg-white p-2 rounded-3 mb-2 shadow-sm border border-light">
+                    <div class="urgent-task-item bg-white p-2 rounded-3 mb-2 shadow-sm border border-light position-relative" 
+                         style="cursor: pointer; transition: all 0.2s; overflow: hidden;"
+                         onclick="window.location.href='index.php?action=tasks&subtask_id=${st.id}'"
+                         onmouseover="this.classList.replace('border-light', 'border-primary'); this.classList.replace('shadow-sm', 'shadow');"
+                         onmouseout="this.classList.replace('border-primary', 'border-light'); this.classList.replace('shadow', 'shadow-sm');">
                         <div class="d-flex gap-2">
                             <div class="urgent-task-number mt-1" style="background-color: ${numberColor}">${index + 1}</div>
-                            <div class="flex-grow-1 min-w-0"> <!-- min-w-0 to prevent text overflow pushing flex item -->
+                            <div class="flex-grow-1 min-w-0">
                                 <div class="d-flex justify-content-between align-items-start mb-1 gap-1">
-                                    <h6 class="mb-0 text-dark fw-bold" style="font-size: 0.85rem; line-height: 1.3;">
-                                        <a href="index.php?action=tasks&subtask_id=${st.id}" class="text-dark text-decoration-none hover-primary">${st.subtask_title}</a>
+                                    <h6 class="mb-0 text-dark fw-bold text-truncate" style="font-size: 0.85rem; line-height: 1.3;">
+                                        ${st.subtask_title}
                                     </h6>
                                     <span class="badge bg-${st.badge_color} text-white px-2 rounded-pill flex-shrink-0" style="font-size: 0.65rem;">${st.priority_label}</span>
                                 </div>

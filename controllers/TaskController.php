@@ -90,7 +90,8 @@ class TaskController
                     $taskInfo['subtasks'] = $subs;
                     $taskInfo['subtask_count'] = count($subs);
                     $taskInfo['done_count'] = count(array_filter($subs, function ($s) {
-                        return $s['status'] == 'Done'; }));
+                        return $s['status'] == 'Done';
+                    }));
                     $tasksWithSubtasks[] = $taskInfo;
                 }
             }
@@ -201,7 +202,8 @@ class TaskController
                 }
                 if (!empty($stTitle) && !empty($stAssignee)) {
                     $stId = $subtaskModel->create($taskId, $stAssignee, $stTitle, $stDesc, $stDeadline, $stPriority);
-                    if ($stId === 'DUPLICATE') throw new Exception("Lỗi trùng lặp: Công việc con '$stTitle' đã tồn tại!");
+                    if ($stId === 'DUPLICATE')
+                        throw new Exception("Lỗi trùng lặp: Công việc con '$stTitle' đã tồn tại!");
                     if (!in_array($stAssignee, $notifyUserIds))
                         $notifyUserIds[] = $stAssignee;
                 }
@@ -655,7 +657,8 @@ class TaskController
         $task['subtasks'] = $subtasks;
         $task['subtask_count'] = count($subtasks);
         $task['done_count'] = count(array_filter($subtasks, function ($s) {
-            return $s['status'] == 'Done'; }));
+            return $s['status'] == 'Done';
+        }));
         echo json_encode(['success' => true, 'data' => $task]);
         exit;
     }
@@ -1033,7 +1036,7 @@ class TaskController
         header('Content-Type: application/json');
 
         $subtaskModel = new Subtask($this->db);
-        $urgentSubtasks = $subtaskModel->getUrgentSubtasksByUser($_SESSION['user_id']);
+        $urgentSubtasks = $subtaskModel->getUrgentSubtasks($_SESSION['user_id'], $_SESSION['role_id'], $_SESSION['department_id'] ?? null);
 
         $result = [];
         $now = time();
@@ -1042,9 +1045,13 @@ class TaskController
             if ($st['parent_total_subtasks'] > 0) {
                 $progress = round(($st['parent_done_subtasks'] / $st['parent_total_subtasks']) * 100);
             }
-            
-            $deadlineTime = strtotime($st['deadline']);
-            $secondsLeft = $deadlineTime - $now;
+
+            $deadlineTime = !empty($st['deadline']) && $st['deadline'] != '0000-00-00 00:00:00' ? strtotime($st['deadline']) : false;
+            if ($deadlineTime === false) {
+                $secondsLeft = PHP_INT_MAX; // Không có hạn
+            } else {
+                $secondsLeft = $deadlineTime - $now;
+            }
 
             // Computed badge color base on seconds left (user requested color logic: computed by time)
             if ($secondsLeft < 86400) { // < 24h or negative
@@ -1070,7 +1077,8 @@ class TaskController
         exit;
     }
 
-    public function apiSearchTasks() {
+    public function apiSearchTasks()
+    {
         header('Content-Type: application/json');
         $keyword = trim($_GET['q'] ?? '');
         if (empty($keyword)) {
