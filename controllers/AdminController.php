@@ -217,6 +217,43 @@ class AdminController {
         exit;
     }
 
+    public function apiUpdateDepartment() {
+        $this->checkAdminAccess();
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Phương thức không hợp lệ']);
+            exit;
+        }
+
+        $id = $_POST['id'] ?? null;
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu ID phòng ban']);
+            exit;
+        }
+
+        $database = new Database();
+        $db = $database->getConnection();
+        $deptModel = new Department($db);
+
+        $data = [
+            'dept_name' => $_POST['dept_name'] ?? '',
+            'description' => $_POST['description'] ?? ''
+        ];
+
+        if (empty($data['dept_name'])) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng nhập tên phòng ban']);
+            exit;
+        }
+
+        if ($deptModel->update($id, $data)) {
+            echo json_encode(['success' => true, 'message' => 'Cập nhật phòng ban thành công!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi hệ thống khi cập nhật phòng ban']);
+        }
+        exit;
+    }
+
     public function apiDeleteDepartment() {
         $this->checkAdminAccess();
         header('Content-Type: application/json');

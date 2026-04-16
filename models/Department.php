@@ -46,6 +46,21 @@ class Department {
         return false;
     }
 
+    public function update($id, $data) {
+        $query = "UPDATE " . $this->table_name . " 
+                  SET dept_name = :name, 
+                      description = :desc 
+                  WHERE id = :id";
+        
+        $stmt = $this->conn->prepare($query);
+        
+        $stmt->bindParam(':name', $data['dept_name']);
+        $stmt->bindParam(':desc', $data['description']);
+        $stmt->bindParam(':id', $id);
+        
+        return $stmt->execute();
+    }
+
     public function delete($id) {
         $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
         $stmt = $this->conn->prepare($query);

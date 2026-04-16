@@ -84,7 +84,13 @@
                             </td>
                             <td><span class="text-muted small"><?php echo date('d/m/Y', strtotime($d['created_at'])); ?></span></td>
                             <td class="text-end">
-                                <button class="btn btn-sm btn-light border text-primary" title="Chỉnh sửa"><i class="bi bi-pencil-square"></i></button>
+                                <button class="btn btn-sm btn-light border text-primary btn-edit-dept" 
+                                    data-id="<?php echo $d['id']; ?>" 
+                                    data-name="<?php echo htmlspecialchars($d['dept_name']); ?>"
+                                    data-description="<?php echo htmlspecialchars($d['description']); ?>"
+                                    title="Chỉnh sửa">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
                                 <button class="btn btn-sm btn-light border text-danger btn-delete-dept" 
                                     data-id="<?php echo $d['id']; ?>" 
                                     data-name="<?php echo htmlspecialchars($d['dept_name']); ?>"
@@ -162,6 +168,36 @@
 </div>
 </div>
 
+<!-- Modal Chỉnh sửa Phòng ban -->
+<div class="modal fade" id="editDeptModal" tabindex="-1" aria-labelledby="editDeptModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editDeptModalLabel">Chỉnh sửa Phòng ban</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditDept">
+                    <input type="hidden" id="edit_dept_id" name="id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-muted fw-bold small">TÊN PHÒNG BAN <span class="text-danger">*</span></label>
+                        <input type="text" name="dept_name" id="edit_dept_name" class="form-control bg-light border-0 py-2" placeholder="VD: Phòng Hành Chính" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label text-muted fw-bold small">TRÁCH NHIỆM CHÍNH</label>
+                        <textarea name="description" id="edit_description" class="form-control bg-light border-0 py-2" rows="4" placeholder="Nhập mô tả hoạt động của phòng..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" id="btnSubmitEditDept" class="btn btn-primary">Cập nhật</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="toast-container" class="toast-center-container"></div>
 
 <script>
@@ -218,6 +254,61 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('Lỗi kết nối máy chủ', 'error');
             btnSubmit.disabled = false;
             btnSubmit.innerHTML = 'Khởi tạo cấu trúc';
+        });
+    });
+
+    // Xử lý Chỉnh sửa phòng ban
+    document.querySelectorAll('.btn-edit-dept').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            const name = this.dataset.name;
+            const description = this.dataset.description;
+            
+            // Fill modal with current data
+            document.getElementById('edit_dept_id').value = id;
+            document.getElementById('edit_dept_name').value = name;
+            document.getElementById('edit_description').value = description;
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('editDeptModal'));
+            modal.show();
+        });
+    });
+
+    // Xử lý Cập nhật phòng ban
+    document.getElementById('btnSubmitEditDept').addEventListener('click', function() {
+        const form = document.getElementById('formEditDept');
+        
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const formData = new FormData(form);
+        const btnSubmit = this;
+        
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Đang xử lý...';
+
+        fetch('index.php?action=api_update_department', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast(data.message, 'error');
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = 'Cập nhật';
+            }
+        })
+        .catch(err => {
+            showToast('Lỗi kết nối máy chủ', 'error');
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = 'Cập nhật';
         });
     });
 

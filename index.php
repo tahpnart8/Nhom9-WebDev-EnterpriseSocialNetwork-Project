@@ -39,6 +39,7 @@ $routes = [
     'api_delete_user' => [$adminController, 'apiDeleteUser'],
     'admin_departments' => [$adminController, 'departments'],
     'api_add_department' => [$adminController, 'apiAddDepartment'],
+    'api_update_department' => [$adminController, 'apiUpdateDepartment'],
     'api_delete_department' => [$adminController, 'apiDeleteDepartment'],
 
     'social' => [$socialController, 'index'],
