@@ -152,6 +152,10 @@ class TaskController
             echo json_encode(['success' => false, 'message' => 'Mô tả Task không được để trống!']);
             exit;
         }
+        if (empty($deadline)) {
+            echo json_encode(['success' => false, 'message' => 'Deadline không được để trống!']);
+            exit;
+        }
         if ($deadline && $deadline < date('Y-m-d')) {
             echo json_encode(['success' => false, 'message' => 'Hạn chót không được là ngày trong quá khứ!']);
             exit;
@@ -1165,6 +1169,114 @@ class TaskController
         $taskModel = new Task($this->db);
         $results = $taskModel->search($keyword, $_SESSION['role_id'], $_SESSION['department_id'] ?? null, $_SESSION['user_id']);
         echo json_encode($results);
+        exit;
+    }
+
+    // ========== API: CẬP NHẬT TASK ==========
+    public function updateTask()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        if ($_SESSION['role_id'] != 1 && $_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 4) {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền chỉnh sửa Task!']);
+            exit;
+        }
+
+        $taskId = $_POST['id'] ?? 0;
+        $title = htmlspecialchars(trim($_POST['title'] ?? ''));
+        $description = htmlspecialchars(trim($_POST['description'] ?? ''));
+        $priority = $_POST['priority'] ?? 'Medium';
+        $deadline = $_POST['deadline'] ?? null;
+
+        if (empty($taskId) || empty($title) || empty($description) || empty($deadline)) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng điền đầy đủ thông tin!']);
+            exit;
+        }
+
+        $taskModel = new Task($this->db);
+        $task = $taskModel->getById($taskId);
+        if (!$task) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy Task!']);
+            exit;
+        }
+
+        if ($_SESSION['role_id'] == 2 && $task['department_id'] != $_SESSION['department_id']) {
+            echo json_encode(['success' => false, 'message' => 'Bạn chỉ có quyền sửa Task trong phòng ban của mình!']);
+            exit;
+        }
+
+        if ($taskModel->updateTask($taskId, $title, $description, $priority, $deadline)) {
+            echo json_encode(['success' => true, 'message' => 'Cập nhật Task thành công.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi cập nhật Task.']);
+        }
+        exit;
+    }
+
+    // ========== API: CẬP NHẬT SUBTASK ==========
+    public function updateSubtask()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        if ($_SESSION['role_id'] != 1 && $_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 4) {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền chỉnh sửa công việc con!']);
+            exit;
+        }
+
+        $subtaskId = $_POST['id'] ?? 0;
+        $assigneeId = $_POST['assignee_id'] ?? 0;
+        $title = htmlspecialchars(trim($_POST['title'] ?? ''));
+        $description = htmlspecialchars(trim($_POST['description'] ?? ''));
+        $deadline = $_POST['deadline'] ?? null;
+        $priority = $_POST['priority'] ?? 'Medium';
+
+        if (empty($subtaskId) || empty($assigneeId) || empty($title) || empty($description) || empty($deadline)) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng điền đầy đủ thông tin!']);
+            exit;
+        }
+
+        $subtaskModel = new Subtask($this->db);
+        $subtask = $subtaskModel->getById($subtaskId);
+        if (!$subtask) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy công việc con!']);
+            exit;
+        }
+
+        $taskModel = new Task($this->db);
+        $task = $taskModel->getById($subtask['task_id']);
+
+        if ($_SESSION['role_id'] == 2 && $task['department_id'] != $_SESSION['department_id']) {
+            echo json_encode(['success' => false, 'message' => 'Bạn chỉ có quyền sửa công việc trong phòng ban của mình!']);
+            exit;
+        }
+
+        $oldAssigneeId = $subtask['assignee_id'];
+        if ($subtaskModel->updateSubtask($subtaskId, $assigneeId, $title, $description, $deadline, $priority)) {
+            if ($assigneeId != $oldAssigneeId) {
+                NotificationController::pushNotification(
+                    $this->db,
+                    'task_assigned',
+                    $_SESSION['user_id'],
+                    "Bạn được giao lại công việc: $title (Task: " . ($task['title'] ?? '') . ")",
+                    "index.php?action=tasks",
+                    [$assigneeId]
+                );
+            } else {
+                NotificationController::pushNotification(
+                    $this->db,
+                    'task_updated',
+                    $_SESSION['user_id'],
+                    "Công việc '$title' của bạn vừa được cập nhật thông tin mới.",
+                    "index.php?action=tasks",
+                    [$assigneeId]
+                );
+            }
+            echo json_encode(['success' => true, 'message' => 'Cập nhật công việc con thành công.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi cập nhật dữ liệu.']);
+        }
         exit;
     }
 }

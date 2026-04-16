@@ -1,4 +1,6 @@
+<?php if (empty($isAjaxNav)): ?>
 <?php include __DIR__ . '/../layouts/header.php'; ?>
+<?php endif; ?>
 
 <style>
     /* Messenger Theme */
@@ -769,11 +771,13 @@
                     if ($partner) {
                         $displayHeaderName = $partner['partner_name'];
                         $displayHeaderAvatar = $partner['partner_avatar'];
-                    } else if ($withUserId) {
-                        foreach ($allUsers as $au) {
-                            if ($au['id'] == $withUserId) {
-                                $displayHeaderName = $au['full_name'];
-                                $displayHeaderAvatar = $au['avatar_url'];
+                    } else {
+                        // AJAX nav mode: $conversations trống, query trực tiếp partner
+                        $partnerStmt = $msgModel->getGroupMembers($activeConvId);
+                        foreach ($partnerStmt as $mem) {
+                            if ($mem['id'] != $_SESSION['user_id']) {
+                                $displayHeaderName = $mem['full_name'];
+                                $displayHeaderAvatar = $mem['avatar_url'];
                                 break;
                             }
                         }
@@ -1086,11 +1090,15 @@
             $('#rightSidebar').toggleClass('hidden');
         });
 
+        var _navXhr = null;
         // SPA CHAT NAVIGATION
         $(document).on('click', '.chat-item', function (e) {
             var url = $(this).attr('href');
             if (!url || !url.includes('action=chat')) return;
             e.preventDefault();
+
+            // Nếu đang có AJAX chuyển trang thì hủy ngay lập tức
+            if (_navXhr) _navXhr.abort();
 
             $('.chat-item').removeClass('active');
             $(this).addClass('active');
@@ -1102,16 +1110,20 @@
             }
 
             window.history.pushState({ path: url }, '', url);
+            
+            $('.chat-main').css('opacity', '0.5');
 
             var ajaxUrl = url + (url.includes('?') ? '&' : '?') + 'ajax=spanav';
-            $.get(ajaxUrl, function (data) {
+            _navXhr = $.get(ajaxUrl, function (data) {
+                $('.chat-main').css('opacity', '1');
+                _navXhr = null;
+                
                 var $frag = $('<div>').html(data);
                 var newMain = $frag.find('.chat-main').html();
                 var newRight = $frag.find('#rightSidebar').html();
-                var newSidebar = $frag.find('#activeConvsArea').html(); // Làm mới danh sách tin nhắn bên trái
+                // Không thay thế `#activeConvsArea` để ngăn list sidebar mất trắng và giảm giật khung hình tải.
 
                 $('.chat-main').html(newMain);
-                $('#activeConvsArea').html(newSidebar);
 
                 if (newRight) {
                     if ($('#rightSidebar').length === 0) {
@@ -1132,12 +1144,18 @@
                 }
 
                 if (window.convId) {
+                    lastMessageId = 0; // reset poll
                     fetchGroupRequests();
                     schedulePoll();
                 }
 
                 scrollToBottom();
                 $('#chatInput').trigger('input');
+            }).fail(function(xhr) {
+                if (xhr.statusText !== 'abort') {
+                    $('.chat-main').css('opacity', '1');    
+                    toastr.error('Luồng tải bị gián đoạn, vui lòng tải lại!');
+                }
             });
         });
 
@@ -1159,8 +1177,18 @@
             $msgs.append(html);
             scrollToBottom();
 
-            $.post('index.php?action=api_send_message', { conversation_id: window.convId, content: content }, function () {
-                pollNewMessages();
+            $.post('index.php?action=api_send_message', { conversation_id: window.convId, content: content })
+            .done(function (res) {
+                if (!res.success) {
+                    $msgs.children().last().find('.msg-bubble').addClass('border border-danger bg-danger text-white');
+                    toastr.error('Lỗi lưu tin nhắn');
+                } else {
+                    pollNewMessages();
+                }
+            })
+            .fail(function() {
+                $msgs.children().last().find('.msg-bubble').addClass('border border-danger bg-danger text-white');
+                toastr.error('Lỗi kết nối mạng');
             });
         }
 
@@ -1192,10 +1220,20 @@
                     $msgs.append(optHtml);
                     scrollToBottom();
 
-                    $.post('index.php?action=api_send_message', { conversation_id: window.convId, type: 'image', base64: b64 }, function (res) {
-                        if (!res.success) alert(res.message || 'Lỗi gửi ảnh');
-                        pollNewMessages();
+                    $.post('index.php?action=api_send_message', { conversation_id: window.convId, type: 'image', base64: b64 })
+                    .done(function (res) {
+                        if (!res.success) {
+                            $msgs.children().last().find('.msg-bubble').addClass('border border-danger opacity-100');
+                            toastr.error(res.message || 'Lỗi gửi ảnh');
+                        } else {
+                            pollNewMessages();
+                        }
+                    })
+                    .fail(function() {
+                        toastr.error('Lỗi kết nối khi gửi ảnh');
+                        $msgs.children().last().find('.msg-bubble').addClass('border border-danger opacity-100');
                     });
+
                     $('#chatImageFile').val('');
                 };
             };
@@ -1360,8 +1398,8 @@
         });
 
         function pollNewMessages() {
-            if (!window.convId) return;
-            $.getJSON('index.php?action=api_fetch_new_messages&conv_id=' + window.convId + '&since_id=' + lastMessageId, function (msgs) {
+            if (!window.convId) return $.Deferred().resolve().promise();
+            return $.getJSON('index.php?action=api_fetch_new_messages&conv_id=' + window.convId + '&since_id=' + lastMessageId, function (msgs) {
                 var $msgsElem = $('#chatMessages');
                 if (!$msgsElem.length || !msgs.length) return;
 
@@ -1428,8 +1466,9 @@
         function schedulePoll() {
             if (_pollTimer) clearTimeout(_pollTimer);
             _pollTimer = setTimeout(function () {
-                pollNewMessages();
-                schedulePoll(); // Lặp adaptive
+                pollNewMessages().always(function() {
+                    schedulePoll(); // Sequential Polling: Chỉ hẹn giờ tiếp theo sau khi request hiện tại đã quay về!
+                });
             }, getCurrentPollInterval());
         }
 
@@ -1443,4 +1482,6 @@
     });
 </script>
 
+<?php if (empty($isAjaxNav)): ?>
 <?php include __DIR__ . '/../layouts/footer.php'; ?>
+<?php endif; ?>

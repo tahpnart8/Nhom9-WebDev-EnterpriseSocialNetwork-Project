@@ -78,6 +78,8 @@ $routes = [
     'api_save_task_summary' => [$taskController, 'saveTaskSummary'],
     'api_urgent_subtasks' => [$taskController, 'fetchUrgentSubtasks'],
     'api_search_tasks' => [$taskController, 'apiSearchTasks'],
+    'api_update_task' => [$taskController, 'updateTask'],
+    'api_update_subtask' => [$taskController, 'updateSubtask'],
 
     'api_notifications' => [$notiController, 'fetchUnread'],
     'api_mark_all_read' => [$notiController, 'markAllRead'],
