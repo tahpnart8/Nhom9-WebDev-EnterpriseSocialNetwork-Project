@@ -19,6 +19,10 @@
     --app-gap: 12px;
 }
 
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
 /* Explicit Bootstrap UI overrides for Pink Theme */
 .btn-primary {
     background-color: var(--primary-color) !important;
@@ -248,6 +252,7 @@ body {
     flex-direction: column;
     gap: var(--app-gap);
     height: 100%;
+    min-height: 0; /* Quan trọng: Cho phép thu nhỏ để vừa khung */
     min-width: 0;
     padding: 0;
     overflow: hidden;
@@ -256,11 +261,16 @@ body {
 /* White Content Panel */
 .glass-panel-scrollable {
     flex: 1;
+    min-height: 0; /* Quan trọng: Ràng buộc chiều cao trong flexbox */
     overflow-y: auto;
+    overflow-x: hidden;
     background: #ffffff;
     border-radius: 12px;
     padding: 1.5rem;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    /* Force clip rounding */
+    -webkit-mask-image: -webkit-radial-gradient(white, black);
+    mask-image: radial-gradient(white, black);
     /* Clean custom scrollbar */
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 0, 0, 0.15) transparent;

@@ -17,6 +17,9 @@
         border-radius: 12px;
         padding: 1.5rem;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        /* Force clip rounding */
+        -webkit-mask-image: -webkit-radial-gradient(white, black);
+        mask-image: radial-gradient(white, black);
     }
 
     /* ===== TABS ===== */

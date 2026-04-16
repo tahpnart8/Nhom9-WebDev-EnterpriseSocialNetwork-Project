@@ -77,7 +77,7 @@
     }
 </style>
 
-<div class="d-flex flex-column h-100 position-relative" style="gap: var(--app-gap);">
+<div class="d-flex flex-column flex-grow-1 position-relative" style="gap: var(--app-gap); min-height: 0;">
     <div class="col-12 flex-shrink-0">
         <!-- Tabs Chuyển Kênh -->
         <ul class="nav nav-pills gap-2 bg-white p-2 rounded shadow-sm border mb-0">
