@@ -301,14 +301,14 @@ BEGIN
     END IF;
 END$$
 
--- 19. Danh sách hội thoại (thay thế raw SQL phức tạp)
+-- 19. Danh sách hội thoại (Đã Tối Ưu Hóa Bằng Index Correlated Subquery)
 DROP PROCEDURE IF EXISTS sp_GetConversationList$$
 CREATE PROCEDURE sp_GetConversationList(IN p_user_id INT)
 BEGIN
     SELECT c.id, c.type, c.name as group_name, c.avatar_url as group_avatar, 
            c.created_by, c.requires_approval,
-           lm.content as last_message,
-           lm.created_at as last_time,
+           (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY id DESC LIMIT 1) as last_message,
+           (SELECT created_at FROM messages WHERE conversation_id = c.id ORDER BY id DESC LIMIT 1) as last_time,
            CASE WHEN c.type = 'Direct' THEN partner_u.full_name ELSE NULL END as partner_name,
            CASE WHEN c.type = 'Direct' THEN partner_u.avatar_url ELSE NULL END as partner_avatar,
            CASE WHEN c.type = 'Direct' THEN partner_cm.user_id ELSE NULL END as partner_id,
@@ -316,26 +316,16 @@ BEGIN
             WHERE cm2.conversation_id = c.id AND c.type = 'Group' ORDER BY cm2.user_id LIMIT 1) as group_avatar_1,
            (SELECT u3.avatar_url FROM conversation_members cm3 JOIN users u3 ON cm3.user_id = u3.id 
             WHERE cm3.conversation_id = c.id AND c.type = 'Group' ORDER BY cm3.user_id LIMIT 1 OFFSET 1) as group_avatar_2,
-           COALESCE(unread.cnt, 0) as unread_count
+           COALESCE(
+               (SELECT COUNT(*) FROM messages 
+                WHERE conversation_id = c.id AND sender_id != p_user_id AND created_at > cm.last_read_at)
+           , 0) as unread_count
     FROM conversations c
     JOIN conversation_members cm ON c.id = cm.conversation_id AND cm.user_id = p_user_id
-    LEFT JOIN (
-        SELECT m1.conversation_id, m1.content, m1.created_at
-        FROM messages m1
-        INNER JOIN (SELECT conversation_id, MAX(id) as max_id FROM messages GROUP BY conversation_id) m2 
-        ON m1.id = m2.max_id
-    ) lm ON lm.conversation_id = c.id
     LEFT JOIN conversation_members partner_cm ON partner_cm.conversation_id = c.id 
         AND partner_cm.user_id != p_user_id AND c.type = 'Direct'
     LEFT JOIN users partner_u ON partner_u.id = partner_cm.user_id
-    LEFT JOIN (
-        SELECT m.conversation_id, COUNT(*) as cnt
-        FROM messages m
-        JOIN conversation_members cmr ON m.conversation_id = cmr.conversation_id AND cmr.user_id = p_user_id
-        WHERE m.created_at > cmr.last_read_at AND m.sender_id != p_user_id
-        GROUP BY m.conversation_id
-    ) unread ON unread.conversation_id = c.id
-    ORDER BY lm.created_at DESC;
+    ORDER BY last_time DESC;
 END$$
 
 -- 20. Heartbeat: Đếm nhanh notification + chat unread (cho badge header)

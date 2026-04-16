@@ -1133,7 +1133,26 @@
 
         function scrollToBottom() {
             var $msgs = $('#chatMessages');
-            if ($msgs.length) $msgs.scrollTop($msgs[0].scrollHeight);
+            if (!$msgs.length) return;
+            var el = $msgs[0];
+            
+            function runScroll() {
+                el.scrollTop = el.scrollHeight;
+            }
+            
+            // Cuộn ngay lập tức
+            runScroll();
+            
+            // Xử lý độ trễ render SPA hoặc DOM áp dụng CSS
+            setTimeout(runScroll, 100);
+            setTimeout(runScroll, 300);
+
+            // Bắt sự kiện tải xong đối với các hình ảnh chưa tải (để sửa lỗi scroll bị "nửa chừng" do ảnh)
+            $msgs.find('img').each(function() {
+                if (!this.complete) {
+                    $(this).off('load.chatScroll').on('load.chatScroll', runScroll);
+                }
+            });
         }
         scrollToBottom();
 
@@ -1416,19 +1435,21 @@
         });
 
         // === DELTA POLLING: Chỉ lấy tin nhắn mới hơn lastMessageId ===
-        var lastMessageId = 0;
-        // Khởi tạo lastMessageId từ tin nhắn cuối cùng đã render trên trang
-        $('.message-item').not('.optimistic-msg').each(function () {
-            var tid = parseInt($(this).data('id'));
-            if (!isNaN(tid) && tid > lastMessageId) lastMessageId = tid;
-        });
-
         var _isPolling = false;
         function pollNewMessages() {
             if (!window.convId || _isPolling) return;
+            
+            // Tính toán LẠI lastMessageId dựa trên DOM hiện tại (Cục bộ cho mỗi phòng chat)
+            // Khắc phục triệt để lỗi SPA: chuyển sang phòng chat mới không bị dính lastMessageId của phòng cũ
+            var currentLastId = 0;
+            $('.message-item').not('.optimistic-msg').each(function () {
+                var tid = parseInt($(this).data('id'));
+                if (!isNaN(tid) && tid > currentLastId) currentLastId = tid;
+            });
+
             _isPolling = true;
 
-            $.getJSON('index.php?action=api_fetch_new_messages&conv_id=' + window.convId + '&since_id=' + lastMessageId, function (msgs) {
+            $.getJSON('index.php?action=api_fetch_new_messages&conv_id=' + window.convId + '&since_id=' + currentLastId, function (msgs) {
                 _isPolling = false;
                 var $msgsElem = $('#chatMessages');
                 if (!$msgsElem.length || !msgs.length) return;
@@ -1478,9 +1499,6 @@
                         `;
                     }
                     $msgsElem.append(html);
-                    // Cập nhật lastMessageId cho delta poll tiếp theo
-                    var mid = parseInt(m.id);
-                    if (mid > lastMessageId) lastMessageId = mid;
                 });
 
                 if (hasNew) scrollToBottom();
@@ -1488,8 +1506,8 @@
         }
 
         // === SMART ADAPTIVE POLLING (Delta Fetching) ===
-        var _activePollInterval = 1000;  // 1 giây khi đang chat (tab focus)
-        var _idlePollInterval = 5000;    // 5 giây khi tab ẩn
+        var _activePollInterval = 1500;  // Giãn cách một chút để nhẹ mạng Tailscale VPN
+        var _idlePollInterval = 8000;    // 8 giây khi tab ẩn
 
         function getCurrentPollInterval() {
             return document.hidden ? _idlePollInterval : _activePollInterval;

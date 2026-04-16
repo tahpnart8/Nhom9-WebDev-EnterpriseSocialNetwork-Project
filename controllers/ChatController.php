@@ -59,8 +59,11 @@ class ChatController {
 
         // Tối ưu hóa tải cho SPA
         $conversations = $msgModel->getConversations($_SESSION['user_id']);
-        $allUsersStmt = $userModel->getAllUsersWithDetails();
-        $allUsers = $allUsersStmt->fetchAll(PDO::FETCH_ASSOC);
+        $allUsers = [];
+        if (!$isAjaxNav) {
+            $allUsersStmt = $userModel->getAllUsersWithDetails();
+            $allUsers = $allUsersStmt->fetchAll(PDO::FETCH_ASSOC);
+        }
         
         require_once __DIR__ . '/../views/chat/index.php';
     }
