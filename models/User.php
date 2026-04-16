@@ -43,16 +43,34 @@ class User {
         return false;
     }
 
-    // Danh sách cho Admin sử dụng FETCH JOIN
-    public function getAllUsersWithDetails() {
-        $query = "SELECT u.id, u.username, u.full_name, u.email, u.avatar_url, d.dept_name, r.role_name, u.is_active 
+    // Danh sách cho Admin sử dụng FETCH JOIN kèm Phân trang
+    public function getAllUsersWithDetails($limit = null, $offset = null) {
+        $query = "SELECT u.id, u.username, u.full_name, u.email, u.avatar_url, u.department_id, u.role_id, d.dept_name, r.role_name, u.is_active 
                   FROM " . $this->table_name . " u 
                   LEFT JOIN departments d ON u.department_id = d.id 
                   LEFT JOIN roles r ON u.role_id = r.id
                   ORDER BY u.id DESC";
+        
+        if ($limit !== null && $offset !== null) {
+            $query .= " LIMIT :limit OFFSET :offset";
+        }
+
         $stmt = $this->conn->prepare($query);
+        
+        if ($limit !== null && $offset !== null) {
+            $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+        }
+
         $stmt->execute();
         return $stmt;
+    }
+
+    public function getTotalCount() {
+        $query = "SELECT COUNT(*) FROM " . $this->table_name;
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        return $stmt->fetchColumn();
     }
     public function getById($id) {
         $query = "SELECT u.id, u.username, u.full_name, u.email, u.phone, u.avatar_url, u.cover_url, u.birthdate, u.hide_birthdate, u.location, u.link_facebook, u.link_instagram, u.link_tiktok, u.is_active, d.dept_name, r.role_name, u.created_at
@@ -112,6 +130,27 @@ class User {
         return $stmt->execute();
     }
 
+    public function create($data) {
+        $query = "INSERT INTO " . $this->table_name . " 
+                  (username, full_name, email, department_id, role_id, is_active, password_hash) 
+                  VALUES (:username, :full_name, :email, :department_id, :role_id, :is_active, :password_hash)";
+        
+        $stmt = $this->conn->prepare($query);
+        
+        // Mật khẩu mặc định 123456
+        $password_hash = password_hash('123456', PASSWORD_DEFAULT);
+        
+        $stmt->bindParam(':username', $data['username']);
+        $stmt->bindParam(':full_name', $data['full_name']);
+        $stmt->bindParam(':email', $data['email']);
+        $stmt->bindParam(':department_id', $data['department_id']);
+        $stmt->bindParam(':role_id', $data['role_id']);
+        $stmt->bindParam(':is_active', $data['is_active']);
+        $stmt->bindParam(':password_hash', $password_hash);
+        
+        return $stmt->execute();
+    }
+
     public function search($keyword) {
         $query = "CALL sp_SearchUsers(:keyword)";
         $stmt = $this->conn->prepare($query);
@@ -120,6 +159,42 @@ class User {
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
         return $results;
+    }
+
+    public function update($id, $data) {
+        $query = "UPDATE " . $this->table_name . " 
+                  SET full_name = :full_name, 
+                      email = :email, 
+                      department_id = :department_id, 
+                      role_id = :role_id, 
+                      is_active = :is_active 
+                  WHERE id = :id";
+        
+        $stmt = $this->conn->prepare($query);
+        
+        $stmt->bindParam(':full_name', $data['full_name']);
+        $stmt->bindParam(':email', $data['email']);
+        $stmt->bindParam(':department_id', $data['department_id']);
+        $stmt->bindParam(':role_id', $data['role_id']);
+        $stmt->bindParam(':is_active', $data['is_active']);
+        $stmt->bindParam(':id', $id);
+        
+        return $stmt->execute();
+    }
+
+    public function delete($id) {
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $id);
+        return $stmt->execute();
+    }
+
+    public function getCountByDepartment($deptId) {
+        $query = "SELECT COUNT(*) FROM " . $this->table_name . " WHERE department_id = :dept_id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':dept_id', $deptId);
+        $stmt->execute();
+        return $stmt->fetchColumn();
     }
 }
 ?>

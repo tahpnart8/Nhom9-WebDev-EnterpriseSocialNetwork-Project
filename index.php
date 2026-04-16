@@ -34,7 +34,12 @@ $routes = [
     'dashboard' => [$dashboardController, 'index'],
 
     'admin_users' => [$adminController, 'users'],
+    'api_add_user' => [$adminController, 'apiAddUser'],
+    'api_update_user' => [$adminController, 'apiUpdateUser'],
+    'api_delete_user' => [$adminController, 'apiDeleteUser'],
     'admin_departments' => [$adminController, 'departments'],
+    'api_add_department' => [$adminController, 'apiAddDepartment'],
+    'api_delete_department' => [$adminController, 'apiDeleteDepartment'],
 
     'social' => [$socialController, 'index'],
     'api_create_post' => [$socialController, 'createPost'],

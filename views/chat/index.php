@@ -652,6 +652,12 @@
 
         <div class="chat-list" id="chatSidebarList">
             <div id="activeConvsArea">
+                <?php if (empty($conversations)): ?>
+                    <div class="text-center py-5 px-3">
+                        <i class="bi bi-chat-dots text-muted opacity-25" style="font-size: 3rem;"></i>
+                        <p class="text-muted mt-3 small">Chưa có cuộc trò chuyện nào.<br>Hãy tìm kiếm đồng nghiệp bên trên để bắt đầu!</p>
+                    </div>
+                <?php endif; ?>
                 <?php foreach ($conversations as $conv):
                     $isUnread = ($conv['unread_count'] > 0);
                     $unreadWeight = $isUnread ? 'unread-highlight' : '';
@@ -1099,29 +1105,37 @@
 
             var ajaxUrl = url + (url.includes('?') ? '&' : '?') + 'ajax=spanav';
             $.get(ajaxUrl, function (data) {
-                var newMain = $(data).find('.chat-main').html();
-                var newRight = $(data).find('#rightSidebar').html();
+                var $frag = $('<div>').html(data);
+                var newMain = $frag.find('.chat-main').html();
+                var newRight = $frag.find('#rightSidebar').html();
+                var newSidebar = $frag.find('#activeConvsArea').html(); // Làm mới danh sách tin nhắn bên trái
 
                 $('.chat-main').html(newMain);
+                $('#activeConvsArea').html(newSidebar);
+
                 if (newRight) {
                     if ($('#rightSidebar').length === 0) {
                         $('.chat-layout').append('<div class="chat-right-sidebar" id="rightSidebar"></div>');
                     }
-                    $('#rightSidebar').html(newRight);
+                    $('#rightSidebar').html(newRight).removeClass('hidden');
                 } else {
                     $('#rightSidebar').addClass('hidden');
                 }
 
-                var match = url.match(/conv_id=(\d+)/);
-                if (match) {
-                    window.convId = parseInt(match[1]);
+                // Cập nhật mã hội thoại để có thể gửi tin nhắn ngay lập tức
+                var scriptContent = $frag.find('script').last().text();
+                var convMatch = scriptContent.match(/window\.convId = (\d+|null);/);
+                if (convMatch && convMatch[1] !== 'null') {
+                    window.convId = parseInt(convMatch[1]);
                 } else {
-                    var scriptContent = $(data).find('script').text();
-                    var convMatch = scriptContent.match(/window\.convId = (\d+|null);/);
-                    if (convMatch && convMatch[1] !== 'null') window.convId = parseInt(convMatch[1]);
+                    window.convId = null;
                 }
 
-                if (window.convId) fetchGroupRequests();
+                if (window.convId) {
+                    fetchGroupRequests();
+                    schedulePoll();
+                }
+
                 scrollToBottom();
                 $('#chatInput').trigger('input');
             });

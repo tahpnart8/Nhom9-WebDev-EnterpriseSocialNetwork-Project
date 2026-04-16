@@ -58,26 +58,9 @@ class ChatController {
         }
 
         // Tối ưu hóa tải cho SPA
-        if ($isAjaxNav) {
-            $conversations = [];
-            $allUsers = [];
-            // Bổ sung thông tin giả lập vừa đủ để load Header cho Direct Chat
-            if ($activeConv && $activeConv['type'] === 'Direct') {
-                $stmt = $this->db->prepare("SELECT u.id as partner_id, u.full_name as partner_name, u.avatar_url as partner_avatar FROM conversation_members cm JOIN users u ON cm.user_id = u.id WHERE cm.conversation_id = :cid AND cm.user_id != :uid LIMIT 1");
-                $stmt->execute([':cid' => $activeConvId, ':uid' => $_SESSION['user_id']]);
-                $ptn = $stmt->fetch(PDO::FETCH_ASSOC);
-                if ($ptn) $conversations = [['id' => $activeConvId, 'partner_name' => $ptn['partner_name'], 'partner_avatar' => $ptn['partner_avatar'], 'partner_id' => $ptn['partner_id']]];
-            } else if ($withUserId) {
-                $stmt = $this->db->prepare("SELECT id, full_name, avatar_url FROM users WHERE id = :uid LIMIT 1");
-                $stmt->execute([':uid' => $withUserId]);
-                $u = $stmt->fetch(PDO::FETCH_ASSOC);
-                if ($u) $allUsers = [$u];
-            }
-        } else {
-            $conversations = $msgModel->getConversations($_SESSION['user_id']);
-            $allUsersStmt = $userModel->getAllUsersWithDetails();
-            $allUsers = $allUsersStmt->fetchAll(PDO::FETCH_ASSOC);
-        }
+        $conversations = $msgModel->getConversations($_SESSION['user_id']);
+        $allUsersStmt = $userModel->getAllUsersWithDetails();
+        $allUsers = $allUsersStmt->fetchAll(PDO::FETCH_ASSOC);
         
         require_once __DIR__ . '/../views/chat/index.php';
     }

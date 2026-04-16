@@ -1,5 +1,62 @@
 <?php include __DIR__ . '/../layouts/header.php'; ?>
 
+<style>
+/* Toast Notification Center Component */
+.toast-center-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+    pointer-events: none;
+}
+.toast-center {
+    background: #ffffff !important;
+    padding: 2rem 3rem;
+    border-radius: 12px;
+    box-shadow: 0 15px 50px rgba(0,0,0,0.2) !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    min-width: 350px;
+    border: 2px solid #eeeeee !important;
+    animation: toastBounceIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: auto;
+}
+.toast-center i { font-size: 3.5rem; }
+.toast-center.success i { color: #2ecc71; }
+.toast-center.error i { color: #e74c3c; }
+.toast-center .toast-msg {
+    font-weight: 700;
+    color: var(--text-main);
+    text-align: center;
+    font-size: 1.2rem;
+}
+
+@keyframes toastBounceIn {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+@keyframes toastFadeOut {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0.9); opacity: 0; }
+}
+
+/* Cân chỉnh màu phân trang theo tone đỏ giao diện */
+.pagination .page-link {
+    color: var(--primary-color) !important;
+}
+.pagination .page-item.active .page-link {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: white !important;
+}
+.pagination .page-link:hover {
+    background-color: var(--primary-light) !important;
+}
+</style>
+
 <div class="glass-panel-scrollable h-100 p-3 pt-4">
 <div class="row g-4">
     <div class="col-md-8">
@@ -27,8 +84,13 @@
                             </td>
                             <td><span class="text-muted small"><?php echo date('d/m/Y', strtotime($d['created_at'])); ?></span></td>
                             <td class="text-end">
-                                <button class="btn btn-sm btn-light border text-muted"><i class="bi bi-pencil"></i></button>
-                                <button class="btn btn-sm btn-light border text-danger"><i class="bi bi-trash"></i></button>
+                                <button class="btn btn-sm btn-light border text-primary" title="Chỉnh sửa"><i class="bi bi-pencil-square"></i></button>
+                                <button class="btn btn-sm btn-light border text-danger btn-delete-dept" 
+                                    data-id="<?php echo $d['id']; ?>" 
+                                    data-name="<?php echo htmlspecialchars($d['dept_name']); ?>"
+                                    title="Xóa">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -39,12 +101,36 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Phân trang -->
+            <?php if ($totalPages > 1): ?>
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item <?php echo ($currentPage <= 1) ? 'disabled' : ''; ?>">
+                        <a class="page-link" href="?action=admin_departments&page=<?php echo $currentPage - 1; ?>" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    
+                    <?php for($i = 1; $i <= $totalPages; $i++): ?>
+                    <li class="page-item <?php echo ($i == $currentPage) ? 'active' : ''; ?>">
+                        <a class="page-link" href="?action=admin_departments&page=<?php echo $i; ?>"><?php echo $i; ?></a>
+                    </li>
+                    <?php endfor; ?>
+                    
+                    <li class="page-item <?php echo ($currentPage >= $totalPages) ? 'disabled' : ''; ?>">
+                        <a class="page-link" href="?action=admin_departments&page=<?php echo $currentPage + 1; ?>" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            <?php endif; ?>
         </div>
     </div>
     
     <div class="col-md-4">
         <div class="relioo-card p-4 border bg-white h-100 position-relative overflow-hidden">
-            <!-- Thêm yếu tố trang trí theo pattern Soft UI -->
             <div class="position-absolute opacity-10" style="top: -20px; right: -20px; font-size: 8rem; color: var(--primary-color);">
                 <i class="bi bi-building"></i>
             </div>
@@ -57,24 +143,134 @@
                     <h5 class="fw-bold text-dark mb-0">Thêm đơn vị</h5>
                 </div>
                 
-                <form>
+                <form id="formAddDept">
                     <div class="mb-3">
-                        <label class="form-label text-muted fw-bold small">TÊN PHÒNG BAN</label>
-                        <input type="text" class="form-control bg-light border-0 py-2" placeholder="VD: Phòng Hành Chính">
+                        <label class="form-label text-muted fw-bold small">TÊN PHÒNG BAN <span class="text-danger">*</span></label>
+                        <input type="text" name="dept_name" id="dept_name" class="form-control bg-light border-0 py-2" placeholder="VD: Phòng Hành Chính" required>
                     </div>
                     <div class="mb-4">
                         <label class="form-label text-muted fw-bold small">TRÁCH NHIỆM CHÍNH</label>
-                        <textarea class="form-control bg-light border-0 py-2" rows="4" placeholder="Nhập mô tả hoạt động của phòng..."></textarea>
+                        <textarea name="description" id="description" class="form-control bg-light border-0 py-2" rows="4" placeholder="Nhập mô tả hoạt động của phòng..."></textarea>
                     </div>
-                    <button type="button" class="btn btn-primary w-100 py-2 fw-medium shadow-sm">
+                    <button type="button" id="btnSubmitAddDept" class="btn btn-primary w-100 py-2 fw-medium shadow-sm">
                         Khởi tạo cấu trúc
                     </button>
-                    <p class="text-center text-muted small mt-3 px-3">Submits via AJAX to controllers/AdminController.php trong phân hệ xử lý Data.</p>
                 </form>
             </div>
         </div>
     </div>
 </div>
 </div>
+
+<div id="toast-container" class="toast-center-container"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Toast System (Premium SweetAlert2 version)
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer)
+            toast.addEventListener('mouseleave', Swal.resumeTimer)
+        }
+    });
+
+    function showToast(message, type = 'success') {
+        Toast.fire({
+            icon: type,
+            title: message
+        });
+    }
+
+    const form = document.getElementById('formAddDept');
+    const btnSubmit = document.getElementById('btnSubmitAddDept');
+
+    btnSubmit.addEventListener('click', function() {
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const formData = new FormData(form);
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Đang xử lý...';
+
+        fetch('index.php?action=api_add_department', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast(data.message, 'error');
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = 'Khởi tạo cấu trúc';
+            }
+        })
+        .catch(err => {
+            showToast('Lỗi kết nối máy chủ', 'error');
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = 'Khởi tạo cấu trúc';
+        });
+    });
+
+    // Xử lý Xóa phòng ban
+    document.querySelectorAll('.btn-delete-dept').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            const name = this.dataset.name;
+            
+            Swal.fire({
+                title: 'Xác nhận xóa?',
+                text: `Bạn có chắc chắn muốn xóa phòng ban "${name}"? Thao tác này không thể hoàn tác!`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ff4d4f',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Xác nhận xóa',
+                cancelButtonText: 'Hủy bỏ',
+                reverseButtons: true,
+                borderRadius: '12px'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const formData = new FormData();
+                    formData.append('id', id);
+
+                    fetch('index.php?action=api_delete_department', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast(data.message, 'success');
+                            setTimeout(() => location.reload(), 1200);
+                        } else {
+                            // Hiển thị lỗi (ví dụ: vẫn còn nhân viên)
+                            Swal.fire({
+                                title: 'Thông báo',
+                                text: data.message,
+                                icon: 'error',
+                                confirmButtonColor: '#ff4d4f',
+                                confirmButtonText: 'Đóng'
+                            });
+                        }
+                    })
+                    .catch(err => {
+                        showToast('Lỗi hệ thống khi xóa', 'error');
+                    });
+                }
+            });
+        });
+    });
+});
+</script>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>
