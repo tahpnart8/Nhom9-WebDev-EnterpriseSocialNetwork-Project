@@ -23,7 +23,7 @@ $roleId = $_SESSION['role_id'] ?? 3; // Default to staff
         <li class="menu-item">
             <a href="index.php?action=tasks" class="menu-link <?php echo $currentAction == 'tasks' ? 'active' : ''; ?>">
                 <i class="bi bi-kanban"></i>
-                Quản lý công việc
+                Dự án & Công việc
             </a>
         </li>
         

@@ -5,6 +5,21 @@ date_default_timezone_set('Asia/Ho_Chi_Minh');
 // Front Controller Pattern (Bộ định tuyến chính)
 session_start();
 
+// Load biến môi trường từ .env
+if (file_exists(__DIR__ . '/.env')) {
+    $lines = file(__DIR__ . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) continue;
+        $parts = explode('=', $line, 2);
+        if (count($parts) === 2) {
+            $key = trim($parts[0]);
+            $value = trim($parts[1]);
+            $_ENV[$key] = $value;
+            putenv("$key=$value");
+        }
+    }
+}
+
 // Lấy action từ Query String, nếu không có mặc định về dashboard
 $action = $_GET['action'] ?? 'dashboard';
 
@@ -17,6 +32,7 @@ require_once 'controllers/TaskController.php';
 require_once 'controllers/NotificationController.php';
 require_once 'controllers/ChatController.php';
 require_once 'controllers/ProfileController.php';
+require_once 'controllers/ProjectController.php';
 
 $authController = new AuthController();
 $dashboardController = new DashboardController();
@@ -26,6 +42,7 @@ $taskController = new TaskController();
 $notiController = new NotificationController();
 $chatController = new ChatController();
 $profileController = new ProfileController();
+$projectController = new ProjectController();
 
 $routes = [
     'login' => [$authController, 'showLogin'],
@@ -79,6 +96,16 @@ $routes = [
     'api_save_task_summary' => [$taskController, 'saveTaskSummary'],
     'api_urgent_subtasks' => [$taskController, 'fetchUrgentSubtasks'],
     'api_search_tasks' => [$taskController, 'apiSearchTasks'],
+    'api_submit_task_to_ceo' => [$taskController, 'submitTaskToCEO'],
+    'api_generate_task_report_for_ceo' => [$taskController, 'apiGenerateTaskReportForCEO'],
+    'api_ceo_approve_task' => [$taskController, 'ceoApproveTask'],
+
+    'api_create_project' => [$projectController, 'createProject'],
+    'api_update_project' => [$projectController, 'updateProject'],
+    'api_delete_project' => [$projectController, 'deleteProject'],
+    'api_complete_project' => [$projectController, 'completeProject'],
+    'api_generate_project_summary' => [$projectController, 'apiGenerateProjectSummary'],
+    'api_get_project_detail' => [$projectController, 'getProjectDetail'],
 
     'api_notifications' => [$notiController, 'fetchUnread'],
     'api_mark_all_read' => [$notiController, 'markAllRead'],

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 15, 2026 at 07:05 PM
+-- Generation Time: Apr 17, 2026 at 09:05 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -36,7 +36,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_CheckNewMessages` (IN `p_conv_id
     END IF;
 END$$
 
-CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_CreateTaskReportPost` (IN `p_task_id` INT, IN `p_subtask_id` INT, IN `p_content` TEXT, IN `p_ai_content` TEXT, IN `p_author_id` INT, IN `p_dept_id` INT)   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_CreateTaskReportPost` (IN `p_task_id` INT, IN `p_subtask_id` INT, IN `p_content` TEXT, IN `p_ai_content` TEXT, IN `p_author_id` INT, IN `p_dept_id` INT)   BEGIN
     DECLARE v_report_id INT; DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; END;
     START TRANSACTION;
         INSERT INTO task_reports (task_id, subtask_id, content, ai_generated_content) VALUES (p_task_id, p_subtask_id, p_content, p_ai_content);
@@ -49,54 +49,41 @@ END$$
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_GetConversationList` (IN `p_user_id` INT)   BEGIN
     SELECT c.id, c.type, c.name as group_name, c.avatar_url as group_avatar, 
            c.created_by, c.requires_approval,
-           lm.content as last_message,
-           lm.created_at as last_time,
-           
+           (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY id DESC LIMIT 1) as last_message,
+           (SELECT created_at FROM messages WHERE conversation_id = c.id ORDER BY id DESC LIMIT 1) as last_time,
            CASE WHEN c.type = 'Direct' THEN partner_u.full_name ELSE NULL END as partner_name,
            CASE WHEN c.type = 'Direct' THEN partner_u.avatar_url ELSE NULL END as partner_avatar,
            CASE WHEN c.type = 'Direct' THEN partner_cm.user_id ELSE NULL END as partner_id,
-           
            (SELECT u2.avatar_url FROM conversation_members cm2 JOIN users u2 ON cm2.user_id = u2.id 
             WHERE cm2.conversation_id = c.id AND c.type = 'Group' ORDER BY cm2.user_id LIMIT 1) as group_avatar_1,
            (SELECT u3.avatar_url FROM conversation_members cm3 JOIN users u3 ON cm3.user_id = u3.id 
             WHERE cm3.conversation_id = c.id AND c.type = 'Group' ORDER BY cm3.user_id LIMIT 1 OFFSET 1) as group_avatar_2,
-           
-           COALESCE(unread.cnt, 0) as unread_count
+           COALESCE(
+               (SELECT COUNT(*) FROM messages 
+                WHERE conversation_id = c.id AND sender_id != p_user_id AND created_at > cm.last_read_at)
+           , 0) as unread_count
     FROM conversations c
     JOIN conversation_members cm ON c.id = cm.conversation_id AND cm.user_id = p_user_id
-    
-    LEFT JOIN (
-        SELECT m1.conversation_id, m1.content, m1.created_at
-        FROM messages m1
-        INNER JOIN (SELECT conversation_id, MAX(id) as max_id FROM messages GROUP BY conversation_id) m2 
-        ON m1.id = m2.max_id
-    ) lm ON lm.conversation_id = c.id
-    
     LEFT JOIN conversation_members partner_cm ON partner_cm.conversation_id = c.id 
         AND partner_cm.user_id != p_user_id AND c.type = 'Direct'
     LEFT JOIN users partner_u ON partner_u.id = partner_cm.user_id
-    
-    LEFT JOIN (
-        SELECT m.conversation_id, COUNT(*) as cnt
-        FROM messages m
-        JOIN conversation_members cmr ON m.conversation_id = cmr.conversation_id AND cmr.user_id = p_user_id
-        WHERE m.created_at > cmr.last_read_at AND m.sender_id != p_user_id
-        GROUP BY m.conversation_id
-    ) unread ON unread.conversation_id = c.id
-    ORDER BY lm.created_at DESC;
+    ORDER BY last_time DESC;
 END$$
 
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_GetConversationMessages` (IN `p_conv_id` INT, IN `p_limit` INT, IN `p_viewer_id` INT)   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_GetConversationMessages` (IN `p_conv_id` INT, IN `p_limit` INT, IN `p_offset` INT, IN `p_viewer_id` INT)   BEGIN
     IF EXISTS (SELECT 1 FROM conversation_members WHERE conversation_id = p_conv_id AND user_id = p_viewer_id) THEN
-        SELECT m.*, u.full_name as sender_name, u.avatar_url as sender_avatar 
-        FROM messages m 
-        JOIN users u ON m.sender_id = u.id
-        WHERE m.conversation_id = p_conv_id 
-        ORDER BY m.created_at ASC LIMIT p_limit;
+        SELECT * FROM (
+            SELECT m.*, u.full_name as sender_name, u.avatar_url as sender_avatar 
+            FROM messages m 
+            JOIN users u ON m.sender_id = u.id
+            WHERE m.conversation_id = p_conv_id 
+            ORDER BY m.id DESC LIMIT p_limit OFFSET p_offset
+        ) AS tmp
+        ORDER BY tmp.id ASC;
     END IF;
 END$$
 
-CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_GetDashboardOverview` (IN `p_user_id` INT, IN `p_dept_id` INT, IN `p_role_id` INT)   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_GetDashboardOverview` (IN `p_user_id` INT, IN `p_dept_id` INT, IN `p_role_id` INT)   BEGIN
     DECLARE v_user_count INT; DECLARE v_task_count INT; DECLARE v_pending_count INT;
     SELECT COUNT(*) INTO v_user_count FROM users WHERE is_active = 1;
     IF p_role_id = 1 OR p_role_id = 4 THEN
@@ -117,7 +104,7 @@ CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_GetEmployeePerformance` (IN `p_user_id`
     FROM subtasks WHERE assignee_id = p_user_id;
 END$$
 
-CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_GetFeed` (IN `p_current_user_id` INT, IN `p_role_id` INT, IN `p_dept_id` INT, IN `p_channel` VARCHAR(20), IN `p_search` VARCHAR(100))   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_GetFeed` (IN `p_current_user_id` INT, IN `p_role_id` INT, IN `p_dept_id` INT, IN `p_channel` VARCHAR(20), IN `p_search` VARCHAR(100))   BEGIN
     SET @where_clause = ' p.visibility = "Public" ';
     
     IF p_channel = 'announcement' THEN
@@ -131,32 +118,56 @@ CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_GetFeed` (IN `p_current_user_id` INT, I
     END IF;
 
     IF p_search IS NOT NULL AND p_search <> '' THEN
-        SET @where_clause = CONCAT(@where_clause, ' AND (p.content_html LIKE "%', p_search, '%" OR u.full_name LIKE "%', p_search, '%") ');
+        SET @where_clause = CONCAT(@where_clause, ' AND (p.content_html LIKE ? OR u.full_name LIKE ? ) ');
+        SET @search_val = CONCAT('%', p_search, '%');
+    ELSE
+        SET @search_val = '%%';
     END IF;
 
     SET @final_query = CONCAT('
-        SELECT p.*, u.full_name, u.avatar_url, m.media_url, m.media_type, r.role_name,
+        SELECT p.*, u.full_name, u.avatar_url, m.media_url, m.media_type, r.role_name, t.title as task_title,
+               (CASE 
+                    WHEN u.full_name LIKE ? THEN 20
+                    WHEN p.content_html LIKE ? THEN 10
+                    ELSE 0 
+                END) as relevance_score,
                COALESCE(rc.like_count, 0) as like_count,
                CASE WHEN my_r.user_id IS NOT NULL THEN 1 ELSE 0 END as is_liked,
                COALESCE(cc.comment_count, 0) as comment_count
         FROM posts p
         JOIN users u ON p.author_id = u.id
         LEFT JOIN roles r ON u.role_id = r.id
+        LEFT JOIN tasks t ON p.task_report_id = t.id
         LEFT JOIN post_media m ON p.id = m.post_id
         LEFT JOIN (SELECT post_id, COUNT(*) as like_count FROM post_reactions GROUP BY post_id) rc ON rc.post_id = p.id
         LEFT JOIN post_reactions my_r ON my_r.post_id = p.id AND my_r.user_id = ', p_current_user_id, '
         LEFT JOIN (SELECT post_id, COUNT(*) as comment_count FROM comments GROUP BY post_id) cc ON cc.post_id = p.id
         WHERE ', @where_clause, '
-        ORDER BY p.created_at DESC LIMIT 50'
+        ORDER BY relevance_score DESC, p.created_at DESC LIMIT 50'
     );
+    
     PREPARE stmt FROM @final_query;
-    EXECUTE stmt;
+    IF p_search IS NOT NULL AND p_search <> '' THEN
+        EXECUTE stmt USING @search_val, @search_val, @search_val, @search_val;
+    ELSE
+        EXECUTE stmt USING @search_val, @search_val;
+    END IF;
     DEALLOCATE PREPARE stmt;
 END$$
 
 CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_GetLeaderboard` (IN `p_dept_id` INT)   BEGIN
     SELECT u.full_name, u.avatar_url, COUNT(s.id) as tasks_done FROM users u JOIN subtasks s ON u.id = s.assignee_id
     WHERE u.department_id = p_dept_id AND s.status = 'Done' GROUP BY u.id ORDER BY tasks_done DESC LIMIT 10;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_GetPostComments` (IN `p_post_id` INT, IN `p_current_user_id` INT)   BEGIN
+    SELECT c.*, u.full_name, u.avatar_url,
+           (SELECT COUNT(*) FROM comment_reactions WHERE comment_id = c.id) as like_count,
+           CASE WHEN EXISTS (SELECT 1 FROM comment_reactions WHERE comment_id = c.id AND user_id = p_current_user_id) THEN 1 ELSE 0 END as is_liked
+    FROM comments c
+    JOIN users u ON c.user_id = u.id
+    WHERE c.post_id = p_post_id
+    ORDER BY c.created_at ASC;
 END$$
 
 CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_GetSubtaskStatsDetailed` (IN `p_dept_id` INT, IN `p_assignee_id` INT)   BEGIN
@@ -173,20 +184,48 @@ CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_GetSubtaskStatsDetailed` (IN `p_dept_id
       AND (p_assignee_id IS NULL OR s.assignee_id = p_assignee_id);
 END$$
 
-CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_GetUnreadNotis` (IN `p_user_id` INT)   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_GetUnreadNotis` (IN `p_user_id` INT)   BEGIN
     SELECT n.*, nu.is_read FROM notifications n JOIN notification_user nu ON n.id = nu.notification_id
     WHERE nu.user_id = p_user_id AND nu.is_read = 0 ORDER BY n.created_at DESC;
 END$$
 
-CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_GetUrgentTasks` (IN `p_user_id` INT)   BEGIN
-    SELECT s.*, t.title as parent_task_title, COALESCE(tc.total, 0) as parent_total, COALESCE(tc.done, 0) as parent_done
-    FROM subtasks s JOIN tasks t ON s.task_id = t.id
-    LEFT JOIN (SELECT task_id, COUNT(*) as total, SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as done FROM subtasks GROUP BY task_id) tc ON tc.task_id = t.id
-    WHERE s.assignee_id = p_user_id AND s.status IN ('To Do', 'In Progress')
-    ORDER BY s.deadline ASC LIMIT 10;
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_GetUrgentTasks` (IN `p_user_id` INT, IN `p_role_id` INT, IN `p_dept_id` INT)   BEGIN
+    IF p_role_id = 3 THEN
+        
+        SELECT s.*, t.title as parent_task_title, COALESCE(tc.total, 0) as parent_total, COALESCE(tc.done, 0) as parent_done
+        FROM subtasks s JOIN tasks t ON s.task_id = t.id
+        LEFT JOIN (SELECT task_id, COUNT(*) as total, SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as done FROM subtasks GROUP BY task_id) tc ON tc.task_id = t.id
+        WHERE s.assignee_id = p_user_id 
+          AND s.status IN ('To Do', 'In Progress')
+          AND s.deadline >= NOW() 
+          AND s.deadline <= DATE_ADD(NOW(), INTERVAL 4 DAY)
+        ORDER BY s.deadline ASC LIMIT 10;
+        
+    ELSEIF p_role_id = 2 THEN
+        
+        SELECT s.*, t.title as parent_task_title, COALESCE(tc.total, 0) as parent_total, COALESCE(tc.done, 0) as parent_done
+        FROM subtasks s JOIN tasks t ON s.task_id = t.id
+        LEFT JOIN (SELECT task_id, COUNT(*) as total, SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as done FROM subtasks GROUP BY task_id) tc ON tc.task_id = t.id
+        WHERE 
+            (s.assignee_id = p_user_id AND s.status IN ('To Do', 'In Progress') AND s.deadline >= NOW() AND s.deadline <= DATE_ADD(NOW(), INTERVAL 4 DAY))
+            OR
+            (t.department_id = p_dept_id AND (s.status = 'Pending' OR s.extension_requested_at IS NOT NULL))
+        ORDER BY s.deadline ASC LIMIT 10;
+        
+    ELSE
+        
+        SELECT s.*, t.title as parent_task_title, COALESCE(tc.total, 0) as parent_total, COALESCE(tc.done, 0) as parent_done
+        FROM subtasks s JOIN tasks t ON s.task_id = t.id
+        LEFT JOIN (SELECT task_id, COUNT(*) as total, SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as done FROM subtasks GROUP BY task_id) tc ON tc.task_id = t.id
+        WHERE 
+            (s.assignee_id = p_user_id AND s.status IN ('To Do', 'In Progress') AND s.deadline >= NOW() AND s.deadline <= DATE_ADD(NOW(), INTERVAL 4 DAY))
+            OR
+            (s.status = 'Pending' OR s.extension_requested_at IS NOT NULL)
+        ORDER BY s.deadline ASC LIMIT 10;
+    END IF;
 END$$
 
-CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_GetWorkloadStats` (IN `p_dept_id` INT)   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_GetWorkloadStats` (IN `p_dept_id` INT)   BEGIN
     IF p_dept_id IS NULL THEN
         SELECT d.dept_name as label, COUNT(s.id) as total_tasks FROM departments d
         LEFT JOIN tasks t ON t.department_id = d.id LEFT JOIN subtasks s ON s.task_id = t.id GROUP BY d.id;
@@ -204,20 +243,36 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_Heartbeat` (IN `p_user_id` INT) 
          JOIN conversation_members cm ON c.id = cm.conversation_id
          JOIN messages m ON c.id = m.conversation_id
          WHERE cm.user_id = p_user_id AND m.created_at > cm.last_read_at AND m.sender_id != p_user_id
-        ) as chat_count;
+        ) as chat_count,
+        (SELECT MAX(m.id) FROM messages m 
+         JOIN conversation_members cm ON m.conversation_id = cm.conversation_id 
+         WHERE cm.user_id = p_user_id
+        ) as last_msg_id;
 END$$
 
-CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_MarkMessagesAsRead` (IN `p_conv_id` INT, IN `p_user_id` INT)   BEGIN
-    UPDATE conversation_members SET last_read_at = NOW() WHERE conversation_id = p_conv_id AND user_id = p_user_id;
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_MarkMessagesAsRead` (IN `p_conv_id` INT, IN `p_user_id` INT)   BEGIN
+    UPDATE conversation_members 
+    SET last_read_at = NOW() 
+    WHERE conversation_id = p_conv_id AND user_id = p_user_id;
 END$$
 
-CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_SearchUsers` (IN `p_keyword` VARCHAR(100))   BEGIN
-    SELECT u.id, u.full_name, u.email, u.avatar_url, d.dept_name, r.role_name FROM users u
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_SearchTasks` (IN `p_user_id` INT, IN `p_role_id` INT, IN `p_dept_id` INT, IN `p_keyword` VARCHAR(100))   BEGIN
+    SELECT t.*, u.full_name as creator_name, d.dept_name
+    FROM tasks t
+    JOIN users u ON t.created_by_user_id = u.id
+    LEFT JOIN departments d ON t.department_id = d.id
+    WHERE (p_role_id IN (1, 4) OR t.department_id = p_dept_id)
+      AND (t.title LIKE CONCAT('%', p_keyword, '%') OR t.description LIKE CONCAT('%', p_keyword, '%'))
+    ORDER BY t.created_at DESC LIMIT 15;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_SearchUsers` (IN `p_keyword` VARCHAR(100))   BEGIN
+    SELECT u.id, u.full_name, u.username, u.email, u.avatar_url, d.dept_name, r.role_name FROM users u
     LEFT JOIN departments d ON u.department_id = d.id LEFT JOIN roles r ON u.role_id = r.id
-    WHERE u.full_name LIKE CONCAT('%', p_keyword, '%') OR u.username LIKE CONCAT('%', p_keyword, '%') LIMIT 20;
+    WHERE u.full_name LIKE CONCAT('%', p_keyword, '%') OR u.username LIKE CONCAT('%', p_keyword, '%') LIMIT 15;
 END$$
 
-CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_SubmitSubtaskEvidence` (IN `p_subtask_id` INT, IN `p_notes` TEXT, IN `p_file_url` VARCHAR(500))   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_SubmitSubtaskEvidence` (IN `p_subtask_id` INT, IN `p_notes` TEXT, IN `p_file_url` VARCHAR(500))   BEGIN
     DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; END;
     START TRANSACTION;
         UPDATE subtasks SET status = 'Pending', is_rejected = 0 WHERE id = p_subtask_id;
@@ -228,7 +283,7 @@ CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_SubmitSubtaskEvidence` (IN `p_subtask_i
     COMMIT;
 END$$
 
-CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_ToggleCommentReaction` (IN `p_comment_id` INT, IN `p_user_id` INT)   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_ToggleCommentReaction` (IN `p_comment_id` INT, IN `p_user_id` INT)   BEGIN
     IF EXISTS (SELECT 1 FROM comment_reactions WHERE comment_id = p_comment_id AND user_id = p_user_id) THEN
         DELETE FROM comment_reactions WHERE comment_id = p_comment_id AND user_id = p_user_id;
         SELECT 'deleted' AS action;
@@ -238,7 +293,7 @@ CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_ToggleCommentReaction` (IN `p_comment_i
     END IF;
 END$$
 
-CREATE DEFINER=`Nhom9`@`%` PROCEDURE `sp_TogglePostReaction` (IN `p_post_id` INT, IN `p_user_id` INT)   BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_TogglePostReaction` (IN `p_post_id` INT, IN `p_user_id` INT)   BEGIN
     IF EXISTS (SELECT 1 FROM post_reactions WHERE post_id = p_post_id AND user_id = p_user_id) THEN
         DELETE FROM post_reactions WHERE post_id = p_post_id AND user_id = p_user_id;
         SELECT 'deleted' AS action;
@@ -329,7 +384,17 @@ INSERT INTO `comments` (`id`, `post_id`, `user_id`, `parent_comment_id`, `conten
 (56, 20, 3, NULL, 'Thèm quá đi', '2026-04-13 00:55:13'),
 (57, 20, 2, 56, 'ok', '2026-04-13 00:56:20'),
 (58, 22, 3, NULL, 'mệt vcl', '2026-04-14 16:08:59'),
-(59, 20, 3, NULL, 'csdcsdcsd', '2026-04-15 17:58:03');
+(59, 20, 3, NULL, 'csdcsdcsd', '2026-04-15 17:58:03'),
+(60, 25, 2, NULL, 'thôi mà đừng buồn', '2026-04-16 00:16:51'),
+(61, 24, 2, NULL, 'buồn lòng', '2026-04-16 00:17:01'),
+(62, 24, 3, 61, 'ngu', '2026-04-16 11:44:34'),
+(63, 26, 3, NULL, 'fsuhjk', '2026-04-16 11:44:46'),
+(64, 25, 2, NULL, 'Xóa bài đi phản cảm quá', '2026-04-16 12:31:37'),
+(65, 25, 3, NULL, 'sdfghj', '2026-04-16 15:15:12'),
+(66, 25, 3, NULL, 'tôi bị điên', '2026-04-16 15:15:18'),
+(67, 29, 3, NULL, 'tets', '2026-04-16 22:50:22'),
+(68, 28, 3, NULL, 'test', '2026-04-16 22:50:26'),
+(69, 29, 1, NULL, 'test gì vậy bé', '2026-04-17 13:46:23');
 
 -- --------------------------------------------------------
 
@@ -350,7 +415,8 @@ CREATE TABLE `comment_reactions` (
 
 INSERT INTO `comment_reactions` (`id`, `comment_id`, `user_id`, `created_at`) VALUES
 (1, 1, 3, '2026-04-09 09:51:44'),
-(2, 4, 1, '2026-04-11 00:23:29');
+(2, 4, 1, '2026-04-11 00:23:29'),
+(5, 64, 1, '2026-04-16 12:44:10');
 
 -- --------------------------------------------------------
 
@@ -377,7 +443,10 @@ INSERT INTO `conversations` (`id`, `type`, `name`, `created_at`, `avatar_url`, `
 (2, 'Direct', NULL, '2026-04-09 12:02:29', NULL, NULL, 0),
 (3, 'Direct', NULL, '2026-04-11 12:00:20', NULL, NULL, 0),
 (4, 'Direct', NULL, '2026-04-11 12:00:31', NULL, NULL, 0),
-(5, 'Group', 'Hội bạn thân IT ngu', '2026-04-13 02:02:09', 'https://i.ibb.co/HpzhRX8Z/8275ab63446d.jpg', 3, 0);
+(5, 'Group', 'Hội bạn thân IT ngu 1', '2026-04-13 02:02:09', 'https://i.ibb.co/HpzhRX8Z/8275ab63446d.jpg', 3, 0),
+(6, 'Direct', NULL, '2026-04-16 16:50:52', NULL, NULL, 0),
+(7, 'Direct', NULL, '2026-04-17 00:52:38', NULL, NULL, 0),
+(8, 'Direct', NULL, '2026-04-17 00:52:47', NULL, NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -397,17 +466,23 @@ CREATE TABLE `conversation_members` (
 --
 
 INSERT INTO `conversation_members` (`conversation_id`, `user_id`, `last_read_at`, `role`) VALUES
-(1, 3, '2026-04-15 23:27:59', 'member'),
-(1, 4, '2026-04-12 23:04:34', 'member'),
-(2, 2, '2026-04-15 23:10:28', 'member'),
-(2, 3, '2026-04-16 00:01:04', 'member'),
-(3, 1, '2026-04-15 23:23:54', 'member'),
-(3, 2, '2026-04-15 23:10:32', 'member'),
-(4, 1, '2026-04-16 00:01:50', 'member'),
-(4, 3, '2026-04-16 00:01:04', 'member'),
-(5, 1, '2026-04-16 00:02:30', 'member'),
-(5, 2, '2026-04-15 23:08:59', 'member'),
-(5, 3, '2026-04-16 00:02:23', 'admin');
+(1, 3, '2026-04-16 15:15:31', 'member'),
+(1, 4, '2026-04-16 17:03:03', 'member'),
+(2, 2, '2026-04-17 00:52:46', 'member'),
+(2, 3, '2026-04-17 00:56:06', 'member'),
+(3, 1, '2026-04-17 01:02:12', 'member'),
+(3, 2, '2026-04-17 10:18:26', 'member'),
+(4, 1, '2026-04-17 00:48:22', 'member'),
+(4, 3, '2026-04-17 00:56:03', 'member'),
+(5, 1, '2026-04-17 02:15:20', 'member'),
+(5, 2, '2026-04-17 10:16:25', 'member'),
+(5, 3, '2026-04-17 00:56:05', 'admin'),
+(6, 1, '2026-04-17 00:23:46', 'member'),
+(6, 4, '2026-04-16 17:03:57', 'member'),
+(7, 2, '2026-04-17 00:52:43', 'member'),
+(7, 5, '2026-04-17 00:52:38', 'member'),
+(8, 2, '2026-04-17 00:52:48', 'member'),
+(8, 7, '2026-04-17 00:52:47', 'member');
 
 -- --------------------------------------------------------
 
@@ -428,8 +503,11 @@ CREATE TABLE `departments` (
 
 INSERT INTO `departments` (`id`, `dept_name`, `description`, `created_at`) VALUES
 (1, 'Ban Giám Đốc', NULL, '2026-04-08 22:54:32'),
-(2, 'Kinh Doanh', NULL, '2026-04-08 22:54:32'),
-(3, 'Kỹ Thuật', NULL, '2026-04-08 22:54:32');
+(2, 'Kinh Doanh', '', '2026-04-08 22:54:32'),
+(3, 'Kỹ Thuật', NULL, '2026-04-08 22:54:32'),
+(4, 'Tài chính ', '', '2026-04-16 17:20:25'),
+(5, 'Nhân sự', '', '2026-04-16 17:36:00'),
+(6, 'Hoạch định chiến thuật', '', '2026-04-16 17:36:20');
 
 -- --------------------------------------------------------
 
@@ -611,7 +689,102 @@ INSERT INTO `messages` (`id`, `conversation_id`, `sender_id`, `content`, `create
 (144, 5, 1, 'ừ', '2026-04-16 00:01:53'),
 (145, 5, 1, 'haha', '2026-04-16 00:01:57'),
 (146, 5, 3, 'hahaha', '2026-04-16 00:02:00'),
-(147, 5, 1, 'tin nhắn ngon rồi nhé', '2026-04-16 00:02:18');
+(147, 5, 1, 'tin nhắn ngon rồi nhé', '2026-04-16 00:02:18'),
+(148, 5, 3, 'ok ngon nuôn', '2026-04-16 00:13:52'),
+(149, 2, 3, '?', '2026-04-16 00:15:19'),
+(150, 2, 3, 'kì v', '2026-04-16 00:15:50'),
+(151, 2, 2, 'ngu', '2026-04-16 00:18:26'),
+(152, 2, 2, '[IMAGE:https://i.ibb.co/nypnHWk/2c739a728949.jpg]', '2026-04-16 00:21:31'),
+(153, 2, 3, 'a', '2026-04-16 00:23:07'),
+(154, 2, 2, 'ngu', '2026-04-16 00:25:38'),
+(155, 2, 2, 'chạy đi cho t ngủ đm', '2026-04-16 00:36:30'),
+(156, 5, 2, 'hay r đó', '2026-04-16 00:41:20'),
+(157, 5, 3, 'jchasdbkjv', '2026-04-16 11:44:55'),
+(158, 3, 2, 'cho vị trí nào ạ', '2026-04-16 11:46:55'),
+(159, 3, 1, 'vị trí của em', '2026-04-16 11:47:06'),
+(160, 3, 1, 'bị đuổi r má', '2026-04-16 11:48:18'),
+(161, 3, 2, 'dạ em không thèm', '2026-04-16 11:48:20'),
+(162, 3, 1, 'ghcvskdV', '2026-04-16 11:48:29'),
+(163, 3, 2, 'em ngu lắm', '2026-04-16 11:48:39'),
+(164, 3, 1, 'cc', '2026-04-16 11:48:43'),
+(165, 3, 2, 'ừ', '2026-04-16 12:25:43'),
+(166, 2, 2, 'ngu v', '2026-04-16 12:26:01'),
+(167, 2, 2, 'sao k chạy', '2026-04-16 12:26:05'),
+(168, 3, 2, '👍', '2026-04-16 12:28:53'),
+(169, 2, 3, 'huhu', '2026-04-16 13:21:30'),
+(170, 2, 3, 'íahfuih', '2026-04-16 13:21:31'),
+(171, 5, 3, 'ádhjk', '2026-04-16 15:16:01'),
+(172, 5, 1, 'con cặc gì vậy', '2026-04-16 16:35:22'),
+(173, 5, 1, '[IMAGE:https://i.ibb.co/rKdYT9Kg/10542395de39.jpg]', '2026-04-16 16:35:46'),
+(174, 3, 1, 'em ơi', '2026-04-16 17:14:33'),
+(175, 3, 1, 'Đạt ơi Đạt', '2026-04-16 17:15:07'),
+(176, 3, 1, 'ê', '2026-04-16 19:49:06'),
+(177, 4, 1, 'ceo ngu', '2026-04-16 20:17:29'),
+(178, 3, 2, 'Tao là Phát', '2026-04-16 21:25:03'),
+(179, 3, 2, 'ê', '2026-04-16 23:31:42'),
+(180, 3, 2, 'ê', '2026-04-16 23:31:44'),
+(181, 3, 2, 'ê', '2026-04-16 23:32:00'),
+(182, 5, 2, 'ê', '2026-04-16 23:32:08'),
+(183, 2, 2, 'ê', '2026-04-16 23:32:19'),
+(184, 5, 2, 'ê', '2026-04-16 23:32:36'),
+(185, 3, 1, 'ê cái gì mà ê', '2026-04-16 23:33:49'),
+(186, 3, 2, 'ê', '2026-04-16 23:34:04'),
+(187, 3, 1, 'ê', '2026-04-16 23:40:12'),
+(188, 4, 1, 'ê', '2026-04-16 23:40:15'),
+(189, 5, 1, 'ê', '2026-04-16 23:40:19'),
+(190, 4, 1, '[IMAGE:https://i.ibb.co/393WFf9c/78a93bdf9890.jpg]', '2026-04-16 23:41:36'),
+(191, 5, 1, '[IMAGE:https://i.ibb.co/zV7zJ1qh/d282f0893408.jpg]', '2026-04-16 23:41:47'),
+(192, 3, 1, '👍', '2026-04-16 23:44:10'),
+(193, 3, 2, 'ê', '2026-04-16 23:45:48'),
+(194, 3, 1, '[IMAGE:https://i.ibb.co/zV7zJ1qh/d282f0893408.jpg]', '2026-04-16 23:46:01'),
+(195, 3, 1, '👍', '2026-04-16 23:46:18'),
+(196, 3, 1, '[IMAGE:https://i.ibb.co/393WFf9c/78a93bdf9890.jpg]', '2026-04-16 23:48:29'),
+(197, 3, 2, '👍', '2026-04-16 23:48:36'),
+(198, 3, 2, '👍', '2026-04-16 23:48:40'),
+(199, 3, 2, '👍', '2026-04-16 23:48:47'),
+(200, 3, 1, 'mua giúp a 2 chục vé', '2026-04-17 00:01:20'),
+(201, 3, 2, 'dạ', '2026-04-17 00:04:25'),
+(202, 3, 2, 'uk', '2026-04-17 00:16:40'),
+(203, 3, 2, 'Bắt bán code còn kêu tuyển dụng', '2026-04-17 00:25:31'),
+(204, 3, 2, 'ngu hả', '2026-04-17 00:25:35'),
+(205, 3, 2, 'm bị đuổi t mà', '2026-04-17 00:25:42'),
+(206, 3, 2, 'ok', '2026-04-17 00:26:27'),
+(207, 3, 2, 'ọkj', '2026-04-17 00:26:31'),
+(208, 3, 2, 'jjgkjh', '2026-04-17 00:26:34'),
+(209, 3, 2, '👍', '2026-04-17 00:26:37'),
+(210, 3, 2, 'ljgh', '2026-04-17 00:26:41'),
+(211, 3, 2, 'oh', '2026-04-17 00:26:42'),
+(212, 3, 2, '👍', '2026-04-17 00:26:48'),
+(213, 2, 2, 'từ mai m lên làm ceo nha', '2026-04-17 00:27:56'),
+(214, 2, 2, 't xuống làm nhân viên đây', '2026-04-17 00:28:03'),
+(215, 3, 1, 'nhắn cái gì d th ngu', '2026-04-17 00:30:40'),
+(216, 3, 1, 'đố m t là ai', '2026-04-17 00:30:48'),
+(217, 3, 1, 'ngu như Phát', '2026-04-17 00:30:51'),
+(218, 3, 2, 'con c', '2026-04-17 00:40:40'),
+(219, 2, 2, 'AESRDTYJUK', '2026-04-17 00:47:38'),
+(220, 2, 2, 'ADFSGDHFJGK', '2026-04-17 00:47:41'),
+(221, 2, 2, 'RTYU', '2026-04-17 00:47:42'),
+(222, 2, 2, 'FGDHFJGK', '2026-04-17 00:47:44'),
+(223, 2, 2, 'RTDYFUGIH', '2026-04-17 00:47:45'),
+(224, 2, 2, 'DRTFYGUIO', '2026-04-17 00:47:48'),
+(225, 2, 2, 'DFGH', '2026-04-17 00:47:50'),
+(226, 2, 2, 'DFGH', '2026-04-17 00:47:52'),
+(227, 2, 2, 'SRDTYUI', '2026-04-17 00:47:53'),
+(228, 2, 2, 'RTYUI', '2026-04-17 00:47:55'),
+(229, 2, 2, 'DFGHJ', '2026-04-17 00:47:56'),
+(230, 2, 2, 'DSFDTFY', '2026-04-17 00:47:57'),
+(231, 2, 2, 'SDFGH', '2026-04-17 00:47:59'),
+(232, 2, 2, 'DSD', '2026-04-17 00:48:00'),
+(233, 2, 2, '👍', '2026-04-17 00:48:04'),
+(234, 2, 2, 'đừng spam nữa ông ơi', '2026-04-17 00:52:21'),
+(235, 7, 2, 'alo', '2026-04-17 00:52:41'),
+(236, 3, 1, 'hi', '2026-04-17 01:02:05'),
+(237, 5, 1, 'cố lên', '2026-04-17 01:02:39'),
+(238, 5, 1, 'hi', '2026-04-17 01:11:08'),
+(239, 5, 2, 'ok', '2026-04-17 01:51:05'),
+(240, 5, 1, 'ee', '2026-04-17 02:14:32'),
+(241, 5, 1, 'eeee', '2026-04-17 02:14:46'),
+(242, 5, 1, 'mm', '2026-04-17 02:14:56');
 
 -- --------------------------------------------------------
 
@@ -716,7 +889,6 @@ INSERT INTO `notifications` (`id`, `type`, `trigger_user_id`, `content`, `target
 (81, 'task_extended', 1, 'Subtask \'Thuyết trình cùng ba Hói\' đã được GIA HẠN đến 15/04/2026. Hãy thực hiện lại!', 'index.php?action=tasks&subtask_id=19', '2026-04-12 22:23:36'),
 (82, 'task_approval', 1, 'Nhân viên Nguyễn Văn CEO đã gửi duyệt subtask: Thuyết trình cùng ba Hói', 'index.php?action=tasks&subtask_id=19', '2026-04-12 22:24:01'),
 (83, 'task_approved', 1, 'Subtask \'Thuyết trình cùng ba Hói\' đã được DUYỆT! Vui lòng kéo subtask sang cột Hoàn thành và viết báo cáo AI.', 'index.php?action=tasks', '2026-04-12 22:24:14'),
-(84, 'SOCIAL_LIKE', 2, 'Trần IT Trưởng đã thích bài viết của bạn.', 'index.php?action=social&post_id=11', '2026-04-12 23:09:09'),
 (86, 'SOCIAL_COMMENT', 3, 'Vũ Nhân Viên 1 đã bình luận về bài viết của bạn.', 'index.php?action=social&post_id=20', '2026-04-12 23:22:46'),
 (87, 'SOCIAL_LIKE', 2, 'Trần IT Trưởng đã thích bài viết của bạn.', 'index.php?action=social&post_id=11', '2026-04-12 23:37:10'),
 (88, 'SOCIAL_LIKE', 2, 'Trần IT Trưởng đã thích bài viết của bạn.', 'index.php?action=social&post_id=11', '2026-04-12 23:37:12'),
@@ -732,13 +904,11 @@ INSERT INTO `notifications` (`id`, `type`, `trigger_user_id`, `content`, `target
 (111, 'SOCIAL_COMMENT', 2, 'Trần IT Trưởng đã bình luận về bài viết của bạn.', 'index.php?action=social&post_id=11#comment-53', '2026-04-13 00:44:47'),
 (112, 'SOCIAL_COMMENT', 2, 'Trần IT Trưởng đã bình luận về bài viết của bạn.', 'index.php?action=social&post_id=11#comment-54', '2026-04-13 00:44:57'),
 (114, 'SOCIAL_COMMENT', 3, 'Vũ Nhân Viên 1 đã bình luận về bài viết của bạn.', 'index.php?action=social&post_id=20#comment-56', '2026-04-13 00:55:13'),
-(121, 'SOCIAL_LIKE', 3, 'Vũ Nhân Viên 1 đã thích bài viết của bạn.', 'index.php?action=social&post_id=2', '2026-04-14 15:35:10'),
 (123, 'SOCIAL_LIKE', 1, 'Nguyễn Văn CEO đã thích bài viết của bạn.', 'index.php?action=social&post_id=4', '2026-04-14 16:00:08'),
 (124, 'SOCIAL_LIKE', 1, 'Nguyễn Văn CEO đã thích bài viết của bạn.', 'index.php?action=social&post_id=3', '2026-04-14 16:00:09'),
 (152, 'task_approval', 3, 'Nhân viên Vũ Nhân Viên 1 đã gửi duyệt subtask: đói vndajkv', 'index.php?action=tasks&subtask_id=26', '2026-04-14 23:04:44'),
 (153, 'task_approval', 3, 'Nhân viên Vũ Nhân Viên 1 đã gửi duyệt subtask: đói vndajkv', 'index.php?action=tasks&subtask_id=26', '2026-04-14 23:04:48'),
 (175, 'task_assigned', 1, 'Bạn được giao việc trong Task mới: dâdadwdad', 'index.php?action=tasks', '2026-04-15 08:55:42'),
-(177, 'SOCIAL_LIKE', 1, 'Nguyễn Văn CEO đã thích bài viết của bạn.', 'index.php?action=social&post_id=20', '2026-04-15 08:56:39'),
 (185, 'SOCIAL_LIKE', 3, 'Vũ Nhân Viên 1 đã thích bài viết của bạn.', 'index.php?action=social&post_id=8', '2026-04-15 08:57:09'),
 (186, 'task_assigned', 1, 'Bạn được giao việc trong Task mới: cxzzxc', 'index.php?action=tasks', '2026-04-15 09:03:36'),
 (187, 'task_assigned', 1, 'Bạn được giao việc trong Task mới: cxzzxc', 'index.php?action=tasks', '2026-04-15 09:04:40'),
@@ -746,11 +916,41 @@ INSERT INTO `notifications` (`id`, `type`, `trigger_user_id`, `content`, `target
 (189, 'task_assigned', 1, 'Bạn được giao việc trong Task mới: szvs', 'index.php?action=tasks', '2026-04-15 09:15:43'),
 (190, 'task_approval', 3, 'Nhân viên Vũ Nhân Viên 1 đã gửi duyệt subtask: áaf', 'index.php?action=tasks&subtask_id=35', '2026-04-15 09:57:31'),
 (191, 'task_approved', 1, 'Subtask \'áaf\' đã được DUYỆT! Vui lòng kéo subtask sang cột Hoàn thành và viết báo cáo AI.', 'index.php?action=tasks', '2026-04-15 09:58:16'),
-(192, 'SOCIAL_LIKE', 3, 'Vũ Nhân Viên 1 đã thích bài viết của bạn.', 'index.php?action=social&post_id=20', '2026-04-15 15:40:48'),
 (193, 'task_approval', 3, 'Nhân viên Vũ Nhân Viên 1 đã gửi duyệt subtask: Ngu lắm con', 'index.php?action=tasks&subtask_id=36', '2026-04-15 15:56:27'),
 (194, 'SOCIAL_COMMENT', 3, 'Vũ Nhân Viên 1 đã bình luận về bài viết của bạn.', 'index.php?action=social&post_id=20#comment-59', '2026-04-15 17:58:03'),
 (195, 'SOCIAL_LIKE', 3, 'Vũ Nhân Viên 1 đã thích bài viết của bạn.', 'index.php?action=social&post_id=2', '2026-04-15 18:01:16'),
-(196, 'SOCIAL_LIKE', 1, 'CEO Hải Long đã thích bài viết của bạn.', 'index.php?action=social&post_id=11', '2026-04-16 00:03:07');
+(196, 'SOCIAL_LIKE', 1, 'CEO Hải Long đã thích bài viết của bạn.', 'index.php?action=social&post_id=11', '2026-04-16 00:03:07'),
+(197, 'SOCIAL_LIKE', 3, 'Nhân viên Tuấn Đạt đã thích bài viết của bạn.', 'index.php?action=social&post_id=20', '2026-04-16 00:14:17'),
+(198, 'SOCIAL_COMMENT', 2, 'TP.IT Tấn Phát đã bình luận về bài viết của bạn.', 'index.php?action=social&post_id=25#comment-60', '2026-04-16 00:16:51'),
+(199, 'SOCIAL_COMMENT', 2, 'TP.IT Tấn Phát đã bình luận về bài viết của bạn.', 'index.php?action=social&post_id=24#comment-61', '2026-04-16 00:17:01'),
+(200, 'task_approval', 3, 'Nhân viên NV Tuấn Đạt đã gửi duyệt subtask: đói vndajkv', 'index.php?action=tasks&subtask_id=28', '2026-04-16 10:16:59'),
+(201, 'task_assigned', 1, 'Bạn được giao việc trong Task mới: Thý Ngân', 'index.php?action=tasks', '2026-04-16 10:21:09'),
+(202, 'task_assigned', 1, 'Bạn được giao việc trong Task mới: Thý', 'index.php?action=tasks', '2026-04-16 10:21:45'),
+(203, 'SOCIAL_LIKE', 1, 'CEO Hải Long đã thích bài viết của bạn.', 'index.php?action=social&post_id=20', '2026-04-16 11:49:04'),
+(205, 'SOCIAL_LIKE', 2, 'TP.IT Tấn Phát đã thích bài viết của bạn.', 'index.php?action=social&post_id=8', '2026-04-16 11:49:33'),
+(206, 'task_assigned', 1, 'Bạn được giao việc trong Task mới: ún cf', 'index.php?action=tasks', '2026-04-16 11:50:11'),
+(207, 'SOCIAL_LIKE', 2, 'TP.IT Tấn Phát đã thích bài viết của bạn.', 'index.php?action=social&post_id=11', '2026-04-16 11:55:45'),
+(208, 'SOCIAL_COMMENT', 2, 'TP.IT Đức Phát đã bình luận về bài viết của bạn.', 'index.php?action=social&post_id=25#comment-64', '2026-04-16 12:31:37'),
+(209, 'extension_request', 3, 'NV Tuấn Đạt yêu cầu gia hạn Subtask \'Ngu lắm con\' đến 24/04/2026. Lý do: sdfsdfsdfdsf', 'index.php?action=tasks&subtask_id=7', '2026-04-16 13:02:19'),
+(210, 'task_extended', 1, 'Subtask \'Ngu lắm con\' đã được GIA HẠN đến 23/04/2026. Hãy thực hiện lại!', 'index.php?action=tasks&subtask_id=7', '2026-04-16 13:02:49'),
+(211, 'SOCIAL_LIKE', 3, 'NV Tuấn Đạt đã thích bài viết của bạn.', 'index.php?action=social&post_id=2', '2026-04-16 15:21:18'),
+(212, 'SOCIAL_LIKE', 1, 'CEO Hải Long đã thích bài viết của bạn.', 'index.php?action=social&post_id=27', '2026-04-16 21:31:59'),
+(213, 'extension_request', 3, 'NV Tuấn Đạt yêu cầu gia hạn Subtask \'fghjkdfghj\' đến 23/04/2026. Lý do: em xin lỗi', 'index.php?action=tasks&subtask_id=23', '2026-04-16 22:50:43'),
+(214, 'task_extended', 2, 'Subtask \'fghjkdfghj\' đã được GIA HẠN đến 23/04/2026. Hãy thực hiện lại!', 'index.php?action=tasks&subtask_id=23', '2026-04-16 22:51:04'),
+(215, 'task_assigned', 2, 'Bạn được giao 1 việc mới trong Task: Scroll Test Task', 'index.php?action=tasks', '2026-04-16 23:22:07'),
+(216, 'task_assigned', 1, 'Bạn được giao 1 việc mới trong Task: ún cf', 'index.php?action=tasks', '2026-04-16 23:52:07'),
+(217, 'SOCIAL_LIKE', 1, 'CEO Hải Long đã thích bài viết của bạn.', 'index.php?action=social&post_id=29', '2026-04-17 00:25:21'),
+(218, 'task_assigned', 2, 'Bạn được giao việc trong Task mới: Test', 'index.php?action=tasks', '2026-04-17 00:58:10'),
+(219, 'task_assigned', 1, 'Bạn được giao việc trong Task mới: Khảo sát SV UEH về xu hướng mua laptop', 'index.php?action=tasks', '2026-04-17 01:05:42'),
+(220, 'task_assigned', 2, 'Bạn được giao việc trong Task mới: Phát triển hệ thống đăng nhập', 'index.php?action=tasks', '2026-04-17 01:26:06'),
+(221, 'task_assigned', 2, 'Bạn được giao việc trong Task mới: dfdgsg', 'index.php?action=tasks', '2026-04-17 01:29:05'),
+(222, 'task_assigned', 2, 'Bạn được giao việc trong Task mới: sfsgdfhd', 'index.php?action=tasks', '2026-04-17 01:48:42'),
+(223, 'task_assigned', 1, 'Bạn được giao mảng việc mới: dsg', 'index.php?action=tasks', '2026-04-17 05:24:16'),
+(224, 'task_assigned', 1, 'Bạn được giao mảng việc mới: sdgdsg', 'index.php?action=tasks', '2026-04-17 05:24:16'),
+(225, 'task_assigned', 1, 'Bạn được giao mảng việc mới: sdgsdg', 'index.php?action=tasks', '2026-04-17 05:24:16'),
+(226, 'task_assigned', 2, 'Bạn được giao công việc mới: dfhfdhf (Task: Tính năng của chip)', 'index.php?action=tasks', '2026-04-17 05:46:01'),
+(228, 'SOCIAL_LIKE', 2, 'TP.IT Đức Phát đã thích bài viết của bạn.', 'index.php?action=social&post_id=30', '2026-04-17 10:17:23'),
+(229, 'SOCIAL_COMMENT', 1, 'CEO Hải Long đã bình luận về bài viết của bạn.', 'index.php?action=social&post_id=29#comment-69', '2026-04-17 13:46:24');
 
 -- --------------------------------------------------------
 
@@ -832,23 +1032,22 @@ INSERT INTO `notification_user` (`notification_id`, `user_id`, `is_read`, `read_
 (63, 3, 1, '2026-04-12 23:48:07'),
 (64, 2, 1, '2026-04-11 14:16:44'),
 (65, 3, 1, '2026-04-11 15:14:24'),
-(66, 2, 0, NULL),
+(66, 2, 1, '2026-04-16 11:48:49'),
 (67, 3, 1, '2026-04-11 15:14:22'),
 (68, 3, 1, '2026-04-12 23:48:07'),
-(69, 2, 0, NULL),
-(70, 2, 0, NULL),
-(71, 2, 0, NULL),
+(69, 2, 1, '2026-04-16 11:48:49'),
+(70, 2, 1, '2026-04-16 11:48:49'),
+(71, 2, 1, '2026-04-16 11:48:49'),
 (72, 3, 1, '2026-04-12 23:48:07'),
 (73, 3, 1, '2026-04-12 23:48:07'),
 (74, 3, 1, '2026-04-12 23:48:07'),
 (75, 3, 1, '2026-04-12 23:48:07'),
-(76, 2, 0, NULL),
+(76, 2, 1, '2026-04-16 11:48:49'),
 (77, 3, 1, '2026-04-12 23:48:07'),
-(78, 2, 0, NULL),
+(78, 2, 1, '2026-04-16 11:48:49'),
 (79, 3, 1, '2026-04-12 23:48:07'),
 (80, 2, 1, '2026-04-12 23:35:37'),
 (82, 2, 1, '2026-04-12 23:28:10'),
-(84, 3, 1, '2026-04-12 23:48:07'),
 (86, 2, 1, '2026-04-12 23:35:12'),
 (87, 3, 1, '2026-04-12 23:48:07'),
 (88, 3, 1, '2026-04-12 23:48:07'),
@@ -864,25 +1063,53 @@ INSERT INTO `notification_user` (`notification_id`, `user_id`, `is_read`, `read_
 (111, 3, 1, '2026-04-13 00:45:22'),
 (112, 3, 1, '2026-04-13 00:47:47'),
 (114, 2, 1, '2026-04-13 00:55:59'),
-(121, 1, 1, '2026-04-15 08:49:35'),
 (123, 3, 1, '2026-04-16 00:02:58'),
 (124, 3, 1, '2026-04-15 08:47:49'),
-(152, 2, 0, NULL),
-(153, 2, 0, NULL),
+(152, 2, 1, '2026-04-16 11:48:49'),
+(153, 2, 1, '2026-04-16 11:48:49'),
 (175, 3, 1, '2026-04-16 00:02:58'),
-(177, 2, 1, '2026-04-15 09:22:56'),
 (185, 1, 1, '2026-04-15 08:57:16'),
 (186, 3, 1, '2026-04-16 00:02:58'),
 (187, 3, 1, '2026-04-15 21:23:52'),
 (188, 3, 1, '2026-04-15 20:30:55'),
-(189, 2, 0, NULL),
+(189, 2, 1, '2026-04-16 11:48:49'),
 (190, 1, 1, '2026-04-15 09:58:10'),
 (191, 3, 1, '2026-04-15 09:58:29'),
-(192, 2, 0, NULL),
 (193, 1, 1, '2026-04-15 16:22:32'),
-(194, 2, 0, NULL),
-(195, 1, 0, NULL),
-(196, 3, 0, NULL);
+(194, 2, 1, '2026-04-16 11:48:49'),
+(195, 1, 1, '2026-04-16 11:49:28'),
+(196, 3, 1, '2026-04-16 00:14:01'),
+(197, 2, 1, '2026-04-16 11:48:49'),
+(198, 3, 1, '2026-04-16 13:21:40'),
+(199, 3, 1, '2026-04-16 11:44:29'),
+(200, 2, 1, '2026-04-16 11:48:49'),
+(201, 3, 1, '2026-04-16 11:05:20'),
+(202, 3, 1, '2026-04-16 10:24:18'),
+(203, 2, 1, '2026-04-16 12:42:31'),
+(205, 1, 0, NULL),
+(206, 2, 1, '2026-04-16 11:51:00'),
+(207, 3, 1, '2026-04-16 13:21:40'),
+(208, 3, 1, '2026-04-16 13:21:40'),
+(209, 1, 1, '2026-04-16 13:02:39'),
+(210, 3, 1, '2026-04-16 13:03:16'),
+(211, 1, 0, NULL),
+(212, 4, 0, NULL),
+(213, 2, 1, '2026-04-16 22:50:58'),
+(214, 3, 1, '2026-04-17 00:55:44'),
+(215, 7, 0, NULL),
+(216, 9, 0, NULL),
+(217, 3, 1, '2026-04-17 00:55:50'),
+(218, 3, 0, NULL),
+(219, 6, 0, NULL),
+(220, 3, 0, NULL),
+(221, 3, 1, '2026-04-17 01:53:38'),
+(222, 3, 1, '2026-04-17 01:53:27'),
+(223, 4, 0, NULL),
+(224, 9, 0, NULL),
+(225, 8, 0, NULL),
+(226, 3, 0, NULL),
+(228, 1, 0, NULL),
+(229, 3, 0, NULL);
 
 -- --------------------------------------------------------
 
@@ -918,15 +1145,22 @@ INSERT INTO `posts` (`id`, `author_id`, `department_id`, `task_report_id`, `visi
 (9, 2, 3, NULL, 'Department', 'hé lô\r\n', 0, '2026-04-11 12:48:59', '2026-04-11 12:48:59'),
 (10, 1, NULL, NULL, 'Announcement', 'hêllo', 0, '2026-04-11 12:53:51', '2026-04-11 12:53:51'),
 (11, 3, NULL, NULL, 'Public', 'Tôi nè Phát', 0, '2026-04-11 12:59:11', '2026-04-11 12:59:11'),
-(13, 3, 3, 1, 'Department', '<div class=\'ai-post\'><h6 class=\'fw-bold text-primary mb-2\'>🚀 Báo cáo tiến độ: Khảo sát thị trường</h6>&quot;Báo Cáo Tiến Độ: Khảo Sát Thị Trường<br />\n<br />\nMới đây, chúng tôi đã tiến hành khảo sát thị trường công nghệ hiện nay. Trong khuôn khổ dự án, chúng tôi đã thực hiện điều tra thị trường trà sữa.<br />\n<br />\nQua quá trình khảo sát, chúng tôi đã thu thập được những thông tin quý giá về thị trường trà sữa. Tuy nhiên, quá trình thực hiện cũng cho chúng tôi một số kinh nghiệm rút ra về cách quản lý và phối hợp trong nhóm.<br />\n<br />\nChúng tôi sẽ tiếp tục cải thiện và hoàn thiện quy trình khảo sát để mang lại kết quả tốt hơn trong tương lai. Cảm ơn sự hỗ trợ và hợp tác của tất cả các thành viên trong nhóm.&quot;</div>', 1, '2026-04-11 15:23:00', '2026-04-11 15:23:00'),
-(14, 3, 3, 2, 'Department', '<div class=\'ai-post\'><h6 class=\'fw-bold text-primary mb-2\'>🚀 Báo cáo tiến độ: Khảo sát người dùng</h6>&quot;Báo cáo tiến độ: Khảo sát người dùng<br />\n<br />\nChúng tôi đã hoàn thành khảo sát thị trường công nghệ ET. Quá trình thực hiện đã giúp chúng tôi tích lũy kinh nghiệm và ghi nhận những thông tin quan trọng. Chúng tôi sẽ tiếp tục cải thiện và hoàn thiện quy trình cho những dự án tương lai.<br />\n<br />\n#KhảoSátThịTrường #CôngNghệET #TiếnĐộDựÁn&quot;</div>', 1, '2026-04-11 15:25:11', '2026-04-11 15:25:11'),
-(15, 3, 3, 3, 'Department', '<div class=\'ai-post\'><h6 class=\'fw-bold text-primary mb-2\'>🚀 Báo cáo tiến độ: Tổng kết kết quả nghiên cứu</h6>&quot;Tổng kết kết quả nghiên cứu: Chúng tôi đã áp dụng công nghệ để thực hiện nghiên cứu và đạt được những kết quả đáng kể. Qua quá trình này, chúng tôi đã tích lũy được kinh nghiệm quý giá về việc thu thập và phân tích dữ liệu. Để cải thiện trong tương lai, chúng tôi sẽ tập trung vào việc nâng cao kỹ năng khai thác thông tin trên các nền tảng như web. Cảm ơn sự hỗ trợ và hợp tác!&quot; #Tổng_kết_nghiên_cứu #Kết_quả_thành_công</div>', 1, '2026-04-11 15:26:33', '2026-04-11 15:26:33'),
+(13, 3, 3, NULL, 'Department', '<div class=\'ai-post\'><h6 class=\'fw-bold text-primary mb-2\'>🚀 Báo cáo tiến độ: Khảo sát thị trường</h6>&quot;Báo Cáo Tiến Độ: Khảo Sát Thị Trường<br />\n<br />\nMới đây, chúng tôi đã tiến hành khảo sát thị trường công nghệ hiện nay. Trong khuôn khổ dự án, chúng tôi đã thực hiện điều tra thị trường trà sữa.<br />\n<br />\nQua quá trình khảo sát, chúng tôi đã thu thập được những thông tin quý giá về thị trường trà sữa. Tuy nhiên, quá trình thực hiện cũng cho chúng tôi một số kinh nghiệm rút ra về cách quản lý và phối hợp trong nhóm.<br />\n<br />\nChúng tôi sẽ tiếp tục cải thiện và hoàn thiện quy trình khảo sát để mang lại kết quả tốt hơn trong tương lai. Cảm ơn sự hỗ trợ và hợp tác của tất cả các thành viên trong nhóm.&quot;</div>', 1, '2026-04-11 15:23:00', '2026-04-11 15:23:00'),
+(14, 3, 3, NULL, 'Department', '<div class=\'ai-post\'><h6 class=\'fw-bold text-primary mb-2\'>🚀 Báo cáo tiến độ: Khảo sát người dùng</h6>&quot;Báo cáo tiến độ: Khảo sát người dùng<br />\n<br />\nChúng tôi đã hoàn thành khảo sát thị trường công nghệ ET. Quá trình thực hiện đã giúp chúng tôi tích lũy kinh nghiệm và ghi nhận những thông tin quan trọng. Chúng tôi sẽ tiếp tục cải thiện và hoàn thiện quy trình cho những dự án tương lai.<br />\n<br />\n#KhảoSátThịTrường #CôngNghệET #TiếnĐộDựÁn&quot;</div>', 1, '2026-04-11 15:25:11', '2026-04-11 15:25:11'),
+(15, 3, 3, NULL, 'Department', '<div class=\'ai-post\'><h6 class=\'fw-bold text-primary mb-2\'>🚀 Báo cáo tiến độ: Tổng kết kết quả nghiên cứu</h6>&quot;Tổng kết kết quả nghiên cứu: Chúng tôi đã áp dụng công nghệ để thực hiện nghiên cứu và đạt được những kết quả đáng kể. Qua quá trình này, chúng tôi đã tích lũy được kinh nghiệm quý giá về việc thu thập và phân tích dữ liệu. Để cải thiện trong tương lai, chúng tôi sẽ tập trung vào việc nâng cao kỹ năng khai thác thông tin trên các nền tảng như web. Cảm ơn sự hỗ trợ và hợp tác!&quot; #Tổng_kết_nghiên_cứu #Kết_quả_thành_công</div>', 1, '2026-04-11 15:26:33', '2026-04-11 15:26:33'),
 (18, 3, 3, NULL, 'Department', 'xdfcgvhbjnkml;', 0, '2026-04-11 15:35:50', '2026-04-11 15:35:50'),
-(19, 2, 3, 5, 'Department', '<div class=\'ai-post\'><h5 class=\'fw-bold text-success mb-2\'>🏆 Tổng kết dự án: Khai phá công nghệ, nâng tầm kinh tế</h5>Dự án &quot;Khai phá công nghệ, nâng tầm kinh tế&quot; của chúng ta đã đạt được những kết quả đáng kể và đầy ấn tượng! Tôi muốn dành một chút thời gian để tổng kết và biểu dương toàn bộ đội ngũ đã làm việc không ngừng nghỉ để mang lại thành công cho dự án này.<br />\n<br />\nTrước hết, chúng ta đã tiến hành một cuộc khảo sát thị trường công nghệ ET và trà sữa, thu thập được những thông tin quý giá về thị trường và tích lũy kinh nghiệm về cách quản lý và phối hợp trong nhóm. Quá trình này không chỉ giúp chúng ta hiểu rõ hơn về thị trường mà còn giúp chúng ta cải thiện và hoàn thiện quy trình khảo sát cho những dự án tương lai.<br />\n<br />\nTiếp theo, chúng ta đã áp dụng công nghệ để thực hiện nghiên cứu và đạt được những kết quả đáng kể. Qua quá trình này, chúng ta đã tích lũy được kinh nghiệm quý giá về việc thu thập và phân tích dữ liệu, và đã xác định được hướng cải thiện trong tương lai, đó là nâng cao kỹ năng khai thác thông tin trên các nền tảng như web.<br />\n<br />\nTôi muốn biểu dương toàn bộ đội ngũ vì sự nỗ lực và hợp tác không ngừng nghỉ. Mỗi thành viên trong nhóm đã đóng góp một phần quan trọng vào thành công của dự án, và tôi rất tự hào về kết quả mà chúng ta đã đạt được.<br />\n<br />\nDự án &quot;Khai phá công nghệ, nâng tầm kinh tế&quot; không chỉ là một dự án thành công, mà còn là một bước tiến quan trọng trong việc nâng cao kỹ năng và kiến thức của chúng ta. Chúng ta đã chứng minh rằng với sự hợp tác và nỗ lực, chúng ta có thể đạt được những kết quả đáng kể và đóng góp vào sự phát triển của công ty.<br />\n<br />\nCảm ơn tất cả các thành viên trong nhóm vì sự đóng góp và hợp tác. Hãy tiếp tục làm việc cùng nhau để đạt được những thành công mới và nâng cao vị thế của công ty trong lĩnh vực công nghệ! #KhaiPháCôngNghệ #NângTầmKinhTế #ThànhCông #ĐộiNgũ</div>', 1, '2026-04-11 16:00:24', '2026-04-11 16:00:24'),
+(19, 2, 3, NULL, 'Department', '<div class=\'ai-post\'><h5 class=\'fw-bold text-success mb-2\'>🏆 Tổng kết dự án: Khai phá công nghệ, nâng tầm kinh tế</h5>Dự án &quot;Khai phá công nghệ, nâng tầm kinh tế&quot; của chúng ta đã đạt được những kết quả đáng kể và đầy ấn tượng! Tôi muốn dành một chút thời gian để tổng kết và biểu dương toàn bộ đội ngũ đã làm việc không ngừng nghỉ để mang lại thành công cho dự án này.<br />\n<br />\nTrước hết, chúng ta đã tiến hành một cuộc khảo sát thị trường công nghệ ET và trà sữa, thu thập được những thông tin quý giá về thị trường và tích lũy kinh nghiệm về cách quản lý và phối hợp trong nhóm. Quá trình này không chỉ giúp chúng ta hiểu rõ hơn về thị trường mà còn giúp chúng ta cải thiện và hoàn thiện quy trình khảo sát cho những dự án tương lai.<br />\n<br />\nTiếp theo, chúng ta đã áp dụng công nghệ để thực hiện nghiên cứu và đạt được những kết quả đáng kể. Qua quá trình này, chúng ta đã tích lũy được kinh nghiệm quý giá về việc thu thập và phân tích dữ liệu, và đã xác định được hướng cải thiện trong tương lai, đó là nâng cao kỹ năng khai thác thông tin trên các nền tảng như web.<br />\n<br />\nTôi muốn biểu dương toàn bộ đội ngũ vì sự nỗ lực và hợp tác không ngừng nghỉ. Mỗi thành viên trong nhóm đã đóng góp một phần quan trọng vào thành công của dự án, và tôi rất tự hào về kết quả mà chúng ta đã đạt được.<br />\n<br />\nDự án &quot;Khai phá công nghệ, nâng tầm kinh tế&quot; không chỉ là một dự án thành công, mà còn là một bước tiến quan trọng trong việc nâng cao kỹ năng và kiến thức của chúng ta. Chúng ta đã chứng minh rằng với sự hợp tác và nỗ lực, chúng ta có thể đạt được những kết quả đáng kể và đóng góp vào sự phát triển của công ty.<br />\n<br />\nCảm ơn tất cả các thành viên trong nhóm vì sự đóng góp và hợp tác. Hãy tiếp tục làm việc cùng nhau để đạt được những thành công mới và nâng cao vị thế của công ty trong lĩnh vực công nghệ! #KhaiPháCôngNghệ #NângTầmKinhTế #ThànhCông #ĐộiNgũ</div>', 1, '2026-04-11 16:00:24', '2026-04-11 16:00:24'),
 (20, 2, NULL, NULL, 'Public', 'Mọi ng ai có nhu cầu mua cháy liên hệ SDT\r\n5462XXx65523 (IT Trần)', 0, '2026-04-12 16:04:27', '2026-04-12 16:04:27'),
-(21, 1, 1, 6, 'Department', '<div class=\'ai-post\'><h6 class=\'fw-bold text-primary mb-2\'>🚀 Báo cáo tiến độ: Thuyết trình cùng ba Hói</h6>&quot;Báo cáo tiến độ: Thuyết trình cùng ba Hói<br />\n<br />\nChúng tôi đã hoàn thành việc thảo luận và thuyết trình cùng ba Hói. Quá trình thực hiện đã được hỗ trợ bởi công nghệ hiện đại, giúp tăng cường hiệu quả và chất lượng.<br />\n<br />\nMột số kinh nghiệm rút ra từ quá trình này là tầm quan trọng của việc áp dụng công nghệ vào công việc, giúp mở rộng phạm vi và khả năng tiếp cận toàn cầu.<br />\n<br />\nĐể cải thiện trong tương lai, chúng tôi sẽ tiếp tục áp dụng công nghệ và tinh chỉnh quy trình để đạt được kết quả tốt hơn. Cảm ơn sự hỗ trợ và hợp tác!&quot; #ThuyetTrinh #BaHoi #CongTy #TienDo</div>', 1, '2026-04-12 22:24:44', '2026-04-12 22:24:44'),
+(21, 1, 1, NULL, 'Department', '<div class=\'ai-post\'><h6 class=\'fw-bold text-primary mb-2\'>🚀 Báo cáo tiến độ: Thuyết trình cùng ba Hói</h6>&quot;Báo cáo tiến độ: Thuyết trình cùng ba Hói<br />\n<br />\nChúng tôi đã hoàn thành việc thảo luận và thuyết trình cùng ba Hói. Quá trình thực hiện đã được hỗ trợ bởi công nghệ hiện đại, giúp tăng cường hiệu quả và chất lượng.<br />\n<br />\nMột số kinh nghiệm rút ra từ quá trình này là tầm quan trọng của việc áp dụng công nghệ vào công việc, giúp mở rộng phạm vi và khả năng tiếp cận toàn cầu.<br />\n<br />\nĐể cải thiện trong tương lai, chúng tôi sẽ tiếp tục áp dụng công nghệ và tinh chỉnh quy trình để đạt được kết quả tốt hơn. Cảm ơn sự hỗ trợ và hợp tác!&quot; #ThuyetTrinh #BaHoi #CongTy #TienDo</div>', 1, '2026-04-12 22:24:44', '2026-04-12 22:24:44'),
 (22, 3, 3, NULL, 'Department', 'dm bộ phận kỹ thuật đâu, web lag quá', 0, '2026-04-14 16:08:49', '2026-04-14 16:08:49'),
-(23, 3, 3, 7, 'Department', '<div class=\'ai-post\'><h6 class=\'fw-bold text-primary mb-2\'>🚀 Báo cáo tiến độ: áaf</h6>Bài báo cáo tiến độ công việc:<br />\n<br />\nChúng tôi vừa hoàn thành dự án với tiêu đề &quot;áaf&quot;. Dự án này đã được thực hiện theo cách &quot;dsfsdf&quot; và đã mang lại kết quả tích cực.<br />\n<br />\nQua quá trình thực hiện, chúng tôi đã rút ra kinh nghiệm quan trọng là &quot;sdfsdf&quot;, giúp chúng tôi cải thiện và phát triển trong tương lai.<br />\n<br />\nĐể tránh những sai sót tương tự, lần sau chúng tôi sẽ lưu ý &quot;sdfdsfsdfdsf&quot; để đảm bảo dự án được hoàn thành một cách hiệu quả và thành công hơn. Cảm ơn và hẹn gặp lại trong những dự án tiếp theo! #BáoCáoTiếnĐộ #CôngTy #DựÁnThànhCông</div>', 1, '2026-04-15 15:58:03', '2026-04-15 15:58:03');
+(23, 3, 3, NULL, 'Department', '<div class=\'ai-post\'><h6 class=\'fw-bold text-primary mb-2\'>🚀 Báo cáo tiến độ: áaf</h6>Bài báo cáo tiến độ công việc:<br />\n<br />\nChúng tôi vừa hoàn thành dự án với tiêu đề &quot;áaf&quot;. Dự án này đã được thực hiện theo cách &quot;dsfsdf&quot; và đã mang lại kết quả tích cực.<br />\n<br />\nQua quá trình thực hiện, chúng tôi đã rút ra kinh nghiệm quan trọng là &quot;sdfsdf&quot;, giúp chúng tôi cải thiện và phát triển trong tương lai.<br />\n<br />\nĐể tránh những sai sót tương tự, lần sau chúng tôi sẽ lưu ý &quot;sdfdsfsdfdsf&quot; để đảm bảo dự án được hoàn thành một cách hiệu quả và thành công hơn. Cảm ơn và hẹn gặp lại trong những dự án tiếp theo! #BáoCáoTiếnĐộ #CôngTy #DựÁnThànhCông</div>', 1, '2026-04-15 15:58:03', '2026-04-15 15:58:03'),
+(24, 3, NULL, NULL, 'Public', 'địch mẹ et', 0, '2026-04-16 00:16:13', '2026-04-16 00:16:13'),
+(25, 3, NULL, NULL, 'Public', 'chán vl rồi\r\ntuấn đạt nổ mẹ đầu mất', 0, '2026-04-16 00:16:30', '2026-04-16 00:16:30'),
+(26, 3, NULL, NULL, 'Public', 'bựa r\r\n', 0, '2026-04-16 00:27:41', '2026-04-16 00:27:41'),
+(27, 4, NULL, NULL, 'Public', 'Chào mọi người mình là Lê Quân, Trường phòng kinh doanh mới\r\nMong được đồng hành với mọi người trong thời gian tới &lt;3', 0, '2026-04-16 16:33:14', '2026-04-16 16:33:14'),
+(28, 3, NULL, NULL, 'Public', 'da\r\n', 0, '2026-04-16 22:50:13', '2026-04-16 22:50:13'),
+(29, 3, NULL, NULL, 'Public', 'test\r\n', 0, '2026-04-16 22:50:19', '2026-04-16 22:50:19'),
+(30, 1, NULL, NULL, 'Public', 'hi\r\n', 0, '2026-04-17 02:15:51', '2026-04-17 02:15:51');
 
 -- --------------------------------------------------------
 
@@ -989,7 +1223,6 @@ INSERT INTO `post_reactions` (`id`, `post_id`, `user_id`, `type`, `created_at`) 
 (62, 9, 3, 'Heart', '2026-04-11 12:49:16'),
 (64, 10, 2, 'Heart', '2026-04-11 15:27:46'),
 (65, 5, 3, 'Heart', '2026-04-12 15:17:35'),
-(70, 11, 2, 'Heart', '2026-04-12 23:37:19'),
 (74, 4, 2, 'Heart', '2026-04-12 23:57:36'),
 (76, 3, 2, 'Heart', '2026-04-12 23:58:22'),
 (83, 19, 3, 'Heart', '2026-04-13 00:07:42'),
@@ -999,13 +1232,42 @@ INSERT INTO `post_reactions` (`id`, `post_id`, `user_id`, `type`, `created_at`) 
 (100, 4, 1, 'Heart', '2026-04-14 16:00:08'),
 (101, 3, 1, 'Heart', '2026-04-14 16:00:09'),
 (113, 20, 2, 'Heart', '2026-04-14 16:09:20'),
-(153, 20, 1, 'Heart', '2026-04-15 08:56:39'),
 (161, 8, 3, 'Heart', '2026-04-15 08:57:09'),
 (162, 4, 3, 'Heart', '2026-04-15 10:10:23'),
-(163, 20, 3, 'Heart', '2026-04-15 15:40:48'),
-(164, 2, 3, 'Heart', '2026-04-15 18:01:16'),
 (165, 11, 3, 'Heart', '2026-04-15 20:30:44'),
-(167, 11, 1, 'Heart', '2026-04-16 00:03:07');
+(167, 11, 1, 'Heart', '2026-04-16 00:03:07'),
+(168, 20, 3, 'Heart', '2026-04-16 00:14:17'),
+(169, 20, 1, 'Heart', '2026-04-16 11:49:04'),
+(171, 8, 2, 'Heart', '2026-04-16 11:49:33'),
+(172, 11, 2, 'Heart', '2026-04-16 11:55:45'),
+(173, 2, 3, 'Heart', '2026-04-16 15:21:18'),
+(174, 27, 1, 'Heart', '2026-04-16 21:31:58'),
+(175, 29, 1, 'Heart', '2026-04-17 00:25:20'),
+(177, 30, 2, 'Heart', '2026-04-17 10:17:23'),
+(178, 30, 1, 'Heart', '2026-04-17 13:46:12');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `projects`
+--
+
+CREATE TABLE `projects` (
+  `id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `status` enum('Active','Done') DEFAULT 'Active',
+  `created_by` int(11) NOT NULL,
+  `deadline` datetime DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `projects`
+--
+
+INSERT INTO `projects` (`id`, `title`, `description`, `status`, `created_by`, `deadline`, `created_at`) VALUES
+(10, 'dsssdgds', 'gssdgdgs', 'Active', 0, NULL, '2026-04-17 05:23:21');
 
 -- --------------------------------------------------------
 
@@ -1049,45 +1311,21 @@ CREATE TABLE `subtasks` (
   `feedback` text DEFAULT NULL,
   `is_extended` tinyint(1) DEFAULT 0,
   `is_rejected` tinyint(1) DEFAULT 0,
-  `is_approved` tinyint(1) DEFAULT 0
+  `is_approved` tinyint(1) DEFAULT 0,
+  `extension_requested_at` datetime DEFAULT NULL,
+  `requested_deadline` datetime DEFAULT NULL,
+  `extension_reason` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `subtasks`
 --
 
-INSERT INTO `subtasks` (`id`, `task_id`, `assignee_id`, `title`, `description`, `deadline`, `priority`, `status`, `completion_rating`, `created_at`, `updated_at`, `feedback`, `is_extended`, `is_rejected`, `is_approved`) VALUES
-(1, 1, 3, 'Thiết kế Giao diện Kanban', 'Làm giao diện giống GitHub', '2026-04-30 00:00:00', 'Medium', 'Done', NULL, '2026-04-08 22:54:32', '2026-04-09 12:08:11', 'gà', 0, 0, 0),
-(2, 1, 3, 'Xây dựng API Phê duyệt', 'Viết logic duyệt task', '2026-05-05 00:00:00', 'Medium', 'Done', NULL, '2026-04-08 22:54:32', '2026-04-09 12:17:24', 'làm lại đi', 0, 0, 0),
-(3, 2, 3, 'âcsc', '', NULL, 'Medium', 'Done', NULL, '2026-04-09 09:49:45', '2026-04-11 02:34:56', NULL, 0, 0, 0),
-(4, 1, 3, 'làm lẹ mày', '', NULL, 'Medium', 'Done', NULL, '2026-04-09 12:17:34', '2026-04-09 12:18:08', NULL, 0, 0, 0),
-(5, 3, 3, 'ừ', '', NULL, 'Medium', 'Done', NULL, '2026-04-11 01:02:16', '2026-04-11 13:44:42', NULL, 0, 0, 0),
-(6, 2, 3, 'ùa', '', NULL, 'Medium', 'Pending', NULL, '2026-04-11 01:05:40', '2026-04-12 22:13:05', NULL, 0, 0, 1),
-(7, 2, 3, 'Ngu lắm con', 'dạ chú', '2026-04-16 00:00:00', 'High', 'Pending', NULL, '2026-04-11 02:33:54', '2026-04-11 03:28:53', NULL, 0, 0, 0),
-(8, 2, 3, 'Ngu lắm con', 'dạ chú', '2026-04-16 00:00:00', 'High', 'Pending', NULL, '2026-04-11 02:33:56', '2026-04-11 03:53:16', NULL, 0, 0, 0),
-(9, 4, 3, 'quýnh Đạt', 'quýnh tới khi nó đi kh nổi', '2026-11-04 00:00:00', 'High', 'Done', NULL, '2026-04-11 02:53:55', '2026-04-11 02:55:41', NULL, 0, 0, 0),
-(10, 4, 1, 'chặt tay th Phát', 'chặt 1 tay để nó kh nhắn tin được nma đủ để code web', '2026-11-04 00:00:00', 'High', 'To Do', NULL, '2026-04-11 02:53:55', '2026-04-11 02:53:55', NULL, 0, 0, 0),
-(11, 4, 2, 'chăm sóc đặc biệt cho Quân', 'mua thuốc cho bạn, để bạn hồi sức code web', '2026-11-04 00:00:00', 'High', 'To Do', NULL, '2026-04-11 02:53:55', '2026-04-11 02:53:55', NULL, 0, 0, 0),
-(18, 7, 3, 'Code web của ba Thành', 'Dùng đầy đủ quan hệ OOP ko là bị trừ điểm', '2026-04-15 00:00:00', 'High', 'Done', NULL, '2026-04-11 03:08:45', '2026-04-11 09:33:00', NULL, 1, 0, 0),
-(19, 7, 1, 'Thuyết trình cùng ba Hói', 'Cùng thảo luận nha', '2026-04-15 00:00:00', 'High', 'Done', NULL, '2026-04-11 03:08:45', '2026-04-12 22:24:44', NULL, 1, 0, 1),
-(20, 8, 3, 'Học code web cùng ba Thành', 'Phải dùng đủ quan hệ OOP không là bị trừ điểm', '2026-04-15 00:00:00', 'High', 'In Progress', NULL, '2026-04-11 03:10:34', '2026-04-12 21:28:37', 'ừ gà', 1, 0, 0),
-(21, 7, 3, 'Học quản trị cùng chú Lâm', 'Chú Lâm dễ thương há', '2026-04-13 00:00:00', 'High', 'In Progress', NULL, '2026-04-11 03:14:43', '2026-04-11 09:26:31', NULL, 0, 0, 0),
-(22, 12, 3, 'fghjk', '', '2026-04-23 00:00:00', 'Medium', 'To Do', NULL, '2026-04-11 08:31:35', '2026-04-15 20:31:42', NULL, 1, 0, 0),
-(23, 11, 3, 'fghjkdfghj', 'zxcvbn', '2026-04-13 00:00:00', 'High', 'To Do', NULL, '2026-04-11 08:34:34', '2026-04-13 01:09:19', NULL, 1, 0, 0),
-(24, 13, 3, 'sdfsfdsdfdsfsd', 'sdfsdfsdf', '2026-04-13 00:00:00', 'High', 'To Do', NULL, '2026-04-11 09:34:38', '2026-04-11 09:34:38', NULL, 0, 0, 0),
-(25, 14, 3, 'Sub 1', '', '2026-04-15 00:00:00', 'Medium', 'Pending', NULL, '2026-04-11 09:53:12', '2026-04-11 14:27:24', NULL, 0, 0, 1),
-(26, 13, 3, 'đói vndajkv', 'fghjkl', '0000-00-00 00:00:00', 'Medium', 'Pending', NULL, '2026-04-11 09:57:14', '2026-04-14 23:04:43', NULL, 0, 0, 0),
-(27, 13, 3, 'đói vndajkv', 'fghjkl', '0000-00-00 00:00:00', 'Medium', 'Pending', NULL, '2026-04-11 09:57:16', '2026-04-12 21:36:16', NULL, 0, 0, 0),
-(28, 13, 3, 'đói vndajkv', 'fghjkl', '0000-00-00 00:00:00', 'Medium', 'In Progress', NULL, '2026-04-11 09:57:17', '2026-04-12 21:23:41', NULL, 0, 0, 0),
-(29, 13, 3, 'đói vndajkv', 'fghjkl', '2026-04-30 00:00:00', 'Medium', 'To Do', NULL, '2026-04-11 09:57:17', '2026-04-14 16:05:36', NULL, 0, 0, 0),
-(30, 15, 3, 'cgvhbjnk', 'xdfgchjk', '2026-04-30 00:00:00', 'Medium', 'To Do', NULL, '2026-04-11 14:03:51', '2026-04-11 14:03:51', NULL, 0, 0, 0),
-(31, 14, 3, 'sub 2', 'lẹ mày', '2026-04-14 00:00:00', 'High', 'Done', NULL, '2026-04-11 14:07:17', '2026-04-11 14:16:57', 'ngu', 0, 0, 1),
-(32, 16, 3, 'Khảo sát thị trường', 'Đi khảo sát thị trường công nghệ hiện nay', '2026-04-19 00:00:00', 'High', 'Done', NULL, '2026-04-11 15:19:21', '2026-04-11 15:23:00', NULL, 0, 0, 1),
-(33, 16, 3, 'Khảo sát người dùng', 'Đi khảo sát thị trường công nghệ ET', '2026-04-19 00:00:00', 'Medium', 'Done', NULL, '2026-04-11 15:19:21', '2026-04-11 15:25:11', NULL, 0, 0, 1),
-(34, 16, 3, 'Tổng kết kết quả nghiên cứu', 'Kết quả nghiên cứu như thế nào?', '2026-04-19 00:00:00', 'Medium', 'Done', NULL, '2026-04-11 15:19:21', '2026-04-11 15:26:33', NULL, 0, 0, 1),
-(35, 17, 3, 'áaf', 'âfas', '2026-04-19 00:00:00', 'Medium', 'Done', NULL, '2026-04-15 08:55:42', '2026-04-15 15:58:03', NULL, 0, 0, 1),
-(36, 18, 3, 'Ngu lắm con', '', '2026-04-16 00:00:00', 'Medium', 'In Progress', NULL, '2026-04-15 09:03:36', '2026-04-15 15:56:17', NULL, 0, 0, 0),
-(38, 20, 2, 'zxvvx', '', '0000-00-00 00:00:00', 'Medium', 'To Do', NULL, '2026-04-15 09:15:43', '2026-04-15 09:15:43', NULL, 0, 0, 0);
+INSERT INTO `subtasks` (`id`, `task_id`, `assignee_id`, `title`, `description`, `deadline`, `priority`, `status`, `completion_rating`, `created_at`, `updated_at`, `feedback`, `is_extended`, `is_rejected`, `is_approved`, `extension_requested_at`, `requested_deadline`, `extension_reason`) VALUES
+(45, 25, 6, 'Tạo form', '', '2026-04-20 00:00:00', 'High', 'To Do', NULL, '2026-04-17 01:05:41', '2026-04-17 01:05:41', NULL, 0, 0, 0, NULL, NULL, NULL),
+(46, 25, 4, 'Gửi form', '', '0000-00-00 00:00:00', 'Medium', 'To Do', NULL, '2026-04-17 01:05:41', '2026-04-17 01:05:41', NULL, 0, 0, 0, NULL, NULL, NULL),
+(49, 28, 3, 'Thiết kế database người dùng', 'Thiết kế bảng User bao gồm các trường như id, username, email, password, role; thiết lập khóa chính và các ràng buộc dữ liệu cần thiết.', '0000-00-00 00:00:00', 'Medium', 'To Do', NULL, '2026-04-17 01:48:42', '2026-04-17 05:37:20', NULL, 0, 0, 0, NULL, NULL, NULL),
+(50, 30, 3, 'dfhfdhf', '', '2026-04-30 00:00:00', 'Medium', 'In Progress', NULL, '2026-04-17 05:46:00', '2026-04-17 05:51:50', NULL, 0, 0, 0, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1104,33 +1342,6 @@ CREATE TABLE `subtask_attachments` (
   `notes` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `subtask_attachments`
---
-
-INSERT INTO `subtask_attachments` (`id`, `subtask_id`, `file_name`, `file_url`, `uploaded_at`, `notes`) VALUES
-(1, 1, 'img.png', 'url', '2026-04-09 12:07:17', 'test'),
-(2, 2, 'Note/Link', '', '2026-04-09 12:08:41', 'ùa hahaha'),
-(3, 2, 'Note/Link', '', '2026-04-09 12:09:25', 'dạ'),
-(4, 2, 'Note/Link', '', '2026-04-09 12:13:18', 'dạ em chào sếp'),
-(5, 4, 'php-A188.png', 'https://i.ibb.co/sJtFP2Jn/php-A188.png', '2026-04-09 12:17:56', 'có cái cc'),
-(6, 6, 'Note/Link', '', '2026-04-11 02:34:19', 'ưefhjskdhfksjdf'),
-(7, 9, 'Note/Link', '', '2026-04-11 02:55:20', 'jhghjgj đạt ngu'),
-(9, 21, 'Note/Link', '', '2026-04-11 09:26:45', 'dạaaaa'),
-(10, 18, 'Note/Link', '', '2026-04-11 09:32:40', 'uk'),
-(11, 21, 'Note/Link', '', '2026-04-11 09:39:36', 'dạ'),
-(12, 31, 'Note/Link', '', '2026-04-11 14:07:47', 'dạ con chào chú'),
-(13, 25, 'Note/Link', '', '2026-04-11 14:27:12', 'fwefwef'),
-(14, 32, 'Note/Link', '', '2026-04-11 15:20:26', 'abcdxyz'),
-(15, 33, 'Note/Link', '', '2026-04-11 15:20:39', 'đạt ngu lắm đừng khảo sát'),
-(16, 34, 'Note/Link', '', '2026-04-11 15:20:47', 'chịu thua luôn'),
-(17, 20, 'Note/Link', '', '2026-04-12 21:26:24', 'sdfghjk,'),
-(18, 27, 'Note/Link', '', '2026-04-12 21:36:16', 'dssfsgffdfh'),
-(19, 19, 'Note/Link', '', '2026-04-12 22:20:40', 'ggggfdh'),
-(20, 26, 'Note/Link', '', '2026-04-14 23:04:43', 'bnm'),
-(21, 26, 'Note/Link', '', '2026-04-14 23:04:48', 'bnm'),
-(22, 35, 'Note/Link', '', '2026-04-15 09:57:31', 'fcgvhbjnkm');
-
 -- --------------------------------------------------------
 
 --
@@ -1139,13 +1350,15 @@ INSERT INTO `subtask_attachments` (`id`, `subtask_id`, `file_name`, `file_url`, 
 
 CREATE TABLE `tasks` (
   `id` int(11) NOT NULL,
+  `project_id` int(11) DEFAULT NULL,
+  `assigned_leader_id` int(11) DEFAULT NULL,
   `department_id` int(11) NOT NULL,
   `created_by_user_id` int(11) NOT NULL,
   `title` varchar(255) NOT NULL,
   `description` text DEFAULT NULL,
   `priority` enum('Low','Medium','High') DEFAULT 'Medium',
   `deadline` datetime DEFAULT NULL,
-  `status` enum('To Do','In Progress','Done') DEFAULT 'To Do',
+  `status` enum('To Do','In Progress','Pending_CEO','Done') DEFAULT 'To Do',
   `created_at` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -1153,24 +1366,16 @@ CREATE TABLE `tasks` (
 -- Dumping data for table `tasks`
 --
 
-INSERT INTO `tasks` (`id`, `department_id`, `created_by_user_id`, `title`, `description`, `priority`, `deadline`, `status`, `created_at`) VALUES
-(1, 3, 1, 'Dự án Hệ thống Relioo', NULL, 'Medium', NULL, 'Done', '2026-04-08 22:54:32'),
-(2, 1, 1, 'cxzzxc', 'zxczxczxc', 'Medium', '0000-00-00 00:00:00', 'In Progress', '2026-04-09 09:49:34'),
-(3, 1, 1, 'Đi ngủ', 'Đi ngủ đi', 'Low', '2026-04-22 00:00:00', 'Done', '2026-04-11 00:57:59'),
-(4, 3, 2, 'THIẾT KẾ GIAO DIỆN RELIOO', 'màu hường hiện đại dễ nhìn hì, có th ngu Phát đàn đắm chìm trong tình iu đừn như Phát nhé', 'High', '2026-12-04 00:00:00', 'To Do', '2026-04-11 02:53:55'),
-(7, 3, 2, 'Làm IT ngu', 'Vô cái lớp toàn IT ngu', 'Medium', '2026-04-12 00:00:00', 'In Progress', '2026-04-11 03:08:45'),
-(8, 3, 2, 'IT ngu', 'Vào lớp toàn IT ngu', 'High', '2026-04-12 00:00:00', 'To Do', '2026-04-11 03:10:34'),
-(9, 3, 2, 'fghjkl', '', 'Medium', '2026-04-23 00:00:00', 'To Do', '2026-04-11 03:20:44'),
-(10, 3, 2, 'fghjkl;\'jv', '', 'Medium', '0000-00-00 00:00:00', 'To Do', '2026-04-11 03:22:07'),
-(11, 3, 2, 'édfgjkl', '', 'Medium', '0000-00-00 00:00:00', 'To Do', '2026-04-11 08:22:35'),
-(12, 3, 2, 'ĂN SÁNG', 'bún bòa', 'High', '2026-04-02 00:00:00', 'To Do', '2026-04-11 08:31:35'),
-(13, 3, 2, 'sdfsdfsdf', 'sdfsdfsdf', 'Medium', '0000-00-00 00:00:00', 'To Do', '2026-04-11 09:34:37'),
-(14, 3, 2, 'Scroll Test Task', 'Testing horizontal scroll.', 'Medium', '2026-04-20 00:00:00', 'To Do', '2026-04-11 09:53:12'),
-(15, 1, 1, 'cfgvhbjnkml', 'fghjl', 'Medium', '0000-00-00 00:00:00', 'To Do', '2026-04-11 14:03:51'),
-(16, 3, 2, 'Khai phá công nghệ, nâng tầm kinh tế', 'nghiên cứu và phát triển ET Ngu', 'High', '2026-04-19 00:00:00', 'Done', '2026-04-11 15:19:21'),
-(17, 1, 1, 'dâdadwdad', 'afaafasfasfafaf', 'Medium', '2026-04-22 00:00:00', 'Done', '2026-04-15 08:55:42'),
-(18, 1, 1, 'cxzzxc', 'dạ chú', 'Medium', '0000-00-00 00:00:00', 'To Do', '2026-04-15 09:03:36'),
-(20, 1, 1, 'szvs', 'vzvzxvv', 'Medium', '0000-00-00 00:00:00', 'To Do', '2026-04-15 09:15:43');
+INSERT INTO `tasks` (`id`, `project_id`, `assigned_leader_id`, `department_id`, `created_by_user_id`, `title`, `description`, `priority`, `deadline`, `status`, `created_at`) VALUES
+(25, NULL, NULL, 1, 1, 'Khảo sát SV UEH về xu hướng mua laptop', 'Khảo sát SV UEH về xu hướng mua laptop', 'Medium', '2026-04-24 00:00:00', 'To Do', '2026-04-17 01:05:41'),
+(26, NULL, NULL, 3, 2, 'Phát triển hệ thống đăng nhập', 'Xây dựng chức năng đăng nhập và đăng ký cho người dùng, bao gồm xác thực thông tin, phân quyền tài khoản và bảo mật dữ liệu. Hệ thống cho phép người dùng tạo tài khoản mới, đăng nhập vào hệ thống và duy trì phiên đăng nhập.', 'Medium', '2026-04-18 00:00:00', 'To Do', '2026-04-17 01:26:06'),
+(27, NULL, NULL, 3, 2, 'dfdgsg', 'fsdgsfgg', 'Medium', '2026-04-18 00:00:00', 'To Do', '2026-04-17 01:29:05'),
+(28, NULL, NULL, 3, 2, 'sfsgdfhd', 'Xây dựng chức năng đăng nhập và đăng ký cho người dùng, bao gồm xác thực thông tin, phân quyền tài khoản và bảo mật dữ liệu. Hệ thống cho phép người dùng tạo tài khoản mới, đăng nhập vào hệ thống và duy trì phiên đăng nhập.', 'Medium', '2026-04-18 00:00:00', 'To Do', '2026-04-17 01:48:42'),
+(29, 5, NULL, 3, 1, 'Tính năng của chip', 'xcbcxbcx', 'Medium', '2026-04-30 00:00:00', 'To Do', '2026-04-17 04:56:06'),
+(30, 10, NULL, 3, 1, 'Tính năng của chip', 'sdgsdg', 'Medium', '2026-04-30 00:00:00', 'In Progress', '2026-04-17 05:23:21'),
+(31, 10, NULL, 2, 1, 'dsg', 'sdgsg', 'Medium', '2026-04-29 00:00:00', 'To Do', '2026-04-17 05:24:15'),
+(32, 10, NULL, 5, 1, 'sdgdsg', 'sdgdsg', 'Medium', '2026-04-29 00:00:00', 'To Do', '2026-04-17 05:24:16'),
+(33, 10, NULL, 4, 1, 'sdgsdg', 'dgdsgd', 'Medium', '2026-04-30 00:00:00', 'To Do', '2026-04-17 05:24:16');
 
 -- --------------------------------------------------------
 
@@ -1189,19 +1394,6 @@ CREATE TABLE `task_reports` (
   `q3_answer` text DEFAULT NULL,
   `ai_generated_content` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `task_reports`
---
-
-INSERT INTO `task_reports` (`id`, `subtask_id`, `task_id`, `content`, `created_at`, `q1_answer`, `q2_answer`, `q3_answer`, `ai_generated_content`) VALUES
-(1, 32, 16, 'Khảo sát thị trường Report', '2026-04-11 15:23:00', 'Tôi đã điều tra thị trường trà sữa', 'Trà sữa thì ngon, mà ET thì ngu', 'Không cho ET uống trà sữa', '\"Báo Cáo Tiến Độ: Khảo Sát Thị Trường\n\nMới đây, chúng tôi đã tiến hành khảo sát thị trường công nghệ hiện nay. Trong khuôn khổ dự án, chúng tôi đã thực hiện điều tra thị trường trà sữa.\n\nQua quá trình khảo sát, chúng tôi đã thu thập được những thông tin quý giá về thị trường trà sữa. Tuy nhiên, quá trình thực hiện cũng cho chúng tôi một số kinh nghiệm rút ra về cách quản lý và phối hợp trong nhóm.\n\nChúng tôi sẽ tiếp tục cải thiện và hoàn thiện quy trình khảo sát để mang lại kết quả tốt hơn trong tương lai. Cảm ơn sự hỗ trợ và hợp tác của tất cả các thành viên trong nhóm.\"'),
-(2, 33, 16, 'Khảo sát người dùng Report', '2026-04-11 15:25:11', 'ăn cơm ngon', 'ghi nhận', 'ngu', '\"Báo cáo tiến độ: Khảo sát người dùng\n\nChúng tôi đã hoàn thành khảo sát thị trường công nghệ ET. Quá trình thực hiện đã giúp chúng tôi tích lũy kinh nghiệm và ghi nhận những thông tin quan trọng. Chúng tôi sẽ tiếp tục cải thiện và hoàn thiện quy trình cho những dự án tương lai.\n\n#KhảoSátThịTrường #CôngNghệET #TiếnĐộDựÁn\"'),
-(3, 34, 16, 'Tổng kết kết quả nghiên cứu Report', '2026-04-11 15:26:33', 'công nghệ', 'dữ liệu', 'web 1', '\"Tổng kết kết quả nghiên cứu: Chúng tôi đã áp dụng công nghệ để thực hiện nghiên cứu và đạt được những kết quả đáng kể. Qua quá trình này, chúng tôi đã tích lũy được kinh nghiệm quý giá về việc thu thập và phân tích dữ liệu. Để cải thiện trong tương lai, chúng tôi sẽ tập trung vào việc nâng cao kỹ năng khai thác thông tin trên các nền tảng như web. Cảm ơn sự hỗ trợ và hợp tác!\" #Tổng_kết_nghiên_cứu #Kết_quả_thành_công'),
-(4, NULL, 16, 'Khai phá công nghệ, nâng tầm kinh tế Tổng kết (AI)', '2026-04-11 15:27:15', NULL, NULL, NULL, 'Dự án \"Khai phá công nghệ, nâng tầm kinh tế\" của chúng ta đã đạt được những kết quả đáng kể và đầy ấn tượng! Tôi muốn dành một chút thời gian để tổng kết và biểu dương toàn bộ đội ngũ đã làm việc không ngừng nghỉ để mang lại thành công cho dự án này.\n\nTrước hết, chúng ta đã tiến hành một cuộc khảo sát thị trường công nghệ ET và trà sữa, thu thập được những thông tin quý giá về thị trường và tích lũy kinh nghiệm về cách quản lý và phối hợp trong nhóm. Quá trình này không chỉ giúp chúng ta hiểu rõ hơn về thị trường mà còn giúp chúng ta cải thiện và hoàn thiện quy trình khảo sát cho những dự án tương lai.\n\nTiếp theo, chúng ta đã áp dụng công nghệ để thực hiện nghiên cứu và đạt được những kết quả đáng kể. Qua quá trình này, chúng ta đã tích lũy được kinh nghiệm quý giá về việc thu thập và phân tích dữ liệu, và đã xác định được hướng cải thiện trong tương lai, đó là nâng cao kỹ năng khai thác thông tin trên các nền tảng như web.\n\nTôi muốn biểu dương toàn bộ đội ngũ vì sự nỗ lực và hợp tác không ngừng nghỉ. Mỗi thành viên trong nhóm đã đóng góp một phần quan trọng vào thành công của dự án, và tôi rất tự hào về kết quả mà chúng ta đã đạt được.\n\nDự án \"Khai phá công nghệ, nâng tầm kinh tế\" không chỉ là một dự án thành công, mà còn là một bước tiến quan trọng trong việc nâng cao kỹ năng và kiến thức của chúng ta. Chúng ta đã chứng minh rằng với sự hợp tác và nỗ lực, chúng ta có thể đạt được những kết quả đáng kể và đóng góp vào sự phát triển của công ty.\n\nCảm ơn tất cả các thành viên trong nhóm vì sự đóng góp và hợp tác. Chúng ta hãy tiếp tục làm việc cùng nhau để đạt được những thành công mới và nâng cao vị thế của công ty trong lĩnh vực công nghệ! #KhaiPháCôngNghệ #NângTầmKinhTế #ThànhCông #ĐộiNgũ'),
-(5, NULL, 16, 'Khai phá công nghệ, nâng tầm kinh tế Tổng kết (AI)', '2026-04-11 16:00:24', NULL, NULL, NULL, 'Dự án \"Khai phá công nghệ, nâng tầm kinh tế\" của chúng ta đã đạt được những kết quả đáng kể và đầy ấn tượng! Tôi muốn dành một chút thời gian để tổng kết và biểu dương toàn bộ đội ngũ đã làm việc không ngừng nghỉ để mang lại thành công cho dự án này.\n\nTrước hết, chúng ta đã tiến hành một cuộc khảo sát thị trường công nghệ ET và trà sữa, thu thập được những thông tin quý giá về thị trường và tích lũy kinh nghiệm về cách quản lý và phối hợp trong nhóm. Quá trình này không chỉ giúp chúng ta hiểu rõ hơn về thị trường mà còn giúp chúng ta cải thiện và hoàn thiện quy trình khảo sát cho những dự án tương lai.\n\nTiếp theo, chúng ta đã áp dụng công nghệ để thực hiện nghiên cứu và đạt được những kết quả đáng kể. Qua quá trình này, chúng ta đã tích lũy được kinh nghiệm quý giá về việc thu thập và phân tích dữ liệu, và đã xác định được hướng cải thiện trong tương lai, đó là nâng cao kỹ năng khai thác thông tin trên các nền tảng như web.\n\nTôi muốn biểu dương toàn bộ đội ngũ vì sự nỗ lực và hợp tác không ngừng nghỉ. Mỗi thành viên trong nhóm đã đóng góp một phần quan trọng vào thành công của dự án, và tôi rất tự hào về kết quả mà chúng ta đã đạt được.\n\nDự án \"Khai phá công nghệ, nâng tầm kinh tế\" không chỉ là một dự án thành công, mà còn là một bước tiến quan trọng trong việc nâng cao kỹ năng và kiến thức của chúng ta. Chúng ta đã chứng minh rằng với sự hợp tác và nỗ lực, chúng ta có thể đạt được những kết quả đáng kể và đóng góp vào sự phát triển của công ty.\n\nCảm ơn tất cả các thành viên trong nhóm vì sự đóng góp và hợp tác. Hãy tiếp tục làm việc cùng nhau để đạt được những thành công mới và nâng cao vị thế của công ty trong lĩnh vực công nghệ! #KhaiPháCôngNghệ #NângTầmKinhTế #ThànhCông #ĐộiNgũ'),
-(6, 19, 7, 'Thuyết trình cùng ba Hói Report', '2026-04-12 22:24:44', 'Công nghệ', 'toàn cầu', 'ok ha\n', '\"Báo cáo tiến độ: Thuyết trình cùng ba Hói\n\nChúng tôi đã hoàn thành việc thảo luận và thuyết trình cùng ba Hói. Quá trình thực hiện đã được hỗ trợ bởi công nghệ hiện đại, giúp tăng cường hiệu quả và chất lượng.\n\nMột số kinh nghiệm rút ra từ quá trình này là tầm quan trọng của việc áp dụng công nghệ vào công việc, giúp mở rộng phạm vi và khả năng tiếp cận toàn cầu.\n\nĐể cải thiện trong tương lai, chúng tôi sẽ tiếp tục áp dụng công nghệ và tinh chỉnh quy trình để đạt được kết quả tốt hơn. Cảm ơn sự hỗ trợ và hợp tác!\" #ThuyetTrinh #BaHoi #CongTy #TienDo'),
-(7, 35, 17, 'áaf Report', '2026-04-15 15:58:03', 'dsfsdf', 'sdfsdf', 'sdfdsfsdfdsf', 'Bài báo cáo tiến độ công việc:\n\nChúng tôi vừa hoàn thành dự án với tiêu đề \"áaf\". Dự án này đã được thực hiện theo cách \"dsfsdf\" và đã mang lại kết quả tích cực.\n\nQua quá trình thực hiện, chúng tôi đã rút ra kinh nghiệm quan trọng là \"sdfsdf\", giúp chúng tôi cải thiện và phát triển trong tương lai.\n\nĐể tránh những sai sót tương tự, lần sau chúng tôi sẽ lưu ý \"sdfdsfsdfdsf\" để đảm bảo dự án được hoàn thành một cách hiệu quả và thành công hơn. Cảm ơn và hẹn gặp lại trong những dự án tiếp theo! #BáoCáoTiếnĐộ #CôngTy #DựÁnThànhCông');
 
 -- --------------------------------------------------------
 
@@ -1237,8 +1429,15 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`id`, `department_id`, `role_id`, `username`, `password_hash`, `full_name`, `email`, `phone`, `avatar_url`, `birthdate`, `created_at`, `is_active`, `cover_url`, `location`, `link_tiktok`, `link_facebook`, `link_instagram`, `link_telegram`, `hide_birthdate`) VALUES
 (1, 1, 1, 'ceo', '$2y$10$T5VDC/FVsL2dMWh6KLe//eJ6mwF2VcJo.AWSFi9Ln3.tzK7Tjnc6G', 'CEO Hải Long', 'ceo@relioo.com', '1278954563', 'https://i.ibb.co/xSc4hqvW/84d94cf812e2.jpg', NULL, '2026-04-08 22:54:32', 1, 'https://i.ibb.co/LDm5zV3R/663ecefcb0c8.jpg', 'Thành phố Hồ Chí Minh', '', 'https://www.facebook.com/nguyen.long.314488', '', NULL, 1),
-(2, 3, 2, 'leader_it', '$2y$10$T5VDC/FVsL2dMWh6KLe//eJ6mwF2VcJo.AWSFi9Ln3.tzK7Tjnc6G', 'TP.IT Tấn Phát', 'it@relioo.com', '0712351233', 'https://i.ibb.co/4nqmnKGw/3ca7340098e9.jpg', '2008-10-22', '2026-04-08 22:54:32', 1, 'https://i.ibb.co/ds7Wx7WV/00edeb3c8b2a.jpg', 'Tỉnh Bình Định', '', 'https://www.facebook.com/tahpnart8', 'https://www.instagram.com/tahpnart8/', NULL, 1),
-(3, 3, 3, 'staff_it1', '$2y$10$T5VDC/FVsL2dMWh6KLe//eJ6mwF2VcJo.AWSFi9Ln3.tzK7Tjnc6G', 'NV Tuấn Đạt', 'it1@relioo.com', '0376542894', 'https://i.ibb.co/21bYFVZW/bad69b895769.jpg', '20006-04-22', '2026-04-08 22:54:32', 1, 'https://i.ibb.co/SX5KPhyq/adf09082381f.jpg', 'Tỉnh Kiên Giang', 'https://www.tiktok.com/@tuandattt2204?lang=en', 'https://www.facebook.com/huyentrinhhaydoi/', 'https://www.instagram.com/tuandath3616/', '', 1);
+(2, 3, 2, 'leader_it', '$2y$10$T5VDC/FVsL2dMWh6KLe//eJ6mwF2VcJo.AWSFi9Ln3.tzK7Tjnc6G', 'TP.IT Đức Phát', 'it@relioo.com', '0712351233', 'https://i.ibb.co/4nqmnKGw/3ca7340098e9.jpg', '2008-10-22', '2026-04-08 22:54:32', 1, 'https://i.ibb.co/ds7Wx7WV/00edeb3c8b2a.jpg', 'Tỉnh Bình Định', '', 'https://www.facebook.com/tahpnart8', 'https://www.instagram.com/tahpnart8/', NULL, 1),
+(3, 3, 3, 'staff_it1', '$2y$10$T5VDC/FVsL2dMWh6KLe//eJ6mwF2VcJo.AWSFi9Ln3.tzK7Tjnc6G', 'NV Tuấn Đạt', 'it1@relioo.com', '0376542894', 'https://i.ibb.co/21bYFVZW/bad69b895769.jpg', '20006-04-22', '2026-04-08 22:54:32', 1, 'https://i.ibb.co/SX5KPhyq/adf09082381f.jpg', 'Tỉnh Kiên Giang', 'https://www.tiktok.com/@tuandattt2204?lang=en', 'https://www.facebook.com/huyentrinhhaydoi/', 'https://www.instagram.com/tuandath3616/', '', 1),
+(4, 2, 2, 'leader_kd1', '$2y$10$dSVtEEPzSq1WddcP2jIgC.KsCgiPACXJmK10/LT30.k9XmtoCIb5e', 'TP.KD Lê Quân', 'leader_kd1@relioo.com', NULL, NULL, NULL, '2026-04-16 16:25:55', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
+(5, 2, 3, 'staff_kd1', '$2y$10$MXRhI5KvBjqfgr4MTQlP2.w8ZtQb82X0Qu9fg4yrK1vpvCgp.rrQa', 'NV Thúy Ngân', 'staff_kd1@relioo.com', NULL, NULL, NULL, '2026-04-16 17:05:48', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
+(6, 3, 3, 'staff_it2', '$2y$10$yZgRRRS5zX6Uq1iuHUPNsOldKCcUnufQF.2Q4CoY7CD4pwFlPTYfe', 'NV Đạt Tuấn', 'staff_it2@relioo.com', NULL, NULL, NULL, '2026-04-16 17:31:55', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
+(7, 4, 3, 'staff_fi1', '$2y$10$18pD0cKqnSn6GUV.QW806.llNnjN4Vh0QSUi0AFomU6mxKN4WSOoa', 'NV Phát Đức', 'staff_fi1@relioo', NULL, NULL, NULL, '2026-04-16 17:38:01', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
+(8, 4, 2, 'leader_fi', '$2y$10$qihw7ilC1w/OardjTE5fCuID0KJUAE/enV3JEedYbPp7kFcxIgaWi', 'TP .FI Ngân Thúy ', 'leader_fi@relioo.com', NULL, NULL, NULL, '2026-04-16 17:38:56', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
+(9, 5, 2, 'leader_hr1', '$2y$10$JK5SvrAoFG3GxHpbWx876u6NMrqYyp/7mFHE.fqOswVpWdF1Z0owa', 'TP .HR Hỏng Lai', 'leader_hr1@relioo.com', NULL, NULL, NULL, '2026-04-16 17:40:19', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
+(12, 5, 3, 'staff_hr2', '$2y$10$sJe1LPq.IbFbcil3.5dk/eEIV.82jMtiHbedURjpKbbduenGffca.', 'NV Ba Tư', 'staff_hr2@relioo.com', NULL, NULL, NULL, '2026-04-17 01:55:56', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0);
 
 --
 -- Indexes for dumped tables
@@ -1292,7 +1491,8 @@ ALTER TABLE `membership_requests`
 ALTER TABLE `messages`
   ADD PRIMARY KEY (`id`),
   ADD KEY `sender_id` (`sender_id`),
-  ADD KEY `idx_messages_conv_date` (`conversation_id`,`created_at`);
+  ADD KEY `idx_messages_conv_date` (`conversation_id`,`created_at`),
+  ADD KEY `idx_messages_conv_id` (`conversation_id`,`id`);
 
 --
 -- Indexes for table `notifications`
@@ -1340,6 +1540,12 @@ ALTER TABLE `post_reactions`
   ADD UNIQUE KEY `unique_user_post_reaction` (`post_id`,`user_id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `idx_post_reactions_post` (`post_id`,`user_id`);
+
+--
+-- Indexes for table `projects`
+--
+ALTER TABLE `projects`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `roles`
@@ -1395,25 +1601,25 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `comments`
 --
 ALTER TABLE `comments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=60;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=70;
 
 --
 -- AUTO_INCREMENT for table `comment_reactions`
 --
 ALTER TABLE `comment_reactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `conversations`
 --
 ALTER TABLE `conversations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `departments`
 --
 ALTER TABLE `departments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `membership_requests`
@@ -1425,19 +1631,19 @@ ALTER TABLE `membership_requests`
 -- AUTO_INCREMENT for table `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=148;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=243;
 
 --
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=197;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=230;
 
 --
 -- AUTO_INCREMENT for table `posts`
 --
 ALTER TABLE `posts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT for table `post_edit_history`
@@ -1455,7 +1661,13 @@ ALTER TABLE `post_media`
 -- AUTO_INCREMENT for table `post_reactions`
 --
 ALTER TABLE `post_reactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=168;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=179;
+
+--
+-- AUTO_INCREMENT for table `projects`
+--
+ALTER TABLE `projects`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `roles`
@@ -1467,7 +1679,7 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT for table `subtasks`
 --
 ALTER TABLE `subtasks`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
 
 --
 -- AUTO_INCREMENT for table `subtask_attachments`
@@ -1479,7 +1691,7 @@ ALTER TABLE `subtask_attachments`
 -- AUTO_INCREMENT for table `tasks`
 --
 ALTER TABLE `tasks`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
 
 --
 -- AUTO_INCREMENT for table `task_reports`
@@ -1491,7 +1703,7 @@ ALTER TABLE `task_reports`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- Constraints for dumped tables

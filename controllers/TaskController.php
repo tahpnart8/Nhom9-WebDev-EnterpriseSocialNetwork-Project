@@ -37,13 +37,28 @@ class TaskController
         $userId = $_SESSION['user_id'];
         $deptId = $_SESSION['department_id'] ?? null;
 
+        require_once __DIR__ . '/../models/Project.php';
+        $projectModel = new Project($this->db);
+
+        $projectIdFilter = $_GET['project_id'] ?? null;
+        $projects = [];
+
         // === Phân quyền: Bảng TIẾN ĐỘ (subtask cá nhân cho staff) ===
         if ($roleId == 1 || $roleId == 4) {
-            $subtasks = $subtaskModel->getAll();
-            $tasks = $taskModel->getAll();
+            if (!$projectIdFilter) {
+                // CEO view projects
+                $projects = $projectModel->getAll();
+                require_once __DIR__ . '/../views/tasks/projects.php';
+                return;
+            } else {
+                $subtasks = $subtaskModel->getAll();
+                $tasks = $taskModel->getAll($projectIdFilter); // pass project_id
+            }
         } elseif ($roleId == 2) {
+            // Leader: Always fetch projects for the tab
+            $projects = $projectModel->getByDepartment($deptId);
             $subtasks = $subtaskModel->getByDepartment($deptId);
-            $tasks = $taskModel->getByDepartment($deptId);
+            $tasks = $taskModel->getByDepartment($deptId, $projectIdFilter);
         } else {
             $subtasks = $subtaskModel->getByAssignee($userId);
             $tasks = [];
@@ -142,6 +157,7 @@ class TaskController
         $priority = $_POST['priority'] ?? 'Medium';
         $deadline = $_POST['deadline'] ?? null;
         $deptId = $_POST['department_id'] ?? $_SESSION['department_id'];
+        $projectId = !empty($_POST['project_id']) ? $_POST['project_id'] : null;
 
         // Validate
         if (empty($title)) {
@@ -183,7 +199,7 @@ class TaskController
 
         $this->db->beginTransaction();
         try {
-            $taskId = $taskModel->create($deptId, $_SESSION['user_id'], $title, $description, $priority, $deadline);
+            $taskId = $taskModel->create($deptId, $projectId, $_SESSION['user_id'], $title, $description, $priority, $deadline);
             if ($taskId === 'DUPLICATE')
                 throw new Exception('Lỗi: Task này đã tồn tại và chưa hoàn thành (Phát hiện trùng lặp).');
             if (!$taskId)
@@ -966,7 +982,8 @@ class TaskController
         // Đăng mạng xã hội (vào Department)
         require_once __DIR__ . '/../models/Post.php';
         $postModel = new Post($this->db);
-        $postContentHtml = "<div class='ai-post'><h6 class='fw-bold text-primary mb-2'>🚀 Báo cáo tiến độ: " . htmlspecialchars($subtask['title']) . "</h6>" . nl2br(htmlspecialchars($aiContent)) . "</div>";
+        $aiTag = "<div class='mt-3 border-top pt-2'><small class='text-muted'><i class='bi bi-robot me-1'></i> Hỗ trợ bởi Relioo AI</small></div>";
+        $postContentHtml = "<div class='ai-post'><h6 class='fw-bold text-primary mb-2'>🚀 Báo cáo tiến độ: " . htmlspecialchars($subtask['title']) . "</h6>" . nl2br(htmlspecialchars($aiContent)) . $aiTag . "</div>";
 
         $postId = $postModel->create($_SESSION['user_id'], $_SESSION['department_id'], $postContentHtml, 'Department');
         if ($postId) {
@@ -1098,7 +1115,8 @@ class TaskController
 
         require_once __DIR__ . '/../models/Post.php';
         $postModel = new Post($this->db);
-        $postContentHtml = "<div class='ai-post'><h5 class='fw-bold text-success mb-2'>🏆 Tổng kết dự án: " . htmlspecialchars($task['title']) . "</h5>" . nl2br(htmlspecialchars($aiContent)) . "</div>";
+        $aiTag = "<div class='mt-3 border-top pt-2'><small class='text-muted'><i class='bi bi-robot me-1'></i> Hỗ trợ bởi Relioo AI</small></div>";
+        $postContentHtml = "<div class='ai-post'><h5 class='fw-bold text-success mb-2'>🏆 Tổng kết dự án: " . htmlspecialchars($task['title']) . "</h5>" . nl2br(htmlspecialchars($aiContent)) . $aiTag . "</div>";
 
         // Đăng vào Department
         $postId1 = $postModel->create($_SESSION['user_id'], $_SESSION['department_id'], $postContentHtml, 'Department');
@@ -1154,6 +1172,170 @@ class TaskController
         }
 
         echo json_encode(['success' => true, 'data' => $result]);
+        exit;
+    }
+
+    // ========== API: TẠO NHÁP BÁO CÁO TASK (Trưởng phòng xem trước) ==========
+    public function apiGenerateTaskReportForCEO()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        if ($_SESSION['role_id'] != 2) {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền!']);
+            exit;
+        }
+
+        $taskId = $_POST['task_id'] ?? 0;
+        $taskModel = new Task($this->db);
+        $task = $taskModel->getById($taskId);
+
+        if (!$task) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy dữ liệu Task!']);
+            exit;
+        }
+
+        // Thu thập dữ liệu từ các subtasks
+        $subtaskModel = new Subtask($this->db);
+        $subtasks = $subtaskModel->getByTaskId($taskId);
+        
+        // Lấy thêm các báo cáo chi tiết/minh chứng của nhân viên (nếu có)
+        $stmt = $this->db->prepare("SELECT content FROM task_reports WHERE task_id = ? AND subtask_id IS NOT NULL");
+        $stmt->execute([$taskId]);
+        $subtaskNotes = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        $context = "Tiêu đề Task: " . $task['title'] . "\nMô tả: " . $task['description'] . "\n\nDanh sách công việc con đã hoàn thành:\n";
+        foreach ($subtasks as $s) {
+            $context .= "- " . $s['title'] . " (Nhân viên: " . $s['assignee_name'] . ")\n";
+        }
+        if (!empty($subtaskNotes)) {
+            $context .= "\nChi tiết báo cáo từ nhân viên:\n" . implode("\n", $subtaskNotes);
+        }
+
+        $apiKey = $this->getEnvVar('GROQ_API_KEY');
+        if (empty($apiKey)) {
+            echo json_encode(['success' => false, 'message' => 'Chưa cấu hình GROQ_API_KEY!']);
+            exit;
+        }
+
+        $systemPrompt = "Bạn là một Trưởng phòng chuyên nghiệp, có năng lực lãnh đạo và hành văn sắc sảo. Nhiệm vụ của bạn là viết một BÁO CÁO TỔNG KẾT CÔNG VIỆC cho toàn thể nhân viên cấp dưới và ban lãnh đạo (CEO) cùng nắm bắt tình hình.
+Yêu cầu văn phong:
+- Đây là một BÁO CÁO TỔNG KẾT CHUNG (không phải email gửi riêng cho CEO, tránh dùng các từ như 'Kính gửi sếp', 'Em báo cáo', 'Mong sếp duyệt').
+- Trình bày mạch lạc, nêu bật những thành tựu và nỗ lực của các nhân viên được nêu tên.
+- Văn phong trang trọng, đầy đủ, mạch lạc nhưng vẫn mang tính khích lệ team.
+- Chỉ trả về nội dung báo cáo chính thức (raw text), không thêm lời chào của AI.";
+
+        $postData = [
+            'model' => 'llama-3.3-70b-versatile',
+            'messages' => [
+                ['role' => 'system', 'content' => $systemPrompt],
+                ['role' => 'user', 'content' => $context]
+            ],
+            'temperature' => 0.7
+        ];
+
+        $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $apiKey, 'Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+
+        $response = curl_exec($ch);
+        curl_close($ch);
+        $result = json_decode($response, true);
+        $aiContent = $result['choices'][0]['message']['content'] ?? 'Dự án đã hoàn thành tốt đẹp.';
+
+        echo json_encode(['success' => true, 'data' => $aiContent]);
+        exit;
+    }
+
+    // ========== API: GỬI DUYỆT TASK LÊN CEO (Đã qua bước edit) ==========
+    public function submitTaskToCEO()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        if ($_SESSION['role_id'] != 2) {
+            echo json_encode(['success' => false, 'message' => 'Chỉ Trưởng phòng mới có thể gửi duyệt Task!']);
+            exit;
+        }
+
+        $taskId = $_POST['task_id'] ?? 0;
+        $aiContent = $_POST['ai_content'] ?? ''; // Nội dung báo cáo đã chỉnh sửa
+
+        if (empty($aiContent)) {
+            echo json_encode(['success' => false, 'message' => 'Nội dung báo cáo không được để trống!']);
+            exit;
+        }
+
+        $taskModel = new Task($this->db);
+        $task = $taskModel->getById($taskId);
+
+        if (!$task) {
+            echo json_encode(['success' => false, 'message' => 'Lỗi dữ liệu!']);
+            exit;
+        }
+
+        // Kiểm tra đạt 100%
+        if ($task['subtask_count'] == 0 || $task['subtask_count'] != $task['done_count']) {
+            echo json_encode(['success' => false, 'message' => 'Công việc chưa hoàn thành 100%.']);
+            exit;
+        }
+
+        if ($task['approval_status'] == 'Submitted' || $task['approval_status'] == 'Approved') {
+            echo json_encode(['success' => false, 'message' => 'Công việc đã được gửi duyệt hoặc đã duyệt.']);
+            exit;
+        }
+
+        // Tạo bài bài báo cáo chính thức
+        require_once __DIR__ . '/../models/Post.php';
+        $postModel = new Post($this->db);
+        $aiTag = "<div class='mt-3 border-top pt-2'><small class='text-muted'><i class='bi bi-robot me-1'></i> Hỗ trợ bởi Relioo AI</small></div>";
+        $postContentHtml = "<div class='ai-post'><h6 class='fw-bold text-primary mb-2'><i class='bi bi-file-earmark-check'></i> BÁO CÁO CÔNG VIỆC: " . htmlspecialchars($task['title']) . "</h6>" . nl2br(htmlspecialchars($aiContent)) . $aiTag . "</div>";
+        
+        // Trưởng phòng hoàn thành task thì bài đăng CHỈ đăng lên kênh phòng ban (Department)
+        $postId = $postModel->create($_SESSION['user_id'], $_SESSION['department_id'], $postContentHtml, 'Department');
+
+        // Cập nhật trạng thái Task
+        $taskModel->updateApprovalStatus($taskId, 'Submitted', $postId);
+
+        // Thông báo CEO (Id role 1)
+        NotificationController::pushNotification($this->db, 'task_approval_ceo', $_SESSION['user_id'], "Trưởng phòng {$_SESSION['full_name']} vừa gửi duyệt Task: {$task['title']}", "index.php?action=tasks", [1]); 
+
+        echo json_encode(['success' => true, 'message' => 'Đã gửi duyệt Task và xuất bản báo cáo thành công!']);
+        exit;
+    }
+
+    // ========== API: CEO DUYỆT HOẶC TỪ CHỐI TASK ==========
+    public function ceoApproveTask()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        if ($_SESSION['role_id'] != 1) { // Chỉ CEO
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền thực hiện!']);
+            exit;
+        }
+
+        $taskId = $_POST['task_id'] ?? 0;
+        $status = $_POST['status'] ?? ''; // 'Approved' hoặc 'Rejected'
+        $taskModel = new Task($this->db);
+        $task = $taskModel->getById($taskId);
+
+        if (!$task || !in_array($status, ['Approved', 'Rejected'])) {
+             echo json_encode(['success' => false, 'message' => 'Lỗi dữ liệu!']);
+             exit;
+        }
+
+        if ($taskModel->updateApprovalStatus($taskId, $status)) {
+             $msg = $status == 'Approved' ? "Task '{$task['title']}' đã được CEO DUYỆT!" : "Task '{$task['title']}' BỊ TỪ CHỐI bởi CEO.";
+             NotificationController::pushNotification($this->db, 'task_approval_ceo', $_SESSION['user_id'], $msg, "index.php?action=tasks", [$task['created_by_user_id']]);
+             echo json_encode(['success' => true, 'message' => 'Đã xử lý quyết định.']);
+        } else {
+             echo json_encode(['success' => false, 'message' => 'Lỗi DB.']);
+        }
         exit;
     }
 

@@ -305,6 +305,23 @@
         background: #fef2f2;
     }
 
+    /* CHẾ ĐỘ 3: DỰ ÁN */
+    .board-projects {
+        height: 100%;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+    }
+
+    .project-card {
+        border-radius: 12px;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .project-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.1) !important;
+    }
+
     /* PROGRESS BAR */
     .task-progress {
         padding: 0.35rem 0.85rem 0.4rem;
@@ -422,13 +439,23 @@
         <div class="view-switcher">
             <button class="view-btn active" onclick="switchView('progress', this)">Quản lý theo tiến độ</button>
             <button class="view-btn" onclick="switchView('tasks', this)">Quản lý theo Task</button>
+            <?php if ($_SESSION['role_id'] == 2): ?>
+                <button class="view-btn" onclick="switchView('projects', this)">Dự án phòng ban</button>
+            <?php endif; ?>
         </div>
-        <?php if ($_SESSION['role_id'] != 3): ?>
-            <button class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal"
-                data-bs-target="#createTaskModal">
-                <i class="bi bi-plus-lg me-1"></i> Tạo Task mới
-            </button>
-        <?php endif; ?>
+        <div class="d-flex gap-2">
+            <?php if (isset($_GET['project_id']) && ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 2)): ?>
+                <a href="index.php?action=tasks" class="btn btn-outline-secondary btn-sm rounded-pill px-4 fw-bold shadow-sm">
+                    <i class="bi bi-arrow-left me-1"></i> Quay lại Dự án
+                </a>
+            <?php endif; ?>
+            <?php if ($_SESSION['role_id'] != 3): ?>
+                <button class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" data-bs-toggle="modal"
+                    data-bs-target="#createTaskModal">
+                    <i class="bi bi-plus-lg me-1"></i> Tạo Task mới
+                </button>
+            <?php endif; ?>
+        </div>
     </div>
 
     <div class="board-container">
@@ -565,6 +592,61 @@
                 </div>
             <?php endforeach; ?>
         </div>
+
+        <!-- VIEW 3: DỰ ÁN (Chỉ cho Trưởng phòng/CEO) -->
+        <?php if ($_SESSION['role_id'] == 2): ?>
+        <div id="board-projects" class="board-projects d-none">
+            <div class="row g-4 pt-2">
+                <?php if (empty($projects)): ?>
+                    <div class="col-12 text-center py-5">
+                        <img src="https://cdni.iconscout.com/illustration/premium/thumb/folder-is-empty-4064360-3363921.png" width="120" class="mb-3 opacity-50" alt="Empty">
+                        <h6 class="text-muted">Chưa có dự án nào được giao cho phòng ban!</h6>
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($projects as $proj): 
+                        $totalTasks = $proj['total_dept_tasks'] ?? 0;
+                        $approvedTasks = $proj['approved_dept_tasks'] ?? 0;
+                        $progress = $totalTasks > 0 ? round(($approvedTasks / $totalTasks) * 100) : 0;
+                    ?>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 border-0 shadow-sm project-card">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title fw-bold text-dark mb-0 text-truncate" title="<?= htmlspecialchars($proj['title']) ?>">
+                                        <?= htmlspecialchars($proj['title']) ?>
+                                    </h6>
+                                    <?php if ($proj['status'] == 'Completed'): ?>
+                                        <span class="badge bg-success rounded-pill extra-small px-2">Hoàn thành</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill extra-small px-2">Đang chạy</span>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <p class="text-muted extra-small mb-3" style="min-height: 32px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                    <?= htmlspecialchars($proj['description']) ?>
+                                </p>
+
+                                <div class="mb-3 mt-auto">
+                                    <div class="d-flex justify-content-between extra-small text-muted mb-1">
+                                        <span>Tiến độ phòng ban (<?= $approvedTasks ?>/<?= $totalTasks ?>)</span>
+                                        <span class="fw-bold"><?= $progress ?>%</span>
+                                    </div>
+                                    <div class="progress" style="height: 5px; border-radius: 3px;">
+                                        <div class="progress-bar bg-<?= $progress == 100 ? 'success' : 'primary' ?>" role="progressbar" style="width: <?= $progress ?>%;"></div>
+                                    </div>
+                                </div>
+
+                                <a href="index.php?action=tasks&project_id=<?= $proj['id'] ?>" class="btn btn-light btn-sm w-100 fw-bold text-primary py-2" style="border-radius: 8px;">
+                                    <i class="bi bi-box-arrow-in-right me-1"></i> VÀO DỰ ÁN
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -603,6 +685,7 @@
             </div>
             <div class="modal-body">
                 <form id="formTask">
+                    <input type="hidden" name="project_id" value="<?php echo $_GET['project_id'] ?? ''; ?>">
                     <div class="mb-3"><label class="form-label small fw-bold">TIÊU ĐỀ TASK <span
                                 class="text-danger">*</span></label><input type="text" name="title"
                             class="form-control rounded-3" required></div>
@@ -736,18 +819,18 @@
 
                 <div id="summaryPreviewArea" class="d-none">
                     <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> Dự thảo bài đăng hoàn
+                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> Dự thảo báo cáo hoàn
                             tất</span>
                         <small class="text-muted">Bạn có thể chỉnh sửa lại nội dung trước khi xuất bản</small>
                     </div>
-                    <textarea id="aiSummaryContent" class="form-control mb-3" rows="12"></textarea>
+                    <textarea id="aiSummaryContent" class="form-control mb-3" rows="12" style="font-size: 0.9rem; line-height: 1.6;"></textarea>
 
-                    <div class="alert alert-info py-2 small mb-3">
+                    <div id="summaryNoteArea" class="alert alert-info py-2 small mb-3">
                         <i class="bi bi-info-circle me-1"></i> Bài viết sẽ được tự động đăng lên cả <b>Kênh Công
                             Khai</b> và <b>Kênh Phòng Ban</b>.
                     </div>
-                    <button class="btn btn-success w-100 fw-bold" onclick="submitTaskSummary()" id="btnSubmitSummary">
-                        <i class="bi bi-send-check me-2"></i>Xuất bản bài Tổng kết
+                    <button class="btn btn-success w-100 fw-bold py-2 shadow-sm" onclick="handleSummaryAction()" id="btnSubmitSummary">
+                        <i class="bi bi-send-check me-2"></i>Xác nhận & Xuất bản
                     </button>
                 </div>
             </div>
@@ -776,8 +859,20 @@
     // ===== VIEW SWITCH =====
     function switchView(view, btn) {
         $('.view-btn').removeClass('active'); $(btn).addClass('active');
-        if (view === 'progress') { $('#board-progress').removeClass('d-none'); $('#board-tasks').addClass('d-none'); }
-        else { $('#board-progress').addClass('d-none'); $('#board-tasks').removeClass('d-none'); }
+        $('#board-progress, #board-tasks, #board-projects').addClass('d-none');
+        
+        if (view === 'progress') { 
+            $('#board-progress').removeClass('d-none'); 
+            $('.board-container').css('overflow-y', 'hidden');
+        }
+        else if (view === 'tasks') { 
+            $('#board-tasks').removeClass('d-none'); 
+            $('.board-container').css('overflow-y', 'hidden');
+        }
+        else if (view === 'projects') { 
+            $('#board-projects').removeClass('d-none'); 
+            $('.board-container').css('overflow-y', 'auto');
+        }
     }
 
     // ===== SORTABLE =====
@@ -898,17 +993,24 @@
         });
     }
 
+    let currentSummaryId = null;
+    let currentSummaryType = 'social'; // 'social' hoặc 'ceo'
+
     function openAiTaskSummaryModal(taskId, title) {
+        currentSummaryId = taskId;
+        currentSummaryType = 'social';
         document.getElementById('summaryTaskId').value = taskId;
         document.getElementById('summaryTaskTitle').innerText = 'Dự án: ' + title;
-
+        $('.modal-title', '#taskSummaryModal').html('<i class="bi bi-robot me-2"></i>Tổng Kết Công Việc (Social)');
+        $('#summaryNoteArea').html('<i class="bi bi-info-circle me-1"></i> Bài viết này sẽ được đăng công khai lên bảng tin để mọi người cùng thấy.');
+        $('#btnSubmitSummary').html('<i class="bi bi-send-check me-2"></i>Đăng bài Tổng kết');
+        
         $('#summaryLoadingArea').removeClass('d-none');
         $('#summaryPreviewArea').addClass('d-none');
         $('#aiSummaryContent').val('');
 
         new bootstrap.Modal(document.getElementById('taskSummaryModal')).show();
 
-        // Call API generate
         $.post('index.php?action=api_generate_task_summary', { task_id: taskId }, function (res) {
             if (res.success) {
                 $('#summaryLoadingArea').addClass('d-none');
@@ -916,31 +1018,30 @@
                 $('#aiSummaryContent').val(res.data);
             } else {
                 bootstrap.Modal.getInstance(document.getElementById('taskSummaryModal')).hide();
-                Swal.fire({ title: 'Lỗi tổng hợp dữ liệu!', text: res.message, icon: 'error' });
+                Swal.fire({ title: 'Lỗi!', text: res.message, icon: 'error' });
             }
-        }, 'json').fail(() => {
-            bootstrap.Modal.getInstance(document.getElementById('taskSummaryModal')).hide();
-            Swal.fire({ title: 'Lỗi hệ thống!', text: 'Không thể kết nối API AI.', icon: 'error' });
-        });
+        }, 'json');
     }
 
-    function submitTaskSummary() {
+    function handleSummaryAction() {
         let aiContent = $('#aiSummaryContent').val().trim();
-        if (!aiContent) return;
+        if (!aiContent) { Swal.fire('Thiếu nội dung', 'Vui lòng không để trống báo cáo.', 'warning'); return; }
 
         let btn = $('#btnSubmitSummary');
-        btn.html('<span class="spinner-border spinner-border-sm me-2"></span>Đang đăng bài...').prop('disabled', true);
+        btn.html('<span class="spinner-border spinner-border-sm me-2"></span>Đang xử lý...').prop('disabled', true);
 
-        $.post('index.php?action=api_save_task_summary', {
-            task_id: $('#summaryTaskId').val(),
+        let url = currentSummaryType === 'social' ? 'index.php?action=api_save_task_summary' : 'index.php?action=api_submit_task_to_ceo';
+        
+        $.post(url, {
+            task_id: currentSummaryId,
             ai_content: aiContent
         }, function (res) {
             if (res.success) {
                 bootstrap.Modal.getInstance(document.getElementById('taskSummaryModal')).hide();
-                Swal.fire({ title: 'Xuất bản thành công!', text: res.message, icon: 'success', timer: 2000, showConfirmButton: false }).then(() => location.reload());
+                Swal.fire({ title: 'Thành công!', text: res.message, icon: 'success', timer: 2000, showConfirmButton: false }).then(() => location.reload());
             } else {
-                btn.html('<i class="bi bi-send-check me-2"></i>Xuất bản bài Tổng kết').prop('disabled', false);
-                Swal.fire({ title: 'Lỗi đăng bài!', text: res.message, icon: 'error' });
+                btn.html('<i class="bi bi-send-check me-2"></i>Xác nhận & Xuất bản').prop('disabled', false);
+                Swal.fire({ title: 'Lỗi!', text: res.message, icon: 'error' });
             }
         }, 'json');
     }
@@ -994,6 +1095,11 @@
             success: function (res) {
                 if (res.success) Swal.fire({ title: 'Thành công!', text: res.message, icon: 'success', timer: 1500, showConfirmButton: false }).then(() => location.reload());
                 else Swal.fire({ title: 'Lỗi!', text: res.message, icon: 'error' });
+            },
+            error: function (xhr) {
+                let errMsg = 'Không thể kết nối đến máy chủ.';
+                try { if(xhr.responseText) { let r = JSON.parse(xhr.responseText); if(r.message) errMsg = r.message; } } catch(e){}
+                Swal.fire({ title: 'Lỗi hệ thống!', text: errMsg, icon: 'error' });
             }
         });
     }
@@ -1025,6 +1131,11 @@
             success: function (res) {
                 if (res.success) Swal.fire({ title: 'Thành công!', text: res.message, icon: 'success', timer: 1500, showConfirmButton: false }).then(() => location.reload());
                 else Swal.fire({ title: 'Lỗi!', text: res.message, icon: 'error' });
+            },
+            error: function (xhr) {
+                let errMsg = 'Không thể kết nối đến máy chủ.';
+                try { if(xhr.responseText) { let r = JSON.parse(xhr.responseText); if(r.message) errMsg = r.message; } } catch(e){}
+                Swal.fire({ title: 'Lỗi hệ thống!', text: errMsg, icon: 'error' });
             }
         });
     }
@@ -1266,17 +1377,27 @@
                 <button class="btn btn-outline-danger btn-sm rounded-pill fw-bold px-3" onclick="deleteTask(${task.id})"><i class="bi bi-trash me-1"></i>Xóa Task</button>
             </div>`;
 
-                if (pct == 100 && sCount > 0) {
-                    btns = `
-                <div class="mt-3">
-                    <button class="btn btn-success w-100 rounded-pill fw-bold mb-2 shadow-sm" onclick="bootstrap.Modal.getInstance(document.getElementById('taskDetailModal')).hide();setTimeout(()=>openAiTaskSummaryModal(${task.id}, '${task.title.replace(/'/g, "\\'")}'),300);">
-                        <i class="bi bi-stars me-2"></i>Tổng kết & Đăng bài dự án (AI)
-                    </button>
-                    ${rowBtns}
-                </div>`;
-                } else {
-                    btns = rowBtns;
+                // Logic Gửi duyệt & Phê duyệt Task
+                let approvalBtns = '';
+                if (task.approval_status == 'Pending' && ROLE_ID == 2 && pct == 100 && sCount > 0) {
+                     approvalBtns = `<button class="btn btn-success w-100 rounded-pill fw-bold mt-2 shadow-sm" onclick="submitTaskToCEO(${task.id})"><i class="bi bi-send-check me-2"></i> Gửi duyệt CEO</button>`;
+                } else if (task.approval_status == 'Submitted' && ROLE_ID == 1) {
+                     approvalBtns = `<div class="d-flex gap-2 mt-2">
+                        <button class="btn btn-success flex-fill rounded-pill fw-bold shadow-sm" onclick="ceoApproveTask(${task.id}, 'Approved')"><i class="bi bi-check-circle me-1"></i> Duyệt Task</button>
+                        <button class="btn btn-danger flex-fill rounded-pill fw-bold shadow-sm" onclick="ceoApproveTask(${task.id}, 'Rejected')"><i class="bi bi-x-circle me-1"></i> Từ chối</button>
+                     </div>`;
                 }
+
+                btns = `<div class="mt-3">${rowBtns}${approvalBtns}</div>`;
+            }
+
+            let appStatusHtml = '';
+            if (task.approval_status == 'Submitted') {
+                appStatusHtml = `<div class="d-flex justify-content-between mb-2"><span>Kiểm duyệt:</span><span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Chờ CEO duyệt</span></div>`;
+            } else if (task.approval_status == 'Approved') {
+                appStatusHtml = `<div class="d-flex justify-content-between mb-2"><span>Kiểm duyệt:</span><span class="badge bg-success"><i class="bi bi-check2-all me-1"></i>CEO đã duyệt</span></div>`;
+            } else if (task.approval_status == 'Rejected') {
+                appStatusHtml = `<div class="d-flex justify-content-between mb-2"><span>Kiểm duyệt:</span><span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Từ chối</span></div>`;
             }
 
             $('#taskBody').html(`<div class="row"><div class="col-md-5 border-end">
@@ -1287,7 +1408,8 @@
                 <div class="d-flex justify-content-between mb-2"><span>Phòng ban:</span><b>${task.dept_name || 'N/A'}</b></div>
                 <div class="d-flex justify-content-between mb-2"><span>Ưu tiên:</span><span class="priority-badge ${pClass}">${pLabel}</span></div>
                 <div class="d-flex justify-content-between mb-2"><span>Hạn chót:</span><b>${task.deadline ? new Date(task.deadline.replace(' ', 'T')).toLocaleDateString('vi-VN') : 'Không có'}</b></div>
-                <div class="d-flex justify-content-between"><span>Trạng thái:</span><span class="badge ${task.status == 'Done' ? 'bg-success' : 'bg-primary'}">${task.status}</span></div>
+                <div class="d-flex justify-content-between mb-2"><span>Trạng thái:</span><span class="badge ${task.status == 'Done' ? 'bg-success' : 'bg-primary'}">${task.status}</span></div>
+                ${appStatusHtml}
             </div>
             <div class="mb-2"><div class="d-flex justify-content-between small fw-bold mb-1"><span>Tiến độ</span><span>${pct}%</span></div>
                 <div class="progress-bar-wrap" style="height:8px"><div class="progress-bar-fill ${pct == 100 ? 'complete' : ''}" style="width:${pct}%"></div></div>
@@ -1367,6 +1489,67 @@
                 if (res.success) { bootstrap.Modal.getInstance(document.getElementById('taskDetailModal')).hide(); Swal.fire({ title: 'Đã xóa!', icon: 'success', timer: 1200, showConfirmButton: false }).then(() => location.reload()); }
                 else Swal.fire({ title: 'Lỗi!', text: res.message, icon: 'error' });
             }, 'json');
+        });
+    }
+
+    function submitTaskToCEO(id) {
+        // Đóng modal chi tiết để hiện modal report
+        const detailModalEl = document.getElementById('taskDetailModal');
+        const bModal = bootstrap.Modal.getInstance(detailModalEl);
+        if (bModal) bModal.hide();
+
+        currentSummaryId = id;
+        currentSummaryType = 'ceo';
+        $('#summaryTaskId').val(id);
+        $('#summaryTaskTitle').text("Đang tạo báo cáo trình CEO...");
+        $('.modal-title', '#taskSummaryModal').html('<i class="bi bi-robot me-2"></i>Báo Cáo Trình CEO (Relioo AI)');
+        $('#summaryNoteArea').html('<i class="bi bi-info-circle me-1"></i> Báo cáo này sẽ được gửi tới CEO để phê duyệt hoàn thành Task và đồng thời đăng lên bảng tin nội bộ.');
+        $('#btnSubmitSummary').html('<i class="bi bi-send me-2"></i>Trình duyệt lên CEO');
+
+        $('#summaryLoadingArea').removeClass('d-none');
+        $('#summaryPreviewArea').addClass('d-none');
+        $('#aiSummaryContent').val('');
+
+        new bootstrap.Modal(document.getElementById('taskSummaryModal')).show();
+
+        $.post('index.php?action=api_generate_task_report_for_ceo', { task_id: id }, function (res) {
+            if (res.success) {
+                $('#summaryLoadingArea').addClass('d-none');
+                $('#summaryPreviewArea').removeClass('d-none');
+                $('#aiSummaryContent').val(res.data);
+            } else {
+                bootstrap.Modal.getInstance(document.getElementById('taskSummaryModal')).hide();
+                Swal.fire({ title: 'Lỗi AI!', text: res.message, icon: 'error' }).then(() => { if(bModal) bModal.show(); });
+            }
+        }, 'json').fail(() => {
+            bootstrap.Modal.getInstance(document.getElementById('taskSummaryModal')).hide();
+            Swal.fire('Lỗi', 'Không thể kết nối API AI.', 'error').then(() => { if(bModal) bModal.show(); });
+        });
+    }
+
+    function ceoApproveTask(id, status) {
+        let actionText = status == 'Approved' ? 'Duyệt Task này?' : 'Từ chối Task này?';
+        let confirmBtn = status == 'Approved' ? 'Duyệt' : 'Từ chối';
+        let color = status == 'Approved' ? '#10b981' : '#ef4444';
+        
+        Swal.fire({
+            title: actionText,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: color,
+            confirmButtonText: confirmBtn,
+            cancelButtonText: 'Hủy'
+        }).then(r => {
+            if (r.isConfirmed) {
+                $.post('index.php?action=api_ceo_approve_task', { task_id: id, status: status }, function(res) {
+                    if(res.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('taskDetailModal')).hide();
+                        location.reload();
+                    } else {
+                        Swal.fire('Lỗi', res.message, 'error');
+                    }
+                }, 'json');
+            }
         });
     }
 

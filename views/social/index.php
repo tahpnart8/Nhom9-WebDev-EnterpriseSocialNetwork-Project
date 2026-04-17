@@ -170,7 +170,7 @@
                         <div class="d-flex gap-2">
                             <label class="btn btn-sm btn-light text-primary border rounded-pill px-3 shadow-sm"
                                 style="cursor: pointer;">
-                                <i class="bi bi-images me-1"></i> Ảnh/Video
+                                <i class="bi bi-images me-1"></i> Thêm Ảnh
                                 <input type="file" name="attachment" accept="image/*,video/mp4" class="d-none"
                                     id="attachmentFile">
                             </label>
@@ -242,13 +242,8 @@
                                 </div>
                             <?php endif; ?>
                         </div>
-                        <?php if (($post['is_ai_generated'] ?? 0)): ?>
-                            <div class="mb-3 text-dark post-content-text" style="line-height: 1.6;">
-                                <?php echo $post['content_html']; ?></div>
-                        <?php else: ?>
-                            <p class="mb-3 text-dark post-content-text" style="line-height: 1.6;">
-                                <?php echo nl2br($post['content_html']); ?></p>
-                        <?php endif; ?>
+                        <div class="mb-3 text-dark markdown-content post-content-raw d-none"><?php echo htmlspecialchars($post['content_html']); ?></div>
+                        <div class="mb-3 text-dark markdown-content post-content-rendered"></div>
                     </div>
                     <?php if ($post['media_url']): ?>
                         <div class="bg-light text-center border-top border-bottom"><img
@@ -390,8 +385,13 @@
         $.post('index.php?action=api_delete_post', { post_id: $(this).data('id') }, function (res) { if (res.success) location.reload(); });
     });
     $(document).on('click', '.btn-edit-post', function (e) {
-        e.preventDefault(); let id = $(this).data('id'); let content = $(this).closest('.relioo-card').find('.post-content-text').text().trim();
-        $('#editPostId').val(id); $('#editPostContent').val(content); $('#editPostModal').modal('show');
+        e.preventDefault(); 
+        let id = $(this).data('id'); 
+        // Lấy nội dung raw từ container ẩn
+        let content = $(this).closest('.relioo-card').find('.post-content-raw').text().trim();
+        $('#editPostId').val(id); 
+        $('#editPostContent').val(content); 
+        $('#editPostModal').modal('show');
     });
     $('#btn-save-edit-post').on('click', function () {
         $.post('index.php?action=api_edit_post', { post_id: $('#editPostId').val(), content: $('#editPostContent').val() }, function (res) { if (res.success) location.reload(); });
@@ -624,6 +624,11 @@
 
     // ================= SAFE HIGHLIGHTING SYSTEM =================
     $(function () {
+        // --- Render Markdown for all posts ---
+        if (typeof ReliooMarkdown !== 'undefined') {
+            ReliooMarkdown.renderAll();
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
         const q = urlParams.get('q');
         if (q && q.trim().length > 0) {

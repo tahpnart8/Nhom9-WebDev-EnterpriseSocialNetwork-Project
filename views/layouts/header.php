@@ -132,11 +132,87 @@
                 height: 500px;
             }
         }
+
+        /* --- RELIOO PREMIUM MARKDOWN STYLING --- */
+        .markdown-content {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #1e293b;
+        }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+            margin-top: 1.25rem;
+            margin-bottom: 0.75rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .markdown-content h1 { font-size: 1.4rem; border-bottom: 2px solid #f1f5f9; padding-bottom: 0.5rem; }
+        .markdown-content h2 { font-size: 1.2rem; }
+        .markdown-content h3 { font-size: 1.1rem; }
+        .markdown-content p { margin-bottom: 1rem; }
+        .markdown-content ul, .markdown-content ol {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+        }
+        .markdown-content li { margin-bottom: 0.25rem; }
+        .markdown-content blockquote {
+            border-left: 4px solid #3b82f6;
+            padding: 0.5rem 1rem;
+            background: #eff6ff;
+            color: #1e40af;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            font-style: italic;
+        }
+        .markdown-content code {
+            background: #f1f5f9;
+            color: #ef4444;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+        .markdown-content pre {
+            background: #1e293b;
+            color: #f8fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+        }
+        .markdown-content pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+            font-size: 0.9em;
+        }
+        .markdown-content img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin: 0.5rem 0;
+        }
+        .markdown-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+        .markdown-content th, .markdown-content td {
+            border: 1px solid #e2e8f0;
+            padding: 0.5rem;
+            font-size: 0.9em;
+        }
+        .markdown-content th { background: #f8fafc; }
+        .markdown-content hr { margin: 1.5rem 0; border-top: 2px solid #f1f5f9; opacity: 1; }
+        .markdown-content input[type="checkbox"] {
+            margin-right: 0.5rem;
+            pointer-events: none;
+        }
     </style>
     <!-- JQuery -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <!-- Toastr JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <!-- Markdown Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
 </head>
 
 <body>
@@ -237,6 +313,31 @@
 
             <!-- Notification & Chat Polling Script (Global) -->
             <script>
+                // --- Markdown Setup ---
+                const ReliooMarkdown = {
+                    render: function(content) {
+                        if (!content) return "";
+                        // Cấu hình marked để hỗ trợ GFM (GitHub Flavored Markdown)
+                        marked.setOptions({
+                            breaks: true,
+                            gfm: true
+                        });
+                        const rawHtml = marked.parse(content);
+                        return DOMPurify.sanitize(rawHtml);
+                    },
+                    renderAll: function() {
+                        $('.relioo-card').each(function() {
+                            const $raw = $(this).find('.post-content-raw');
+                            const $rendered = $(this).find('.post-content-rendered');
+                            if ($raw.length && $rendered.length) {
+                                $rendered.html(ReliooMarkdown.render($raw.text()));
+                                $rendered.removeClass('d-none');
+                                $raw.addClass('d-none');
+                            }
+                        });
+                    }
+                };
+
                 var _lastNotiCount = 0;
                 // Lấy tab cuối cùng từ sessionStorage, mặc định là TASK
                 var _currentNotiTab = sessionStorage.getItem('lastNotiTab') || 'TASK';
@@ -509,7 +610,7 @@
                             '</div>' +
                             '<div class="post-modal-scroll" id="modalCommentContainer">' +
                             '<div class="post-main-content mb-4 pb-4 border-bottom">' +
-                            '<div class="text-dark" style="line-height:1.6; font-size: 0.95rem;">' + p.content_html + '</div>' +
+                            '<div class="markdown-content" style="font-size: 0.95rem;">' + ReliooMarkdown.render(p.content_html) + '</div>' +
                             '</div>' +
                             '<div class="fw-bold small mb-3 text-muted text-uppercase" style="letter-spacing:1px;">Bình luận ' + (p.comment_count || 0) + '</div>' +
                             commentsHtml +
@@ -663,6 +764,8 @@
                                         const $newContent = $temp.find('#feedContainer').html();
                                         if ($newContent) {
                                             $container.html($newContent).fadeIn(200);
+                                            // Render Markdown cho các bài viết mới
+                                            if (typeof ReliooMarkdown !== 'undefined') ReliooMarkdown.renderAll();
                                         } else {
                                             $container.html('<div class="relioo-card p-5 text-center text-muted"><h5>Lỗi khi tải kết quả</h5></div>').fadeIn(200);
                                         }
@@ -712,6 +815,8 @@
                                 const $newContent = $temp.find('#feedContainer').html();
                                 if ($newContent) {
                                     $container.html($newContent).fadeIn(200);
+                                    // Render Markdown cho các bài viết mới
+                                    if (typeof ReliooMarkdown !== 'undefined') ReliooMarkdown.renderAll();
                                 }
                             });
                         });
