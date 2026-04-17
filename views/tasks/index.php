@@ -1177,15 +1177,24 @@
             }
         });
 
-        // View 2: Task Group filtering (Columns)
+        // View 2: Task Group filtering (Columns) - Quản lý theo Task
         $('.board-tasks .column').each(function () {
             const $col = $(this);
             const taskTitle = normalizeText($col.find('.column-header h6').text());
+            const taskNameMatches = taskTitle.includes(searchTerm);
 
-            if (taskTitle.includes(searchTerm)) {
+            if (taskNameMatches) {
+                // Tên task khớp → hiện cột, hiện tất cả card trong cột
                 $col.show();
+                $col.find('.task-card').addClass('search-highlight').show();
             } else {
-                $col.hide();
+                // Tên task không khớp → chỉ hiện cột nếu có card nào khớp
+                const $visibleCards = $col.find('.task-card.search-highlight');
+                if ($visibleCards.length > 0) {
+                    $col.show();
+                } else {
+                    $col.hide();
+                }
             }
         });
 

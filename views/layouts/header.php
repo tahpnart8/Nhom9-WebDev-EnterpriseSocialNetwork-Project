@@ -153,8 +153,24 @@
                     <h3 class="fw-bold mb-0 text-dark"><?php echo htmlspecialchars($pageTitle ?? 'Tổng quan'); ?></h3>
                 </div>
 
-                <!-- Spacer - không còn thanh tìm kiếm toàn cầu -->
+                <!-- Spacer -->
                 <div class="flex-grow-1"></div>
+
+                <!-- Global Search Bar - Chỉ hiện ở social và tasks -->
+                <?php 
+                $currentAction = $_GET['action'] ?? 'dashboard';
+                $showSearch = in_array($currentAction, ['social', 'tasks']);
+                ?>
+                <?php if ($showSearch): ?>
+                <div class="topbar-search-form d-none d-md-block">
+                    <div class="input-group" style="max-width: 400px; background: #f8f9fa; border-radius: 50px; padding: 2px;">
+                        <input type="text" class="form-control border-0 bg-transparent px-4" placeholder="Tìm kiếm..." id="globalSearchInput" style="background: transparent;" value="<?= htmlspecialchars($_GET['q'] ?? '') ?>">
+                        <button class="btn border-0 bg-transparent px-3" type="button" id="clearSearchBtn" onclick="clearHeaderSearch()">
+                            <i class="bi bi-x-circle text-primary"></i>
+                        </button>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <!-- Right: Utility Actions -->
                 <div class="topbar-utility-actions">
@@ -612,6 +628,147 @@
                     $.post('index.php?action=api_mark_all_read', function () { pollNotifications(); });
                 });
 
+                // ================= SOCIAL SEARCH FUNCTION =================
+                window.searchSocialFeed = function (keyword) {
+                    if (!keyword) {
+                        location.href = 'index.php?action=social';
+                        return;
+                    }
+
+                    const $container = $('#feedContainer');
+                    $container.fadeOut(200, function () {
+                        $container.html('<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Đang tìm kiếm bài viết...</p></div>').fadeIn(200);
+
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const channel = urlParams.get('channel') || 'public';
+                        const deptId = urlParams.get('dept_id') || '';
+
+                        // Update URL mà không reload
+                        const newUrl = new URL(window.location.href);
+                        newUrl.searchParams.set('q', keyword);
+                        window.history.pushState({}, '', newUrl);
+
+                        $.getJSON('index.php?action=api_search_posts', { q: keyword, channel: channel, dept_id: deptId }, function (res) {
+                            if (res.success) {
+                                if (res.data.length === 0) {
+                                    $container.html('<div class="relioo-card p-5 text-center text-muted"><i class="bi bi-search fs-1 opacity-25 d-block mb-3"></i><h5>Không tìm thấy kết quả phù hợp</h5><p>Thử tìm kiếm với từ khóa khác hoặc quay lại <a href="index.php?action=social">bảng tin chính</a>.</p></div>').fadeIn(200);
+                                    // Giữ keyword trong input
+                                    $('#globalSearchInput').val(keyword);
+                                } else {
+                                    // Render kết quả trực tiếp thay vì reload trang
+                                    // Gọi API để lấy HTML của kết quả tìm kiếm
+                                    $.get('index.php?action=social&q=' + encodeURIComponent(keyword) + '&channel=' + channel + '&dept_id=' + deptId, function (html) {
+                                        // Trích xuất phần feedContainer từ HTML trả về
+                                        const $temp = $(html);
+                                        const $newContent = $temp.find('#feedContainer').html();
+                                        if ($newContent) {
+                                            $container.html($newContent).fadeIn(200);
+                                        } else {
+                                            $container.html('<div class="relioo-card p-5 text-center text-muted"><h5>Lỗi khi tải kết quả</h5></div>').fadeIn(200);
+                                        }
+                                        // Giữ keyword trong input
+                                        $('#globalSearchInput').val(keyword);
+                                    }).fail(function () {
+                                        $container.html('<div class="relioo-card p-5 text-center text-muted"><h5>Lỗi khi tải kết quả</h5></div>').fadeIn(200);
+                                        $('#globalSearchInput').val(keyword);
+                                    });
+                                }
+                            }
+                        }).fail(function () {
+                            $container.html('<div class="relioo-card p-5 text-center text-muted"><h5>Lỗi khi tìm kiếm</h5></div>').fadeIn(200);
+                            $('#globalSearchInput').val(keyword);
+                        });
+                    });
+                };
+
+                // ================= CLEAR HEADER SEARCH FUNCTION =================
+                window.clearHeaderSearch = function () {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const action = urlParams.get('action') || 'dashboard';
+
+                    // Xóa nội dung tìm kiếm trong input
+                    $('#globalSearchInput').val('');
+                    $('.clear-search-input').hide();
+
+                    if (action === 'social') {
+                        // Social: dùng AJAX để xóa tìm kiếm mà không reload trang
+                        const newUrl = new URL(window.location.href);
+                        newUrl.searchParams.delete('q');
+                        window.history.pushState({}, '', newUrl);
+
+                        // Load lại feed với channel hiện tại
+                        const $container = $('#feedContainer');
+                        const channel = urlParams.get('channel') || 'public';
+                        const deptId = urlParams.get('dept_id') || '';
+
+                        let loadUrl = 'index.php?action=social&channel=' + channel;
+                        if (deptId) {
+                            loadUrl += '&dept_id=' + deptId;
+                        }
+
+                        $container.fadeOut(200, function () {
+                            $.get(loadUrl, function (html) {
+                                const $temp = $(html);
+                                const $newContent = $temp.find('#feedContainer').html();
+                                if ($newContent) {
+                                    $container.html($newContent).fadeIn(200);
+                                }
+                            });
+                        });
+                    } else if (action === 'tasks' || action === 'project_tasks') {
+                        // Tasks: xóa highlight và quay về trang ban đầu
+                        const newUrl = new URL(window.location.href);
+                        newUrl.searchParams.delete('q');
+                        window.history.pushState({}, '', newUrl);
+
+                        // Gọi clearTaskHighlights để xóa highlight
+                        if (typeof window.clearTaskHighlights === 'function') {
+                            window.clearTaskHighlights();
+                        }
+                    } else {
+                        // Các trang khác: reload trang
+                        const newUrl = new URL(window.location.href);
+                        newUrl.searchParams.delete('q');
+                        window.location.href = newUrl.toString();
+                    }
+                };
+
+                // ================= SAFE HIGHLIGHTING SYSTEM =================
+                $(function () {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const q = urlParams.get('q');
+                    if (q && q.trim().length > 0) {
+                        const regex = new RegExp(`(${q})`, 'gi');
+
+                        // Hàm đệ quy để highlight chỉ trong text nodes
+                        function highlightTextNodes(element, regex) {
+                            $(element).contents().each(function () {
+                                if (this.nodeType === 3) { // Text node
+                                    const text = this.nodeValue;
+                                    if (regex.test(text)) {
+                                        const span = document.createElement('span');
+                                        span.innerHTML = text.replace(regex, '<mark class="bg-warning-subtle text-dark p-0 rounded">$1</mark>');
+                                        this.parentNode.replaceChild(span, this);
+                                    }
+                                } else if (this.nodeType === 1 && this.childNodes.length > 0 && !$(this).is('script, style, mark')) {
+                                    highlightTextNodes(this, regex);
+                                }
+                            });
+                        }
+
+                        // Áp dụng cho Nội dung bài viết và Tên tác giả
+                        $('.post-content-text, .post-author-name').each(function () {
+                            highlightTextNodes(this, regex);
+                        });
+
+                        // Cuộn đến kết quả đầu tiên
+                        const firstMatch = $('mark').first();
+                        if (firstMatch.length) {
+                            $('html, body').animate({ scrollTop: firstMatch.offset().top - 150 }, 500);
+                        }
+                    }
+                });
+
                 // ================= GLOBAL SEARCH & HISTORY LOGIC =================
                 $(document).ready(function () {
                     const $searchInput = $('.topbar-search-form input');
@@ -737,7 +894,13 @@
 
                     function executeSearch(keyword) {
                         keyword = keyword.trim();
-                        if (!keyword) return;
+                        if (!keyword) {
+                            // Nếu từ khóa rỗng, gọi clearHeaderSearch
+                            if (typeof window.clearHeaderSearch === 'function') {
+                                window.clearHeaderSearch();
+                            }
+                            return;
+                        }
                         addToHistory(keyword);
 
                         const urlParams = new URLSearchParams(window.location.search);
@@ -750,6 +913,11 @@
                                 window.location.href = 'index.php?action=social&q=' + encodeURIComponent(keyword);
                             }
                         } else if (action === 'tasks' || action === 'project_tasks') {
+                            // Cập nhật URL với q parameter
+                            const newUrl = new URL(window.location.href);
+                            newUrl.searchParams.set('q', keyword);
+                            window.history.pushState({}, '', newUrl);
+
                             if (typeof window.highlightTasks === 'function') {
                                 window.highlightTasks(keyword);
                             }
@@ -759,13 +927,6 @@
                     }
 
                     // Event Listeners
-                    $searchInput.on('focus', function () {
-                        if ($(this).val().trim().length === 0) {
-                            renderHistory();
-                        }
-                        $historyDropdown.fadeIn(200);
-                    });
-
                     $searchInput.on('input', function () {
                         const keyword = $(this).val().trim();
                         if (keyword.length > 0) {
@@ -798,14 +959,14 @@
 
                     $('.clear-search-input').on('click', function (e) {
                         e.stopPropagation();
-                        $searchInput.val('').focus();
                         $(this).hide();
+                        $searchInput.val('');
                         renderHistory();
 
-                        const urlParams = new URLSearchParams(window.location.search);
-                        const action = urlParams.get('action') || 'dashboard';
-                        if (action === 'tasks' && typeof window.clearTaskHighlights === 'function') window.clearTaskHighlights();
-                        if (action === 'social' && typeof window.clearSocialSearch === 'function') window.clearSocialSearch();
+                        // Gọi clearHeaderSearch để quay về trang chính của kênh
+                        if (typeof window.clearHeaderSearch === 'function') {
+                            window.clearHeaderSearch();
+                        }
                     });
 
                     $(document).on('click', '.history-item', function (e) {
