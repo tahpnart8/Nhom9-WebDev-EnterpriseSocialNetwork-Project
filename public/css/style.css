@@ -573,8 +573,10 @@ body {
         padding-top: 2rem;
     }
     
-    /* Larger touch targets for mobile */
-    .btn, .form-control {
+    /* Larger touch targets for mobile - only for main navigation buttons, not modal/card buttons */
+    #main-content > .glass-panel-scrollable > .btn,
+    .top-bar-sticky .btn,
+    .top-bar-sticky .form-control {
         min-height: 44px;
     }
     

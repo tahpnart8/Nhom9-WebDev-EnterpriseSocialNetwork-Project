@@ -277,5 +277,24 @@ class ChatController {
         echo json_encode($conversations);
         exit;
     }
+
+    public function deleteConversation() {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+        
+        $convId = intval($_POST['conversation_id'] ?? 0);
+        if (!$convId) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu ID cuộc trò chuyện.']);
+            exit;
+        }
+        
+        $msgModel = new Message($this->db);
+        if ($msgModel->deleteConversation($convId, $_SESSION['user_id'])) {
+            echo json_encode(['success' => true, 'message' => 'Đã xóa cuộc trò chuyện.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Không thể xóa. Bạn không có quyền hoặc đã xảy ra lỗi.']);
+        }
+        exit;
+    }
 }
 

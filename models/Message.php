@@ -198,5 +198,28 @@ class Message {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row['cnt'] ?? 0;
     }
+
+    // Xóa cuộc trò chuyện (chỉ cho phép nếu user là thành viên)
+    public function deleteConversation($conversationId, $userId) {
+        // Kiểm tra user có phải thành viên không
+        $check = $this->conn->prepare("SELECT 1 FROM conversation_members WHERE conversation_id = :cid AND user_id = :uid");
+        $check->execute([':cid' => $conversationId, ':uid' => $userId]);
+        if (!$check->fetch()) return false;
+
+        try {
+            $this->conn->beginTransaction();
+            // Xóa tin nhắn
+            $this->conn->prepare("DELETE FROM messages WHERE conversation_id = :cid")->execute([':cid' => $conversationId]);
+            // Xóa thành viên
+            $this->conn->prepare("DELETE FROM conversation_members WHERE conversation_id = :cid")->execute([':cid' => $conversationId]);
+            // Xóa cuộc hội thoại
+            $this->conn->prepare("DELETE FROM conversations WHERE id = :cid")->execute([':cid' => $conversationId]);
+            $this->conn->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->conn->rollBack();
+            return false;
+        }
+    }
 }
 ?>

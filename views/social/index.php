@@ -203,7 +203,10 @@
                                 <?php endif; ?>
                                 <div>
                                     <h6 class="mb-0 fw-bold text-dark post-author-name">
-                                        <?php echo htmlspecialchars($post['full_name']); ?></h6>
+                                        <a href="index.php?action=profile&id=<?php echo $post['author_id']; ?>" class="text-dark text-decoration-none" style="cursor:pointer;">
+                                            <?php echo htmlspecialchars($post['full_name']); ?>
+                                        </a>
+                                    </h6>
                                     <p class="text-muted small mb-0 d-flex gap-2 align-items-center">
                                         <span><?php echo htmlspecialchars($post['role_name']); ?></span> •
                                         <span><?php echo date('H:i d/m/Y', strtotime($post['created_at'])); ?></span> •

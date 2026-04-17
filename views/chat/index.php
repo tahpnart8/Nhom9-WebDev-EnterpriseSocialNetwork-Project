@@ -143,6 +143,36 @@
         border-radius: 8px;
         margin-bottom: 2px;
         text-decoration: none;
+        position: relative;
+    }
+
+    .chat-item .btn-delete-conv {
+        display: none;
+        position: absolute;
+        right: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: none;
+        background: #fee2e2;
+        color: #ef4444;
+        font-size: 0.75rem;
+        align-items: center;
+        justify-content: center;
+        z-index: 2;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .chat-item:hover .btn-delete-conv {
+        display: flex;
+    }
+
+    .chat-item .btn-delete-conv:hover {
+        background: #ef4444;
+        color: white;
     }
 
     .chat-item:hover {
@@ -745,6 +775,10 @@
                                 <?php endif; ?>
                             </p>
                         </div>
+                        <button class="btn-delete-conv" title="Xóa cuộc trò chuyện"
+                            onclick="event.preventDefault(); event.stopPropagation(); deleteConversation(<?php echo $conv['id']; ?>);">
+                            <i class="bi bi-trash3"></i>
+                        </button>
                     </a>
                 <?php endforeach; ?>
             </div>
@@ -1571,6 +1605,17 @@
             }, 500);
         });
     });
+    // Xóa cuộc trò chuyện
+    function deleteConversation(convId) {
+        if (!confirm('Bạn có chắc chắn muốn xóa cuộc trò chuyện này? Tất cả tin nhắn sẽ bị xóa vĩnh viễn.')) return;
+        $.post('index.php?action=api_delete_conversation', { conversation_id: convId }, function(res) {
+            if (res.success) {
+                window.location.href = 'index.php?action=chat';
+            } else {
+                alert(res.message || 'Có lỗi xảy ra.');
+            }
+        }, 'json');
+    }
 </script>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>

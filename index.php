@@ -141,6 +141,7 @@ $routes = [
     'api_manage_members' => [$chatController, 'api_manage_members'],
     'api_handle_membership_request' => [$chatController, 'api_handle_membership_request'],
     'api_update_group_settings' => [$chatController, 'api_update_group_settings'],
+    'api_delete_conversation' => [$chatController, 'deleteConversation'],
 
     'profile' => [$profileController, 'index'],
     'api_update_profile' => [$profileController, 'updateProfile'],
