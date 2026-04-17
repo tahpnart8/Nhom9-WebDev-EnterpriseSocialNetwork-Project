@@ -10,12 +10,12 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
-            --primary-bg: #1a1d21;
-            --secondary-bg: #24292e;
+            --primary-bg: #f8f9fa;
+            --secondary-bg: #ffffff;
             --accent-color: #0d6efd;
-            --card-border: #30363d;
-            --text-main: #e6edf3;
-            --text-muted: #8b949e;
+            --card-border: #dee2e6;
+            --text-main: #212529;
+            --text-muted: #6c757d;
         }
         body { background-color: var(--primary-bg); color: var(--text-main); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .navbar { background-color: var(--secondary-bg); border-bottom: 1px solid var(--card-border); }
@@ -26,7 +26,7 @@
         .badge-status { font-size: 0.75rem; padding: 0.35rem 0.65rem; border-radius: 20px; }
         .brand-logo { font-weight: 800; color: var(--accent-color); font-size: 1.4rem; }
         .nav-link { color: var(--text-muted) !important; font-weight: 500; }
-        .nav-link.active { color: #fff !important; }
+        .nav-link.active { color: var(--text-main) !important; font-weight: 600; }
         .btn-action { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.2s; }
         .modal-content { background-color: var(--secondary-bg); border: 1px solid var(--card-border); }
         .form-control, .form-select { background-color: var(--primary-bg); border-color: var(--card-border); color: var(--text-main); }
@@ -34,7 +34,7 @@
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark sticky-top mb-4">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top mb-4 shadow-sm">
         <div class="container">
             <a class="navbar-brand brand-logo" href="index.php?action=admin_dashboard">Relioo Super Admin</a>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -50,7 +50,7 @@
                     </li>
                 </ul>
                 <div class="d-flex align-items-center">
-                    <a href="index.php?action=logout" class="btn btn-outline-light btn-sm">Đăng xuất</a>
+                    <a href="index.php?action=logout" class="btn btn-outline-danger btn-sm">Đăng xuất</a>
                 </div>
             </div>
         </div>
@@ -83,8 +83,8 @@
                             </td>
                             <td><?= htmlspecialchars($c['industry'] ?: 'N/A') ?></td>
                             <td>
-                                <span class="badge bg-dark border border-secondary"><?= $c['max_users'] ?> Users</span>
-                                <span class="badge bg-dark border border-secondary"><?= $c['max_departments'] ?> Depts</span>
+                                <span class="badge bg-light text-dark border border-secondary"><?= $c['max_users'] ?> Users</span>
+                                <span class="badge bg-light text-dark border border-secondary"><?= $c['max_departments'] ?> Depts</span>
                             </td>
                             <td>
                                 <?php if($c['status'] == 'approved'): ?>
@@ -122,7 +122,7 @@
                 <ul class="pagination pagination-sm justify-content-center">
                     <?php for($i=1; $i<=$totalPages; $i++): ?>
                         <li class="page-item <?= ($i == $page) ? 'active' : '' ?>">
-                            <a class="page-link bg-dark border-secondary text-white" href="index.php?action=manage_companies&page=<?= $i ?>"><?= $i ?></a>
+                            <a class="page-link bg-white border-secondary text-dark" href="index.php?action=manage_companies&page=<?= $i ?>"><?= $i ?></a>
                         </li>
                     <?php endfor; ?>
                 </ul>
@@ -135,8 +135,8 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header border-bottom-0">
-                    <h5 class="modal-title">Chỉnh sửa Không gian Doanh nghiệp</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title text-dark">Chỉnh sửa Không gian Doanh nghiệp</h5>
+                    <button type="button" class="btn-close text-dark" data-bs-dismiss="modal"></button>
                 </div>
                 <form id="edit-form">
                     <input type="hidden" name="id" id="edit-id">

@@ -9,18 +9,20 @@
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        body { background-color: #212529; color: #fff; }
-        .navbar { background-color: #343a40; border-bottom: 1px solid #495057; }
-        .card { background-color: #343a40; border: 1px solid #495057; }
-        .table { color: #fff; }
-        .table-hover tbody tr:hover { color: #fff; background-color: #495057; }
-        .table th { border-bottom-color: #6c757d; }
-        .table td, .table th { border-top-color: #495057; }
-        .brand-logo { font-weight: 700; color: #17a2b8; font-size: 1.5rem; letter-spacing: -1px; }
+        body { background-color: #f8f9fa; color: #212529; }
+        .navbar { background-color: #ffffff; border-bottom: 1px solid #dee2e6; }
+        .card { background-color: #ffffff; border: 1px solid #dee2e6; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
+        .table { color: #212529; }
+        .table-hover tbody tr:hover { color: #212529; background-color: #f1f3f5; }
+        .table th { border-bottom-color: #dee2e6; color: #6c757d; }
+        .table td, .table th { border-top-color: #dee2e6; }
+        .brand-logo { font-weight: 700; color: #0d6efd; font-size: 1.5rem; letter-spacing: -1px; }
+        .nav-link { color: #6c757d !important; font-weight: 500; }
+        .nav-link.active { color: #212529 !important; font-weight: 600; }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark sticky-top mb-4">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top mb-4 shadow-sm">
         <div class="container">
             <a class="navbar-brand brand-logo" href="index.php?action=admin_super_dashboard">Relioo Super Admin</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -39,8 +41,8 @@
                     </li>
                 </ul>
                 <div class="d-flex align-items-center">
-                    <span class="me-3 text-light small d-none d-md-inline">Xin chào, <?= htmlspecialchars($_SESSION['full_name']) ?></span>
-                    <a href="index.php?action=logout" class="btn btn-outline-light btn-sm">Đăng xuất</a>
+                    <span class="me-3 text-dark fw-medium small d-none d-md-inline">Xin chào, <?= htmlspecialchars($_SESSION['full_name']) ?></span>
+                    <a href="index.php?action=logout" class="btn btn-outline-danger btn-sm">Đăng xuất</a>
                 </div>
             </div>
         </div>
