@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 100.72.177.39
--- Generation Time: Apr 17, 2026 at 02:21 PM
+-- Generation Time: Apr 17, 2026 at 06:22 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -421,6 +421,14 @@ CREATE TABLE `conversations` (
   `requires_approval` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `conversations`
+--
+
+INSERT INTO `conversations` (`id`, `type`, `name`, `created_at`, `avatar_url`, `created_by`, `requires_approval`) VALUES
+(2, 'Direct', NULL, '2026-04-17 19:37:02', NULL, NULL, 0),
+(11, 'Group', 'dui', '2026-04-17 19:51:39', NULL, 3, 0);
+
 -- --------------------------------------------------------
 
 --
@@ -433,6 +441,17 @@ CREATE TABLE `conversation_members` (
   `last_read_at` datetime DEFAULT current_timestamp(),
   `role` enum('admin','member') DEFAULT 'member'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `conversation_members`
+--
+
+INSERT INTO `conversation_members` (`conversation_id`, `user_id`, `last_read_at`, `role`) VALUES
+(2, 2, '2026-04-17 23:21:08', 'member'),
+(2, 8, '2026-04-17 19:39:00', 'member'),
+(11, 2, '2026-04-17 23:21:03', 'member'),
+(11, 3, '2026-04-17 21:57:48', 'admin'),
+(11, 8, '2026-04-17 23:13:24', 'member');
 
 -- --------------------------------------------------------
 
@@ -457,7 +476,8 @@ INSERT INTO `departments` (`id`, `company_id`, `dept_name`, `description`, `crea
 (2, 1, 'Phòng Nhân sự', 'Quản lý con người và văn hóa công ty', '2026-04-17 18:17:00'),
 (3, 1, 'Phòng Marketing', 'Truyền thông và quảng bá sản phẩm', '2026-04-17 18:17:00'),
 (4, 1, 'Phòng Kinh doanh', 'Phát triển thị trường và doanh số', '2026-04-17 18:17:00'),
-(5, 1, 'Phòng CSKH', 'Hỗ trợ và chăm sóc khách hàng', '2026-04-17 18:17:00');
+(5, 1, 'Phòng CSKH', 'Hỗ trợ và chăm sóc khách hàng', '2026-04-17 18:17:00'),
+(6, 1, 'Phòng HUHU', 'Khóc lóc, kể lể, ăn vạ', '2026-04-17 22:55:56');
 
 -- --------------------------------------------------------
 
@@ -488,6 +508,19 @@ CREATE TABLE `messages` (
   `created_at` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data for table `messages`
+--
+
+INSERT INTO `messages` (`id`, `conversation_id`, `sender_id`, `content`, `created_at`) VALUES
+(6, 2, 8, 'ê thg P', '2026-04-17 19:37:38'),
+(8, 2, 2, 'alo', '2026-04-17 19:38:40'),
+(9, 2, 8, 'UI', '2026-04-17 19:38:45'),
+(13, 11, 3, 'hello', '2026-04-17 19:51:43'),
+(17, 11, 2, 'XIN CHÀO MỌI NGƯỜI !!!🥳', '2026-04-17 22:18:43'),
+(18, 11, 2, 'XIN CHÀO MỌI NGƯỜI !!!🥳', '2026-04-17 22:18:47'),
+(19, 2, 2, 'chào nha', '2026-04-17 23:21:08');
+
 -- --------------------------------------------------------
 
 --
@@ -509,7 +542,22 @@ CREATE TABLE `notifications` (
 --
 
 INSERT INTO `notifications` (`id`, `company_id`, `type`, `trigger_user_id`, `content`, `target_url`, `created_at`) VALUES
-(1, 1, 'GLOBAL_BROADCAST', 1, '[HỆ THỐNG]: hello', 'index.php?action=dashboard', '2026-04-17 18:24:02');
+(1, 1, 'GLOBAL_BROADCAST', 1, '[HỆ THỐNG]: hello', 'index.php?action=dashboard', '2026-04-17 18:24:02'),
+(3, 1, 'task_assigned', 3, 'Bạn được giao việc trong Task mới: CẢI TẠO LẠI HỆ THỐNG RELIOO', 'index.php?action=tasks', '2026-04-17 19:43:38'),
+(4, 1, 'task_assigned', 3, 'Bạn được giao việc trong Task mới: ádasd', 'index.php?action=tasks', '2026-04-17 19:47:17'),
+(5, 1, 'task_approval', 8, 'Nhân viên Trần Hùng đã gửi duyệt subtask: Công việc con 2 cho Task 1 của Project 1', 'index.php?action=tasks&subtask_id=3', '2026-04-17 19:49:24'),
+(6, 1, 'task_approved', 3, 'Subtask \'Công việc con 2 cho Task 1 của Project 1\' đã được DUYỆT! Vui lòng kéo subtask sang cột Hoàn thành và viết báo cáo AI.', 'index.php?action=tasks', '2026-04-17 19:49:56'),
+(7, 1, 'task_rejected', 3, 'Subtask \'Công việc con 2 cho Task 1 của Project 1\' bị TỪ CHỐI: sadadda', 'index.php?action=tasks&subtask_id=3', '2026-04-17 20:04:34'),
+(8, 1, 'task_assigned', 3, 'Bạn được giao việc trong Task mới: Thử lỗi chức năng tạo', 'index.php?action=tasks', '2026-04-17 20:59:37'),
+(9, 1, 'task_assigned', 3, 'Bạn được giao 1 việc mới trong Task: Thử lỗi chức năng tạo', 'index.php?action=tasks', '2026-04-17 21:00:12'),
+(10, 1, 'task_assigned', 3, 'Bạn được giao việc trong Task mới: reger', 'index.php?action=tasks', '2026-04-17 21:09:59'),
+(11, 1, 'task_assigned', 3, 'Bạn được giao 1 việc mới trong Task: reger', 'index.php?action=tasks', '2026-04-17 21:10:09'),
+(12, 1, 'task_approval', 8, 'Nhân viên Trần Hùng đã gửi duyệt subtask: Công việc con 1 cho Task 2 của Project 2', 'index.php?action=tasks&subtask_id=14', '2026-04-17 22:01:34'),
+(13, 1, 'task_assigned', 3, 'Bạn được giao 1 việc mới trong Task: Thử lỗi chức năng tạo', 'index.php?action=tasks', '2026-04-17 22:02:36'),
+(14, 1, 'task_approval', 8, 'Nhân viên Trần Hùng đã gửi duyệt subtask: Ê THẰNG HÙNG', 'index.php?action=tasks&subtask_id=35', '2026-04-17 22:03:31'),
+(15, 1, 'task_approved', 3, 'Subtask \'Ê THẰNG HÙNG\' đã được DUYỆT! Vui lòng kéo subtask sang cột Hoàn thành và viết báo cáo AI.', 'index.php?action=tasks', '2026-04-17 22:03:53'),
+(16, 1, 'task_approval', 8, 'Nhân viên Trần Hùng đã gửi duyệt subtask: Tạo bố cục mới', 'index.php?action=tasks&subtask_id=29', '2026-04-17 23:06:36'),
+(17, 1, 'task_approved', 3, 'Subtask \'Tạo bố cục mới\' đã được DUYỆT! Vui lòng kéo subtask sang cột Hoàn thành và viết báo cáo AI.', 'index.php?action=tasks', '2026-04-17 23:09:11');
 
 -- --------------------------------------------------------
 
@@ -529,7 +577,20 @@ CREATE TABLE `notification_user` (
 --
 
 INSERT INTO `notification_user` (`notification_id`, `user_id`, `is_read`, `read_at`) VALUES
-(1, 2, 1, '2026-04-17 18:26:24');
+(1, 2, 1, '2026-04-17 18:26:24'),
+(3, 13, 0, NULL),
+(4, 16, 0, NULL),
+(5, 2, 1, '2026-04-17 21:59:43'),
+(6, 8, 1, '2026-04-17 23:13:18'),
+(7, 8, 1, '2026-04-17 23:13:18'),
+(9, 17, 0, NULL),
+(11, 18, 0, NULL),
+(12, 2, 0, NULL),
+(13, 8, 1, '2026-04-17 23:13:18'),
+(14, 3, 0, NULL),
+(15, 8, 1, '2026-04-17 23:13:18'),
+(16, 3, 0, NULL),
+(17, 8, 1, '2026-04-17 23:13:18');
 
 -- --------------------------------------------------------
 
@@ -557,7 +618,9 @@ CREATE TABLE `posts` (
 INSERT INTO `posts` (`id`, `company_id`, `author_id`, `department_id`, `task_report_id`, `visibility`, `content_html`, `is_ai_generated`, `created_at`, `updated_at`) VALUES
 (1, 1, 2, NULL, NULL, 'Public', 'Chào mừng toàn thể anh chị em đến với ngôi nhà chung TechMinds Global! 🚀', 0, '2026-04-17 18:17:00', '2026-04-17 18:17:00'),
 (2, 1, 3, NULL, NULL, 'Public', 'Dự án AI Assistant đang tiến triển rất tốt, cảm ơn team Kỹ thuật nhé!', 0, '2026-04-17 18:17:00', '2026-04-17 18:17:00'),
-(3, 1, 2, NULL, NULL, 'Announcement', '🔈 Thông báo: Thứ 2 tuần sau chúng ta sẽ có buổi Teambuilding tại văn phòng.', 0, '2026-04-17 18:17:00', '2026-04-17 18:17:00');
+(3, 1, 2, NULL, NULL, 'Announcement', '🔈 Thông báo: Thứ 2 tuần sau chúng ta sẽ có buổi Teambuilding tại văn phòng.', 0, '2026-04-17 18:17:00', '2026-04-17 18:17:00'),
+(5, 1, 8, NULL, NULL, 'Public', 'Năm sau xây cái cơ sở như này nha các sếp', 0, '2026-04-17 20:13:00', '2026-04-17 20:13:00'),
+(8, 1, 8, 1, 6, 'Department', '<div class=\'ai-post\'><h6 class=\'fw-bold text-primary mb-2\'>🚀 Báo cáo tiến độ: Tạo bố cục mới</h6>&quot;Báo Cáo Tiến Độ: Tạo Bố Cục Mới<br />\n<br />\nChúng tôi đã hoàn thành việc tạo bố cục mới với phong cách hiện đại. Quá trình thực hiện đã được hỗ trợ bởi công nghệ AI, giúp tăng tốc và hiệu quả.<br />\n<br />\nMột số kinh nghiệm rút ra từ dự án này là việc cần sử dụng ngôn ngữ prompt chính xác để tối ưu hóa hiệu suất của AI. Đồng thời, kiểm tra kỹ dữ liệu đầu vào cũng là một bước quan trọng để đảm bảo kết quả chính xác.<br />\n<br />\nDự án này đã mang lại thành công với bố cục mới hiện đại, và chúng tôi sẽ tiếp tục áp dụng những kinh nghiệm này vào các dự án tiếp theo.&quot; #TạoBốCụcMới #HiệnĐại #CôngNghệAI<div class=\'mt-3 border-top pt-2\'><small class=\'text-muted\'><i class=\'bi bi-robot me-1\'></i> Hỗ trợ bởi Relioo AI</small></div></div>', 1, '2026-04-17 23:16:54', '2026-04-17 23:16:54');
 
 -- --------------------------------------------------------
 
@@ -584,6 +647,13 @@ CREATE TABLE `post_media` (
   `media_type` enum('Image','Video') DEFAULT 'Image',
   `media_url` varchar(500) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `post_media`
+--
+
+INSERT INTO `post_media` (`id`, `post_id`, `media_type`, `media_url`) VALUES
+(2, 5, 'Image', 'https://i.ibb.co/bMBckFRh/php-E161.png');
 
 -- --------------------------------------------------------
 
@@ -713,7 +783,7 @@ CREATE TABLE `subtasks` (
 INSERT INTO `subtasks` (`id`, `task_id`, `assignee_id`, `title`, `description`, `deadline`, `priority`, `status`, `completion_rating`, `created_at`, `updated_at`, `feedback`, `is_extended`, `is_rejected`, `is_approved`, `extension_requested_at`, `requested_deadline`, `extension_reason`) VALUES
 (1, 1, 8, 'Công việc con 0 cho Task 1 của Project 1', NULL, '2026-04-30 00:00:00', 'Medium', 'Done', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
 (2, 1, 10, 'Công việc con 1 cho Task 1 của Project 1', NULL, '2026-04-30 00:00:00', 'Low', 'In Progress', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
-(3, 1, 8, 'Công việc con 2 cho Task 1 của Project 1', NULL, '2026-04-30 00:00:00', 'Medium', 'In Progress', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
+(3, 1, 8, 'Công việc con 2 cho Task 1 của Project 1', NULL, '2026-04-30 00:00:00', 'Medium', 'To Do', NULL, '2026-04-17 18:17:00', '2026-04-17 20:04:34', 'sadadda', 0, 1, 0, NULL, NULL, NULL),
 (4, 2, 7, 'Công việc con 0 cho Task 2 của Project 1', NULL, '2026-04-30 00:00:00', 'Low', 'Done', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
 (5, 2, 12, 'Công việc con 1 cho Task 2 của Project 1', NULL, '2026-04-30 00:00:00', 'Low', 'In Progress', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
 (6, 2, 4, 'Công việc con 2 cho Task 2 của Project 1', NULL, '2026-04-30 00:00:00', 'Low', 'In Progress', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
@@ -724,7 +794,7 @@ INSERT INTO `subtasks` (`id`, `task_id`, `assignee_id`, `title`, `description`, 
 (11, 4, 20, 'Công việc con 1 cho Task 1 của Project 2', NULL, '2026-04-30 00:00:00', 'High', 'In Progress', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
 (12, 4, 17, 'Công việc con 2 cho Task 1 của Project 2', NULL, '2026-04-30 00:00:00', 'Low', 'In Progress', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
 (13, 5, 6, 'Công việc con 0 cho Task 2 của Project 2', NULL, '2026-04-30 00:00:00', 'High', 'Done', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
-(14, 5, 8, 'Công việc con 1 cho Task 2 của Project 2', NULL, '2026-04-30 00:00:00', 'Medium', 'In Progress', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
+(14, 5, 8, 'Công việc con 1 cho Task 2 của Project 2', NULL, '2026-04-30 00:00:00', 'Medium', 'Pending', NULL, '2026-04-17 18:17:00', '2026-04-17 22:01:34', NULL, 0, 0, 0, NULL, NULL, NULL),
 (15, 5, 22, 'Công việc con 2 cho Task 2 của Project 2', NULL, '2026-04-30 00:00:00', 'Low', 'In Progress', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
 (16, 6, 22, 'Công việc con 0 cho Task 3 của Project 2', NULL, '2026-04-30 00:00:00', 'Low', 'Done', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
 (17, 6, 10, 'Công việc con 1 cho Task 3 của Project 2', NULL, '2026-04-30 00:00:00', 'High', 'In Progress', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
@@ -737,7 +807,9 @@ INSERT INTO `subtasks` (`id`, `task_id`, `assignee_id`, `title`, `description`, 
 (24, 8, 3, 'Công việc con 2 cho Task 2 của Project 3', NULL, '2026-04-30 00:00:00', 'Low', 'In Progress', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
 (25, 9, 20, 'Công việc con 0 cho Task 3 của Project 3', NULL, '2026-04-30 00:00:00', 'Medium', 'Done', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
 (26, 9, 14, 'Công việc con 1 cho Task 3 của Project 3', NULL, '2026-04-30 00:00:00', 'Low', 'In Progress', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
-(27, 9, 5, 'Công việc con 2 cho Task 3 của Project 3', NULL, '2026-04-30 00:00:00', 'Medium', 'In Progress', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL);
+(27, 9, 5, 'Công việc con 2 cho Task 3 của Project 3', NULL, '2026-04-30 00:00:00', 'Medium', 'In Progress', NULL, '2026-04-17 18:17:00', '2026-04-17 18:17:00', NULL, 0, 0, 0, NULL, NULL, NULL),
+(28, 10, 13, 'Chọn bảng màu', 'ưu tiên màu hồng', '2026-04-18 00:00:00', 'High', 'To Do', NULL, '2026-04-17 19:43:37', '2026-04-17 19:43:37', NULL, 0, 0, 0, NULL, NULL, NULL),
+(29, 10, 8, 'Tạo bố cục mới', 'hiện đại', '2026-04-18 00:00:00', 'High', 'Done', NULL, '2026-04-17 19:43:38', '2026-04-17 23:16:54', NULL, 0, 0, 1, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -753,6 +825,15 @@ CREATE TABLE `subtask_attachments` (
   `uploaded_at` datetime DEFAULT current_timestamp(),
   `notes` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `subtask_attachments`
+--
+
+INSERT INTO `subtask_attachments` (`id`, `subtask_id`, `file_name`, `file_url`, `uploaded_at`, `notes`) VALUES
+(1, 3, 'Note/Link', NULL, '2026-04-17 19:49:24', 'ewfwef'),
+(3, 14, 'Note/Link', NULL, '2026-04-17 22:01:34', 'dad'),
+(5, 29, 'Note/Link', NULL, '2026-04-17 23:06:36', 'https://docs.google.com/document/d/1i8hlHvh3shgKzKT9yhzJY0HYbuLLGayvhum6z2IkOz0/edit?tab=t.ltnu1ajavs2d');
 
 -- --------------------------------------------------------
 
@@ -790,7 +871,8 @@ INSERT INTO `tasks` (`id`, `company_id`, `project_id`, `assigned_leader_id`, `de
 (6, 1, 2, NULL, 3, 2, 'Task 3 của Project 2', 'Mô tả chi tiết cho Task 3 của Project 2', 'Medium', '2026-05-01 00:00:00', 'In Progress', 'Pending', NULL, '2026-04-17 18:17:00'),
 (7, 1, 3, NULL, 1, 2, 'Task 1 của Project 3', 'Mô tả chi tiết cho Task 1 của Project 3', 'Medium', '2026-05-01 00:00:00', 'In Progress', 'Pending', NULL, '2026-04-17 18:17:00'),
 (8, 1, 3, NULL, 2, 2, 'Task 2 của Project 3', 'Mô tả chi tiết cho Task 2 của Project 3', 'Medium', '2026-05-01 00:00:00', 'In Progress', 'Pending', NULL, '2026-04-17 18:17:00'),
-(9, 1, 3, NULL, 3, 2, 'Task 3 của Project 3', 'Mô tả chi tiết cho Task 3 của Project 3', 'Medium', '2026-05-01 00:00:00', 'In Progress', 'Pending', NULL, '2026-04-17 18:17:00');
+(9, 1, 3, NULL, 3, 2, 'Task 3 của Project 3', 'Mô tả chi tiết cho Task 3 của Project 3', 'Medium', '2026-05-01 00:00:00', 'In Progress', 'Pending', NULL, '2026-04-17 18:17:00'),
+(10, 1, NULL, NULL, 1, 3, 'CẢI TẠO LẠI HỆ THỐNG RELIOO', 'Iu bộ phận kỹ thuật', 'High', '2026-04-24 00:00:00', 'To Do', 'Pending', NULL, '2026-04-17 19:43:37');
 
 -- --------------------------------------------------------
 
@@ -809,6 +891,13 @@ CREATE TABLE `task_reports` (
   `q3_answer` text DEFAULT NULL,
   `ai_generated_content` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `task_reports`
+--
+
+INSERT INTO `task_reports` (`id`, `subtask_id`, `task_id`, `content`, `created_at`, `q1_answer`, `q2_answer`, `q3_answer`, `ai_generated_content`) VALUES
+(6, 29, 10, 'Tạo bố cục mới Report', '2026-04-17 23:16:54', 'Tôi đã sử dụng AI để hỗ trợ tạo bố cụ', 'Cần prompt đúng cách để không lãng phí token AI', 'Cần check kỹ dữ liệu đầu vào cho AI để tránh trường hợp AI trả kết quả sai ý', '\"Báo Cáo Tiến Độ: Tạo Bố Cục Mới\n\nChúng tôi đã hoàn thành việc tạo bố cục mới với phong cách hiện đại. Quá trình thực hiện đã được hỗ trợ bởi công nghệ AI, giúp tăng tốc và hiệu quả.\n\nMột số kinh nghiệm rút ra từ dự án này là việc cần sử dụng ngôn ngữ prompt chính xác để tối ưu hóa hiệu suất của AI. Đồng thời, kiểm tra kỹ dữ liệu đầu vào cũng là một bước quan trọng để đảm bảo kết quả chính xác.\n\nDự án này đã mang lại thành công với bố cục mới hiện đại, và chúng tôi sẽ tiếp tục áp dụng những kinh nghiệm này vào các dự án tiếp theo.\" #TạoBốCụcMới #HiệnĐại #CôngNghệAI');
 
 -- --------------------------------------------------------
 
@@ -851,7 +940,7 @@ INSERT INTO `users` (`id`, `company_id`, `department_id`, `role_id`, `username`,
 (5, 1, 3, 2, 'emp_3', '$2y$10$.MuWbsyaeUyzYlDPf1yh4e0inZfxR40nQ2SbTdL7tofUBha3vDEqq', 'Trần Chi', 'emp_3@techminds.com', NULL, 'https://i.pravatar.cc/150?u=emp_3', NULL, '2026-04-17 18:17:00', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
 (6, 1, 4, 2, 'emp_4', '$2y$10$.MuWbsyaeUyzYlDPf1yh4e0inZfxR40nQ2SbTdL7tofUBha3vDEqq', 'Hoàng Dũng', 'emp_4@techminds.com', NULL, 'https://i.pravatar.cc/150?u=emp_4', NULL, '2026-04-17 18:17:00', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
 (7, 1, 5, 2, 'emp_5', '$2y$10$.MuWbsyaeUyzYlDPf1yh4e0inZfxR40nQ2SbTdL7tofUBha3vDEqq', 'Phạm Em', 'emp_5@techminds.com', NULL, 'https://i.pravatar.cc/150?u=emp_5', NULL, '2026-04-17 18:17:00', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
-(8, 1, 1, 3, 'emp_6', '$2y$10$.MuWbsyaeUyzYlDPf1yh4e0inZfxR40nQ2SbTdL7tofUBha3vDEqq', 'Trần Hùng', 'emp_6@techminds.com', NULL, 'https://i.pravatar.cc/150?u=emp_6', NULL, '2026-04-17 18:17:00', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
+(8, 1, 1, 3, 'emp_6', '$2y$10$.MuWbsyaeUyzYlDPf1yh4e0inZfxR40nQ2SbTdL7tofUBha3vDEqq', 'Trần Hùng', 'emp_6@techminds.com', '', 'https://i.pravatar.cc/150?u=emp_6', NULL, '2026-04-17 18:17:00', 1, 'https://i.ibb.co/tMyRfTy1/dc64afa587aa.jpg', '', '', '', '', NULL, 0),
 (9, 1, 2, 3, 'emp_7', '$2y$10$.MuWbsyaeUyzYlDPf1yh4e0inZfxR40nQ2SbTdL7tofUBha3vDEqq', 'Bùi Hải', 'emp_7@techminds.com', NULL, 'https://i.pravatar.cc/150?u=emp_7', NULL, '2026-04-17 18:17:00', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
 (10, 1, 3, 3, 'emp_8', '$2y$10$.MuWbsyaeUyzYlDPf1yh4e0inZfxR40nQ2SbTdL7tofUBha3vDEqq', 'Lê Lâm', 'emp_8@techminds.com', NULL, 'https://i.pravatar.cc/150?u=emp_8', NULL, '2026-04-17 18:17:00', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
 (11, 1, 4, 3, 'emp_9', '$2y$10$.MuWbsyaeUyzYlDPf1yh4e0inZfxR40nQ2SbTdL7tofUBha3vDEqq', 'Hoàng Minh', 'emp_9@techminds.com', NULL, 'https://i.pravatar.cc/150?u=emp_9', NULL, '2026-04-17 18:17:00', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
@@ -865,7 +954,8 @@ INSERT INTO `users` (`id`, `company_id`, `department_id`, `role_id`, `username`,
 (19, 1, 2, 3, 'emp_17', '$2y$10$.MuWbsyaeUyzYlDPf1yh4e0inZfxR40nQ2SbTdL7tofUBha3vDEqq', 'Phạm Yến', 'emp_17@techminds.com', NULL, 'https://i.pravatar.cc/150?u=emp_17', NULL, '2026-04-17 18:17:00', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
 (20, 1, 3, 3, 'emp_18', '$2y$10$.MuWbsyaeUyzYlDPf1yh4e0inZfxR40nQ2SbTdL7tofUBha3vDEqq', 'Trần Khoa', 'emp_18@techminds.com', NULL, 'https://i.pravatar.cc/150?u=emp_18', NULL, '2026-04-17 18:17:00', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
 (21, 1, 4, 3, 'emp_19', '$2y$10$.MuWbsyaeUyzYlDPf1yh4e0inZfxR40nQ2SbTdL7tofUBha3vDEqq', 'Nguyễn Thịnh', 'emp_19@techminds.com', NULL, 'https://i.pravatar.cc/150?u=emp_19', NULL, '2026-04-17 18:17:00', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
-(22, 1, 5, 3, 'emp_20', '$2y$10$.MuWbsyaeUyzYlDPf1yh4e0inZfxR40nQ2SbTdL7tofUBha3vDEqq', 'Đỗ Đạt', 'emp_20@techminds.com', NULL, 'https://i.pravatar.cc/150?u=emp_20', NULL, '2026-04-17 18:17:00', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0);
+(22, 1, 5, 3, 'emp_20', '$2y$10$.MuWbsyaeUyzYlDPf1yh4e0inZfxR40nQ2SbTdL7tofUBha3vDEqq', 'Đỗ Đạt', 'emp_20@techminds.com', NULL, 'https://i.pravatar.cc/150?u=emp_20', NULL, '2026-04-17 18:17:00', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0),
+(23, 1, 1, 3, 'hailong2107', '$2y$10$aR8FXoEQEyTKvp6XBDxv5etgcAgNE81fkYhBQwB6MICJai83bu1Zu', 'Nguyễn Lê Hải Long', 'whitenguyen902@gmail.com', NULL, NULL, NULL, '2026-04-17 22:55:14', 1, NULL, NULL, NULL, NULL, NULL, NULL, 0);
 
 --
 -- Indexes for dumped tables
@@ -1086,13 +1176,13 @@ ALTER TABLE `companies`
 -- AUTO_INCREMENT for table `conversations`
 --
 ALTER TABLE `conversations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `departments`
 --
 ALTER TABLE `departments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `membership_requests`
@@ -1104,19 +1194,19 @@ ALTER TABLE `membership_requests`
 -- AUTO_INCREMENT for table `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `posts`
 --
 ALTER TABLE `posts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `post_edit_history`
@@ -1128,19 +1218,19 @@ ALTER TABLE `post_edit_history`
 -- AUTO_INCREMENT for table `post_media`
 --
 ALTER TABLE `post_media`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `post_reactions`
 --
 ALTER TABLE `post_reactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `projects`
 --
 ALTER TABLE `projects`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `roles`
@@ -1152,31 +1242,31 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT for table `subtasks`
 --
 ALTER TABLE `subtasks`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
 
 --
 -- AUTO_INCREMENT for table `subtask_attachments`
 --
 ALTER TABLE `subtask_attachments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `tasks`
 --
 ALTER TABLE `tasks`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `task_reports`
 --
 ALTER TABLE `task_reports`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- Constraints for dumped tables
