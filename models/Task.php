@@ -109,6 +109,30 @@ class Task {
         return false;
     }
 
+    // Cập nhật Task
+    public function update($task_id, $title, $description, $priority, $deadline, $project_id = null) {
+        $query = "UPDATE " . $this->table_name . " 
+                  SET title = :title, 
+                      description = :desc, 
+                      priority = :priority, 
+                      deadline = :deadline,
+                      project_id = :project_id,
+                      updated_at = CURRENT_TIMESTAMP 
+                  WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':title', $title);
+        $stmt->bindParam(':desc', $description);
+        $stmt->bindParam(':priority', $priority);
+        $stmt->bindParam(':deadline', $deadline);
+        if ($project_id == NULL) {
+            $stmt->bindValue(':project_id', NULL, PDO::PARAM_NULL);
+        } else {
+            $stmt->bindParam(':project_id', $project_id);
+        }
+        $stmt->bindParam(':id', $task_id);
+        return $stmt->execute();
+    }
+
     // Cập nhật trạng thái Task
     public function updateStatus($task_id, $status) {
         $query = "UPDATE " . $this->table_name . " SET status = :status WHERE id = :id";

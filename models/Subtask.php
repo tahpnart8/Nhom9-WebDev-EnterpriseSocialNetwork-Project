@@ -20,7 +20,7 @@ class Subtask {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // CEO xem tất cả Subtask toàn công ty
+    // CEO xem tất cả Subtask toàn công ty (đã hỗ trợ lọc theo Project)
     public function getAll() {
         $query = "SELECT s.*, t.title as task_title, t.priority, u.full_name as assignee_name
                   FROM " . $this->table_name . " s
@@ -32,16 +32,36 @@ class Subtask {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // Lấy subtask theo phòng ban (cho Leader)
-    public function getByDepartment($department_id) {
+    // Lấy subtask theo Dự án (cho CEO/Admin)
+    public function getByProject($project_id) {
         $query = "SELECT s.*, t.title as task_title, t.priority, u.full_name as assignee_name
                   FROM " . $this->table_name . " s
                   JOIN tasks t ON s.task_id = t.id
                   JOIN users u ON s.assignee_id = u.id
-                  WHERE t.department_id = :dept_id
+                  WHERE t.project_id = :project_id
                   ORDER BY s.deadline ASC";
         $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':project_id', $project_id);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Lấy subtask theo phòng ban (cho Leader), hỗ trợ lọc Project
+    public function getByDepartment($department_id, $project_id = null) {
+        $query = "SELECT s.*, t.title as task_title, t.priority, u.full_name as assignee_name
+                  FROM " . $this->table_name . " s
+                  JOIN tasks t ON s.task_id = t.id
+                  JOIN users u ON s.assignee_id = u.id
+                  WHERE t.department_id = :dept_id";
+        if ($project_id) {
+            $query .= " AND t.project_id = :project_id";
+        }
+        $query .= " ORDER BY s.deadline ASC";
+        $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':dept_id', $department_id);
+        if ($project_id) {
+            $stmt->bindParam(':project_id', $project_id);
+        }
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -69,16 +89,22 @@ class Subtask {
         return ($row['cnt'] > 0);
     }
 
-    // Lấy subtask được giao cho nhân viên cụ thể (Staff view)
-    public function getByAssignee($user_id) {
+    // Lấy subtask được giao cho nhân viên cụ thể (Staff view), hỗ trợ lọc Project
+    public function getByAssignee($user_id, $project_id = null) {
         $query = "SELECT s.*, t.title as task_title, t.priority, u.full_name as assignee_name
                   FROM " . $this->table_name . " s
                   JOIN tasks t ON s.task_id = t.id
                   JOIN users u ON s.assignee_id = u.id
-                  WHERE s.assignee_id = :user_id
-                  ORDER BY s.deadline ASC";
+                  WHERE s.assignee_id = :user_id";
+        if ($project_id) {
+            $query .= " AND t.project_id = :project_id";
+        }
+        $query .= " ORDER BY s.deadline ASC";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':user_id', $user_id);
+        if ($project_id) {
+            $stmt->bindParam(':project_id', $project_id);
+        }
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -121,6 +147,25 @@ class Subtask {
             return $this->conn->lastInsertId();
         }
         return false;
+    }
+
+    // Cập nhật Subtask (Leader/CEO)
+    public function update($subtask_id, $title, $description, $assignee_id, $deadline, $priority) {
+        $query = "UPDATE " . $this->table_name . " 
+                  SET title = :title, 
+                      description = :desc, 
+                      assignee_id = :assignee_id, 
+                      deadline = :deadline, 
+                      priority = :priority 
+                  WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':title', $title);
+        $stmt->bindParam(':desc', $description);
+        $stmt->bindParam(':assignee_id', $assignee_id);
+        $stmt->bindParam(':deadline', $deadline);
+        $stmt->bindParam(':priority', $priority);
+        $stmt->bindParam(':id', $subtask_id);
+        return $stmt->execute();
     }
 
     // Cập nhật trạng thái subtask (kéo thả hoặc nút bấm) - Tích hợp đồng bộ Task cha

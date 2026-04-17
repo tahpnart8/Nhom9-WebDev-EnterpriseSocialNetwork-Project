@@ -1,5 +1,5 @@
 **Trạng thái:** `[x] Hoàn thành` |  `[ ] Tiếp tục phát triển`
-**Mục tiêu:** Cấp bậc hóa quy trình quản lý (CEO -> Trưởng phòng -> Nhân viên) thông qua việc phân chia Dự án (Projects), Công việc lớn (Tasks) và Công việc nhỏ (Subtasks). Tích hợp Relioo AI báo cáo tự động và liên kết tới Social Core.
+**Mục tiêu:** Cấp bậc hóa quy trình quản lý (CEO -> Trưởng phòng -> Nhân viên) thông qua việc phân chia Dự án (Projects), Công việc lớn (Tasks) và Công việc nhỏ (Subtasks). Tích hợp Relioo AI báo cáo tự động và liên kết tới Social Core. Bổ sung tính năng chỉnh sửa linh hoạt.
 
 ---
 
@@ -232,8 +232,32 @@ Theo phản hồi của User, Trưởng phòng (Role 2) cần giữ lại các T
 **Mục tiêu:** Hiển thị bài đăng dưới dạng Markdown đẹp mắt, hỗ trợ tốt cho các báo cáo AI và nâng cao trải nghiệm người dùng.
 
 ### Các hạng mục chính:
-*   [ ] Tích hợp `marked.js` và `DOMPurify` (CDN).
-*   [ ] Xây dựng hệ thống CSS Markdown phong cách Premium.
-*   [ ] Cập nhật Newfeed (`social/index.php`) để render Markdown.
-*   [ ] Cập nhật Modal chi tiết bài viết (`header.php`) để render Markdown.
-*   [ ] Kiểm thử hiển thị tiêu đề, danh sách, mã nguồn và bảng biểu.
+*   [x] Tích hợp `marked.js` và `DOMPurify` (CDN).
+*   [x] Xây dựng hệ thống CSS Markdown phong cách Premium.
+*   [x] Cập nhật Newfeed (`social/index.php`) để render Markdown.
+*   [x] Cập nhật Modal chi tiết bài viết (`header.php`) để render Markdown.
+*   [x] Kiểm thử hiển thị tiêu đề, danh sách, mã nguồn và bảng biểu.
+
+---
+
+## Giai đoạn 10: Chỉnh sửa Task và Subtask nâng cao [MỚI]
+
+**Mục tiêu:** Bổ sung tính năng chỉnh sửa cho Trưởng phòng và CEO để linh hoạt hơn trong quản lý công việc và phân bổ lại nhân sự.
+
+### Các hạng mục chính:
+*   [x] Thêm phương thức `update` vào `Task` và `Subtask` model.
+*   [x] Xây dựng API `apiUpdateTask` và `apiUpdateSubtask` trong `TaskController`.
+*   [x] Thêm icon chỉnh sửa (Pencil) và Modal form tại bảng quản lý Task.
+*   [x] Xử lý đồng bộ thông báo khi thay đổi người thực hiện Subtask.
+*   [x] Tích hợp AJAX cập nhật nội dung tức thì không cần reload thủ công.
+
+---
+
+## Giai đoạn 11: Sửa lỗi lọc dữ liệu theo Project [MỚI]
+
+**Mục tiêu:** Đảm bảo khi vào một dự án cụ thể, bảng Kanban chỉ hiển thị đúng các công việc thuộc dự án đó, không hiển thị tràn lan các công việc khác.
+
+### Các hạng mục chính:
+*   [x] Cập nhật `Subtask` model: Thêm/Sửa các phương thức lấy dữ liệu có hỗ trợ tham số `project_id`.
+*   [x] Cập nhật `TaskController`: Truyền bộ lọc `projectIdFilter` vào logic lấy Subtask cho mọi phân quyền (CEO, Leader, Staff).
+*   [x] Kiểm thử: Xác nhận bảng "Tiến độ" (Kanban) hiển thị chính xác theo context dự án.

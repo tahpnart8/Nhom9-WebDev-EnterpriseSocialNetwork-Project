@@ -111,3 +111,28 @@ Chuyển đổi quy trình quản lý "phẳng" (Task-Subtask) sang quy trình c
         - Cập nhật logic Chỉnh sửa bài viết: Tự động lấy nội dung raw Markdown thay vì text đã bị xử lý.
         - Thêm script khởi tạo tự động render toàn bộ Newfeed khi tải trang.
 - **Kết quả:** Các báo cáo AI từ CEO và Trưởng phòng giờ đây hiển thị gạch đầu dòng, tô đậm, và phân cấp tiêu đề cực kỳ chuyên nghiệp. Các bài đăng thủ công của người dùng cũng hỗ trợ Markdown đầy đủ.
+
+---
+### Giai đoạn 10: Chỉnh sửa Task và Subtask [17/04/2026]
+- **Mục tiêu:** Bổ sung khả năng chỉnh sửa linh hoạt cho cấp quản lý.
+- **Thay đổi chính:**
+    - **Models:** Thêm phương thức `update` cho `Task` và `Subtask` để hỗ trợ cập nhật dữ liệu vào DB.
+    - **TaskController:** 
+        - Thêm API `apiUpdateTask` và `apiUpdateSubtask`.
+        - Tích hợp thông báo tự động khi thay đổi người thực hiện (assignee).
+    - **Frontend (tasks/index.php):**
+        - Thêm nút Edit (biểu tượng Pencil) vào tiêu đề Task và các thẻ Subtask.
+        - Xây dựng 2 Modal mới: `editTaskModal` và `editSubtaskModal`.
+        - Viết JS logic để fetch dữ liệu cũ và gửi yêu cầu cập nhật qua AJAX.
+- **Kết quả:** Trưởng phòng và CEO có thể dễ dàng sửa sai, thay đổi tiến độ hoặc điều chuyển công việc giữa các nhân viên mà không cần xóa đi tạo lại.
+
+---
+### Giai đoạn 11: Sửa lỗi lọc dữ liệu theo Project [17/04/2026]
+- **Mục tiêu:** Khắc phục lỗi hiển thị tất cả Subtask công ty khi đang trong chế độ lọc theo Project.
+- **Thay đổi chính:**
+    - **Models (Subtask.php):**
+        - Thêm phương thức `getByProject($project_id)` mới.
+        - Cập nhật `getByDepartment` và `getByAssignee` để hỗ trợ lọc thêm theo `project_id`.
+    - **Controllers (TaskController.php):**
+        - Điều chỉnh hàm `index()` để truyền đúng `projectIdFilter` vào tất cả các luồng lấy dữ liệu Subtask.
+- **Kết quả:** Bảng Kanban (Tiến độ) giờ đây hiển thị dữ liệu chính xác và tập trung. Khi CEO vào một dự án cụ thể, họ chỉ thấy các công việc con của dự án đó, giúp quản lý tập trung và hiệu quả hơn.

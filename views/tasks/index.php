@@ -538,10 +538,16 @@
                 $isComplete = ($sCount > 0 && $pct == 100);
                 ?>
                 <div class="column <?php echo $isComplete ? 'task-completed-column' : ''; ?>">
-                    <div class="column-header pointer" onclick="openTaskDetail(<?php echo $task['id']; ?>)">
-                        <h6 class="text-truncate" style="max-width: 75%;"><i
-                                class="bi bi-folder2 me-2"></i><?php echo htmlspecialchars($task['title']); ?></h6>
-                        <span class="badge bg-light text-muted rounded-pill"><?php echo $sCount; ?></span>
+                    <div class="column-header d-flex justify-content-between align-items-center">
+                        <div class="pointer d-flex align-items-center flex-grow-1" onclick="openTaskDetail(<?php echo $task['id']; ?>)" style="max-width: 80%;">
+                            <h6 class="text-truncate mb-0"><i class="bi bi-folder2 me-2"></i><?php echo htmlspecialchars($task['title']); ?></h6>
+                            <span class="badge bg-light text-muted rounded-pill ms-2"><?php echo $sCount; ?></span>
+                        </div>
+                        <?php if ($_SESSION['role_id'] != 3): ?>
+                            <button class="btn btn-link btn-sm p-0 text-muted me-1" title="Chỉnh sửa Task" onclick="event.stopPropagation(); openEditTaskModal(<?php echo $task['id']; ?>)">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
+                        <?php endif; ?>
                     </div>
                     <div class="task-progress">
                         <div class="progress-bar-wrap">
@@ -558,7 +564,12 @@
                             ?>
                             <div class="task-card <?php echo (($c['is_rejected'] ?? 0) && ($c['status'] ?? '') == 'To Do') ? 'rejected' : ''; ?> <?php echo $isExtended ? 'extended' : ''; ?>"
                                 onclick="openSubtaskDetail(<?php echo $c['id']; ?>)">
-                                <div class="card-name"><?php echo htmlspecialchars($c['title']); ?></div>
+                                <div class="card-name d-flex justify-content-between align-items-start">
+                                    <span class="text-truncate me-2"><?php echo htmlspecialchars($c['title']); ?></span>
+                                    <?php if ($_SESSION['role_id'] != 3): ?>
+                                        <i class="bi bi-pencil pointer text-muted extra-small" onclick="event.stopPropagation(); openEditSubtaskModal(<?php echo $c['id']; ?>)" title="Sửa"></i>
+                                    <?php endif; ?>
+                                </div>
                                 <div class="card-info">
                                     <span class="assignee"><?php echo htmlspecialchars($c['assignee_name']); ?></span>
                                     <div class="d-flex align-items-center gap-1">
@@ -717,28 +728,73 @@
         </div>
     </div>
 </div>
-<!-- Add Subtask -->
-<div class="modal fade" id="addSubtaskModal">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+<!-- Edit Task Modal -->
+<div class="modal fade" id="editTaskModal">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
             <div class="modal-header border-0">
-                <h6 class="modal-title fw-bold">THÊM CÔNG VIỆC CON</h6><button type="button" class="btn-close"
-                    data-bs-dismiss="modal"></button>
+                <h6 class="modal-title fw-bold">CHỈNH SỬA TASK</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="formAddSubtasks">
-                    <input type="hidden" name="task_id" id="addSubtask_taskId">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <label class="form-label small fw-bold mb-0">DANH SÁCH VIỆC CẦN THÊM</label>
-                        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill"
-                            onclick="addSubtaskRow('addSubtaskList')"><i class="bi bi-plus-lg me-1"></i>Thêm
-                            dòng</button>
+                <form id="formEditTask">
+                    <input type="hidden" name="task_id" id="editTask_id">
+                    <div class="mb-3"><label class="form-label small fw-bold">TIÊU ĐỀ TASK</label><input type="text" name="title" id="editTask_title" class="form-control rounded-3" required></div>
+                    <div class="mb-3"><label class="form-label small fw-bold">MÔ TẢ</label><textarea name="description" id="editTask_description" class="form-control rounded-3" rows="3" required></textarea></div>
+                    <div class="row mb-3">
+                        <div class="col-6"><label class="form-label small fw-bold">ƯU TIÊN</label>
+                            <select name="priority" id="editTask_priority" class="form-select rounded-3">
+                                <option value="Low">Thấp</option>
+                                <option value="Medium">Trung bình</option>
+                                <option value="High">Cao</option>
+                            </select>
+                        </div>
+                        <div class="col-6"><label class="form-label small fw-bold">HẠN CHÓT</label><input type="date" name="deadline" id="editTask_deadline" class="form-control rounded-3"></div>
                     </div>
-                    <div id="addSubtaskList"></div>
                 </form>
             </div>
-            <div class="modal-footer border-0"><button class="btn btn-primary w-100 rounded-pill fw-bold"
-                    onclick="saveMultipleSubtasks()">GIAO VIỆC</button></div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">HỦY</button>
+                <button class="btn btn-primary rounded-pill px-4 fw-bold" onclick="updateTask()">LƯU THAY ĐỔI</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Subtask Modal -->
+<div class="modal fade" id="editSubtaskModal">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+            <div class="modal-header border-0">
+                <h6 class="modal-title fw-bold">CHỈNH SỬA CÔNG VIỆC CON</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditSubtask">
+                    <input type="hidden" name="subtask_id" id="editSub_id">
+                    <div class="mb-3"><label class="form-label small fw-bold">TIÊU ĐỀ</label><input type="text" name="title" id="editSub_title" class="form-control rounded-3" required></div>
+                    <div class="mb-3"><label class="form-label small fw-bold">MÔ TẢ</label><textarea name="description" id="editSub_description" class="form-control rounded-3" rows="2"></textarea></div>
+                    <div class="mb-3"><label class="form-label small fw-bold">NGƯỜI THỰC HIỆN</label>
+                        <select name="assignee_id" id="editSub_assignee" class="form-select rounded-3">
+                            <?php foreach ($staffList as $s): ?>
+                                <option value="<?php echo $s['id']; ?>"><?php echo htmlspecialchars($s['full_name']); ?> (<?php echo htmlspecialchars($s['dept_name']); ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6"><label class="form-label small fw-bold">HẠN CHÓT</label><input type="date" name="deadline" id="editSub_deadline" class="form-control rounded-3"></div>
+                        <div class="col-6"><label class="form-label small fw-bold">ƯU TIÊN</label>
+                            <select name="priority" id="editSub_priority" class="form-select rounded-3">
+                                <option value="Low">Thấp</option>
+                                <option value="Medium">Trung bình</option>
+                                <option value="High">Cao</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">HỦY</button>
+                <button class="btn btn-primary rounded-pill px-4 fw-bold" onclick="updateSubtask()">LƯU THAY ĐỔI</button>
+            </div>
         </div>
     </div>
 </div>
@@ -1658,6 +1714,75 @@
                     Swal.fire({ title: 'Đã lưu!', text: res.message, icon: 'success', timer: 1500, showConfirmButton: false }).then(() => location.reload());
                 }
                 else Swal.fire({ title: 'Lỗi!', text: res.message, icon: 'error' });
+            }
+        });
+    }
+
+    // ================= CHỈNH SỬA TASK =================
+    function openEditTaskModal(id) {
+        $.getJSON('index.php?action=api_task_detail&id=' + id, function (res) {
+            if (res.success) {
+                let t = res.data;
+                $('#editTask_id').val(t.id);
+                $('#editTask_title').val(t.title);
+                $('#editTask_description').val(t.description);
+                $('#editTask_priority').val(t.priority || 'Medium');
+                if (t.deadline) {
+                    $('#editTask_deadline').val(t.deadline.split(' ')[0]);
+                }
+                new bootstrap.Modal(document.getElementById('editTaskModal')).show();
+            } else {
+                Swal.fire('Lỗi', res.message, 'error');
+            }
+        });
+    }
+
+    function updateTask() {
+        let fd = new FormData(document.getElementById('formEditTask'));
+        $.ajax({
+            url: 'index.php?action=api_update_task', type: 'POST', data: fd, processData: false, contentType: false, dataType: 'json',
+            success: function (res) {
+                if (res.success) {
+                    Swal.fire({ title: 'Thành công!', text: res.message, icon: 'success', timer: 1200, showConfirmButton: false })
+                        .then(() => location.reload());
+                } else {
+                    Swal.fire('Lỗi', res.message, 'error');
+                }
+            }
+        });
+    }
+
+    // ================= CHỈNH SỬA SUBTASK =================
+    function openEditSubtaskModal(id) {
+        $.getJSON('index.php?action=api_subtask_detail&id=' + id, function (res) {
+            if (res.success) {
+                let s = res.data;
+                $('#editSub_id').val(s.id);
+                $('#editSub_title').val(s.title);
+                $('#editSub_description').val(s.description);
+                $('#editSub_assignee').val(s.assignee_id);
+                $('#editSub_priority').val(s.priority || 'Medium');
+                if (s.deadline) {
+                    $('#editSub_deadline').val(s.deadline.split(' ')[0]);
+                }
+                new bootstrap.Modal(document.getElementById('editSubtaskModal')).show();
+            } else {
+                Swal.fire('Lỗi', res.message, 'error');
+            }
+        });
+    }
+
+    function updateSubtask() {
+        let fd = new FormData(document.getElementById('formEditSubtask'));
+        $.ajax({
+            url: 'index.php?action=api_update_subtask', type: 'POST', data: fd, processData: false, contentType: false, dataType: 'json',
+            success: function (res) {
+                if (res.success) {
+                    Swal.fire({ title: 'Thành công!', text: res.message, icon: 'success', timer: 1200, showConfirmButton: false })
+                        .then(() => location.reload());
+                } else {
+                    Swal.fire('Lỗi', res.message, 'error');
+                }
             }
         });
     }

@@ -51,16 +51,16 @@ class TaskController
                 require_once __DIR__ . '/../views/tasks/projects.php';
                 return;
             } else {
-                $subtasks = $subtaskModel->getAll();
+                $subtasks = $subtaskModel->getByProject($projectIdFilter); // Sửa: gọi getByProject
                 $tasks = $taskModel->getAll($projectIdFilter); // pass project_id
             }
         } elseif ($roleId == 2) {
             // Leader: Always fetch projects for the tab
             $projects = $projectModel->getByDepartment($deptId);
-            $subtasks = $subtaskModel->getByDepartment($deptId);
+            $subtasks = $subtaskModel->getByDepartment($deptId, $projectIdFilter); // Sửa: truyền projectIdFilter
             $tasks = $taskModel->getByDepartment($deptId, $projectIdFilter);
         } else {
-            $subtasks = $subtaskModel->getByAssignee($userId);
+            $subtasks = $subtaskModel->getByAssignee($userId, $projectIdFilter); // Sửa: truyền projectIdFilter
             $tasks = [];
         }
 
@@ -268,6 +268,83 @@ class TaskController
             echo json_encode(['success' => true, 'message' => 'Đã xóa Task và tất cả công việc con!']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi xóa Task!']);
+        }
+        exit;
+    }
+
+    // ========== API: CẬP NHẬT TASK (Leader/CEO) ==========
+    public function apiUpdateTask()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        if ($_SESSION['role_id'] != 1 && $_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 4) {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền chỉnh sửa Task!']);
+            exit;
+        }
+
+        $taskId = $_POST['task_id'] ?? 0;
+        $title = htmlspecialchars(trim($_POST['title'] ?? ''));
+        $description = htmlspecialchars(trim($_POST['description'] ?? ''));
+        $priority = $_POST['priority'] ?? 'Medium';
+        $deadline = $_POST['deadline'] ?? null;
+        $projectId = !empty($_POST['project_id']) ? $_POST['project_id'] : null;
+
+        if (empty($title) || empty($description) || empty($deadline)) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng điền đầy đủ thông tin!']);
+            exit;
+        }
+
+        $taskModel = new Task($this->db);
+        if ($taskModel->update($taskId, $title, $description, $priority, $deadline, $projectId)) {
+            echo json_encode(['success' => true, 'message' => 'Cập nhật Task thành công!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi cập nhật Task!']);
+        }
+        exit;
+    }
+
+    // ========== API: CẬP NHẬT SUBTASK (Leader/CEO) ==========
+    public function apiUpdateSubtask()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        if ($_SESSION['role_id'] != 1 && $_SESSION['role_id'] != 2 && $_SESSION['role_id'] != 4) {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền chỉnh sửa Subtask!']);
+            exit;
+        }
+
+        $subtaskId = $_POST['subtask_id'] ?? 0;
+        $title = htmlspecialchars(trim($_POST['title'] ?? ''));
+        $description = htmlspecialchars(trim($_POST['description'] ?? ''));
+        $assigneeId = $_POST['assignee_id'] ?? 0;
+        $deadline = $_POST['deadline'] ?? null;
+        $priority = $_POST['priority'] ?? 'Medium';
+
+        if (empty($title) || empty($assigneeId) || empty($deadline)) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng điền đầy đủ thông tin!']);
+            exit;
+        }
+
+        $subtaskModel = new Subtask($this->db);
+        $oldSubtask = $subtaskModel->getById($subtaskId);
+
+        if ($subtaskModel->update($subtaskId, $title, $description, $assigneeId, $deadline, $priority)) {
+            // Nếu đổi người thực hiện, thông báo cho người mới
+            if ($oldSubtask && $oldSubtask['assignee_id'] != $assigneeId) {
+                NotificationController::pushNotification(
+                    $this->db,
+                    'task_assigned',
+                    $_SESSION['user_id'],
+                    "Bạn được giao việc mới (thay thế): " . $title,
+                    "index.php?action=tasks",
+                    [$assigneeId]
+                );
+            }
+            echo json_encode(['success' => true, 'message' => 'Cập nhật Subtask thành công!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi cập nhật Subtask!']);
         }
         exit;
     }
