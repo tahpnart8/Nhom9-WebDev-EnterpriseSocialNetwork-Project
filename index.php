@@ -114,6 +114,8 @@ $routes = [
     'api_submit_task_to_ceo' => [$taskController, 'submitTaskToCEO'],
     'api_generate_task_report_for_ceo' => [$taskController, 'apiGenerateTaskReportForCEO'],
     'api_ceo_approve_task' => [$taskController, 'ceoApproveTask'],
+    'api_update_task' => [$taskController, 'apiUpdateTask'],
+    'api_update_subtask' => [$taskController, 'apiUpdateSubtask'],
 
     'api_create_project' => [$projectController, 'createProject'],
     'api_update_project' => [$projectController, 'updateProject'],

@@ -766,6 +766,31 @@
     </div>
 </div>
 
+<!-- Add Subtask Modal -->
+<div class="modal fade" id="addSubtaskModal">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-fullscreen-sm-down">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+            <div class="modal-header border-0">
+                <h6 class="modal-title fw-bold">THÊM CÔNG VIỆC CON</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formAddSubtasks">
+                    <input type="hidden" name="task_id" id="addSubtask_taskId">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label small fw-bold mb-0">DANH SÁCH CÔNG VIỆC</label>
+                        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="addSubtaskRow('addSubtaskList')"><i class="bi bi-plus-lg me-1"></i>Thêm dòng</button>
+                    </div>
+                    <div id="addSubtaskList"></div>
+                </form>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">HỦY</button>
+                <button class="btn btn-primary rounded-pill px-4 fw-bold" onclick="saveMultipleSubtasks()">THÊM NGAY</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Edit Subtask Modal -->
 <div class="modal fade" id="editSubtaskModal">
     <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
