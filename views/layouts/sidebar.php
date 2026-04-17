@@ -4,14 +4,20 @@ $currentAction = $_GET['action'] ?? 'dashboard';
 // Role helper
 $roleId = $_SESSION['role_id'] ?? 3; // Default to staff
 ?>
-<aside class="sidebar">
-    <a href="index.php?action=dashboard" class="brand-logo">
-        <img src="src/logo.png" alt="Logo" style="height: 36px; border-radius: 50%;">
-        Relioo
-    </a>
+<aside class="sidebar offcanvas-lg offcanvas-start border-0 bg-white shadow-sm" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
+    <div class="offcanvas-header d-lg-none d-flex justify-content-between align-items-center pb-0 px-3">
+        <h5 class="offcanvas-title fw-bold text-primary" id="sidebarMenuLabel">Relioo Menu</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
+    </div>
+    
+    <div class="offcanvas-body d-flex flex-column h-100 p-0 px-lg-0">
+        <a href="index.php?action=dashboard" class="brand-logo d-none d-lg-flex mt-2 ms-2">
+            <img src="src/logo.png" alt="Logo" style="height: 36px; border-radius: 50%;">
+            Relioo
+        </a>
 
-    <ul class="sidebar-menu">
-        <li class="menu-label">Điều hướng chính</li>
+        <ul class="sidebar-menu px-3">
+            <li class="menu-label mt-lg-0 mt-3">Điều hướng chính</li>
         
         <li class="menu-item">
             <a href="index.php?action=social" class="menu-link <?php echo $currentAction == 'social' ? 'active' : ''; ?>">
@@ -91,4 +97,5 @@ $roleId = $_SESSION['role_id'] ?? 3; // Default to staff
         </div>
         <i class="bi bi-gear text-muted ms-auto pe-1"></i>
     </a>
+    </div>
 </aside>

@@ -54,6 +54,9 @@
         min-height: 0;
         overflow-x: auto;
         overflow-y: hidden;
+        scroll-behavior: smooth;
+        scroll-snap-type: x mandatory;
+        padding-bottom: 0.5rem;
     }
 
     .board-container::-webkit-scrollbar {
@@ -76,11 +79,11 @@
 
     /* CHẾ ĐỘ 1: TIẾN ĐỘ (5 CỘT) */
     .board-progress {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        display: flex;
+        flex-wrap: nowrap;
         gap: 0.7rem;
-        min-width: 1100px;
         height: 100%;
+        padding-right: 1rem;
     }
 
     /* CHẾ ĐỘ 2: THEO TASK (SCROLL NGANG - inline-flex tạo width tự nhiên) */
@@ -108,7 +111,6 @@
         border-radius: 10px;
     }
 
-    /* CỘT */
     .column {
         background: #ffffff;
         border-radius: 12px;
@@ -117,6 +119,10 @@
         flex-direction: column;
         min-height: 0;
         max-height: 100%;
+        min-width: 280px;
+        width: 300px;
+        flex-shrink: 0;
+        scroll-snap-align: start;
     }
 
     .board-tasks .column {
@@ -664,7 +670,7 @@
 <!-- ==================== MODALS ==================== -->
 <!-- Subtask Detail -->
 <div class="modal fade" id="subtaskDetailModal">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 1.2rem;">
             <div class="modal-header border-0 pb-0">
                 <h6 class="modal-title fw-bold text-primary">CHI TIẾT CÔNG VIỆC</h6>
@@ -676,7 +682,7 @@
 </div>
 <!-- Task Detail -->
 <div class="modal fade" id="taskDetailModal">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 1.2rem;">
             <div class="modal-header border-0 pb-0">
                 <h6 class="modal-title fw-bold">DỰ ÁN / TASK LỚN</h6>
@@ -688,7 +694,7 @@
 </div>
 <!-- Create Task -->
 <div class="modal fade" id="createTaskModal">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
             <div class="modal-header border-0">
                 <h6 class="modal-title fw-bold">TẠO TASK MỚI</h6><button type="button" class="btn-close"
@@ -730,7 +736,7 @@
 </div>
 <!-- Edit Task Modal -->
 <div class="modal fade" id="editTaskModal">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-fullscreen-sm-down">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
             <div class="modal-header border-0">
                 <h6 class="modal-title fw-bold">CHỈNH SỬA TASK</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -762,7 +768,7 @@
 
 <!-- Edit Subtask Modal -->
 <div class="modal fade" id="editSubtaskModal">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
             <div class="modal-header border-0">
                 <h6 class="modal-title fw-bold">CHỈNH SỬA CÔNG VIỆC CON</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button>

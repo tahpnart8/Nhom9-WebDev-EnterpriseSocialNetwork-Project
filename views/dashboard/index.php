@@ -3,13 +3,13 @@
 <div class="glass-panel-scrollable h-100">
 <div class="row g-4 mt-1">
     <div class="col-12">
-        <div class="alert border-0 bg-primary relioo-card p-4 d-flex align-items-center gap-4 mb-0 shadow-sm" style="background-color: var(--primary-color) !important;">
-            <div class="fs-1 text-primary bg-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 70px; height: 70px;">
+        <div class="alert border-0 bg-primary relioo-card p-4 d-flex flex-column flex-md-row align-items-center gap-3 gap-md-4 mb-0 shadow-sm text-center text-md-start" style="background-color: var(--primary-color) !important;">
+            <div class="fs-1 text-primary bg-white rounded-circle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 70px; height: 70px;">
                 <i class="bi bi-emoji-smile"></i>
             </div>
             <div>
-                <h4 class="fw-bold text-white mb-1">Chào mừng quay trở lại, <?php echo htmlspecialchars($_SESSION['full_name'], ENT_QUOTES, 'UTF-8'); ?>!</h4>
-                <p class="mb-0 text-white opacity-75">Bắt đầu phiên làm việc mới thật hiệu quả với Relioo nhé.</p>
+                <h4 class="fw-bold text-white mb-2 mb-md-1 fs-5 fs-md-4">Chào mừng quay trở lại, <?php echo htmlspecialchars($_SESSION['full_name'], ENT_QUOTES, 'UTF-8'); ?>!</h4>
+                <p class="mb-0 text-white opacity-75 small">Bắt đầu phiên làm việc mới thật hiệu quả với Relioo nhé.</p>
             </div>
         </div>
     </div>
@@ -117,13 +117,15 @@
         <!-- Giao diện STAFF -->
         <div class="col-md-4">
             <div class="relioo-card p-4 text-center h-100 d-flex flex-column justify-content-center shadow-sm">
-                <div class="icon-box bg-light rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                <div class="icon-box bg-light rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 60px; height: 60px;">
                     <i class="bi bi-kanban text-primary fs-3"></i>
                 </div>
                 <h6 class="text-muted text-uppercase fw-bold mb-2">Công việc đang làm</h6>
                 <h2 class="fw-bold mb-0 text-primary"><?php echo intval($subtaskStats['inprogress_subtasks'] ?? 0); ?></h2>
                 <p class="text-muted small mb-1 mt-2">Tổng số việc được giao: <?php echo intval($subtaskStats['total_subtasks'] ?? 0); ?></p>
-                <a href="index.php?action=tasks" class="btn btn-outline-primary btn-sm mt-3 rounded-pill px-4 mx-auto" style="width: fit-content;">Đi tới Kanban</a>
+                <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-3">
+                    <a href="index.php?action=tasks" class="btn btn-outline-primary rounded-pill px-4">Đi tới Kanban</a>
+                </div>
             </div>
         </div>
         

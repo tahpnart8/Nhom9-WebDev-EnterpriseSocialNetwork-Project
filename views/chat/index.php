@@ -625,11 +625,36 @@
         color: var(--ms-text-muted);
         background: var(--ms-bg);
     }
+    
+    /* MOBILE OPTIMIZATION */
+    @media (max-width: 991.98px) {
+        .chat-sidebar {
+            width: 100%;
+            /* Bỏ viền thừa */
+            border-right: none;
+        }
+        
+        .chat-main {
+            width: 100%;
+        }
+
+        /* Logic SPA trên mobile: nếu $activeConvId trống -> hiện sidebar, ẩn main. Nếu có -> ẩn sidebar, hiện main */
+        .chat-sidebar.mobile-hide {
+            display: none !important;
+        }
+        .chat-main.mobile-hide {
+            display: none !important;
+        }
+
+        .chat-main-header {
+            padding: 0.5rem;
+        }
+    }
 </style>
 
 <div class="chat-layout">
     <!-- Cột Trái -->
-    <div class="chat-sidebar">
+    <div class="chat-sidebar <?php echo !empty($activeConvId) ? 'mobile-hide' : ''; ?>">
         <div class="chat-sidebar-header">
             <h4>Đoạn chat</h4>
             <div class="d-flex gap-2">
@@ -750,7 +775,7 @@
     </div>
 
     <!-- Cột Giữa -->
-    <div class="chat-main" data-active-conv="<?php echo $activeConvId ?? ''; ?>">
+    <div class="chat-main <?php echo empty($activeConvId) ? 'mobile-hide' : ''; ?>" data-active-conv="<?php echo $activeConvId ?? ''; ?>">
         <?php if ($activeConvId): ?>
             <div class="chat-main-header">
                 <?php
@@ -781,6 +806,9 @@
                 }
                 ?>
                 <div class="header-info-block" id="btnToggleRightSidebar">
+                    <a href="index.php?action=chat" class="d-lg-none me-2 text-dark text-decoration-none bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" onclick="event.stopPropagation();">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
                     <div class="chat-avatar" style="width: 40px; height: 40px;">
                         <?php if ($displayHeaderAvatar): ?>
                             <img src="<?php echo htmlspecialchars($displayHeaderAvatar); ?>">

@@ -315,3 +315,81 @@ Theo phản hồi của User, Trưởng phòng (Role 2) cần giữ lại các T
 
 ---
 **NẾU BẠN DUYỆT KẾ HOẠCH NÀY, VUI LÒNG PHẢN HỒI LẠI TRONG KHUNG CHAT LÀ "Proceed" HOẶC "Đồng ý", TÔI SẼ BẮT ĐẦU CODE CÁC THAY ĐỔI.**
+
+---
+
+## Giai đoạn 13: Cải thiện UI/UX và Thiết kế lại Trang Đăng nhập [MỚI LÊN KẾ HOẠCH]
+
+**Mục tiêu:** Nâng cấp và hiện đại hóa giao diện của Relioo, tối ưu hóa sự đồng bộ của tone màu hồng chủ đạo, sửa các lỗi tương phản màu sắc, thiết kế mới trang đăng nhập và tích hợp lối tắt cho Admin. **Tuyệt đối giữ nguyên nền tảng Bootstrap đang sử dụng.**
+
+### 1. Phân tích Yêu cầu
+- **Lỗi tương phản:** Một số vị trí có chữ cùng màu với nền (background) gây khó đọc. Cần chuẩn hóa lại bảng màu (Color Palette).
+- **Trang đăng nhập (Login Page):** Giao diện chia màn hình (Split screen). Trái là form đăng nhập, phải là hình nền (`src/hinh-nen-mau-hong-13-1.jpg`) với thông điệp "Relioo Xin chào".
+- **Lối tắt Admin:** Bổ sung nút chuyển hướng đến trang đăng nhập Admin trực tiếp từ trang đăng nhập người dùng (nhằm phục vụ việc demo dễ dàng).
+- **Giao diện toàn hệ thống:** Cải thiện hệ thống Card, Box-shadow, Padding và Typography cho cả màn hình người dùng lẫn Super Admin trông phẳng (flat) và hiện đại hơn.
+
+### 2. Chi tiết Triển khai
+- **Cấu trúc lại CSS (`assets/css/style.css`):**
+  - Khai báo các root CSS variables (`:root`) cho các dải màu hồng (Pink Palette) để tái sử dụng xuyên suốt giao diện.
+  - Fix các lỗi text contrast bằng cách thêm class `.text-white` hoặc `.text-dark` vào các thẻ có nền đậm/nhạt tương ứng.
+  - Tinh chỉnh `.card`, `.btn`, `.form-control` để góc bo tròn hơn (rounded) và box-shadow mượt mà, mang lại cảm giác premium.
+- **Trang Đăng nhập (`views/auth/login.php`):**
+  - Cấu trúc lại bằng hệ thống Grid của Bootstrap (`row`, `col-md-6`).
+  - Cột phải: Thuộc tính `background-image` trỏ tới `src/hinh-nen-mau-hong-13-1.jpg`, `background-size: cover`, kết hợp dải gradient hoặc text cover nổi bật dòng chữ "Relioo Xin chào".
+  - Cột trái: Căn giữa form đăng nhập. Thêm nút "Đăng nhập Admin" (btn-outline-secondary hoặc btn-light) sử dụng thẻ `<a>` trỏ link về `?action=admin_secret_portal`.
+- **Cải thiện UI Admin Dashboard (`views/admin_super/`):**
+  - Áp dụng chung bảng màu và CSS variables mới để navbar, sidebar và danh sách công ty trông gọn gàng, đồng điệu với web tổng.
+
+### 3. File tác động dự kiến
+- `assets/css/style.css`
+- `views/auth/login.php`
+- `views/layouts/header.php`, `views/admin_super/header.php`
+- Các view danh sách như `views/tasks/index.php`, `views/social/index.php` (sửa nhỏ lẻ các nút bấm sai màu).
+
+---
+**NẾU BẠN DUYỆT BỔ SUNG NÀY, VUI LÒNG PHẢN HỒI "Đồng ý" ĐỂ TÔI BẮT ĐẦU CODE.**
+
+---
+
+## Giai đoạn 14: Tối ưu Toàn diện Giao diện Mobile (Mobile-First Optimization) [MỚI LÊN KẾ HOẠCH]
+
+**Mục tiêu:** Cải thiện triệt để trải nghiệm người dùng trên thiết bị di động (Smartphone/Tablet). Đảm bảo giao diện không bị vỡ thẻ, thao tác cảm ứng mượt mà và chuyển hướng thông minh cho màn hình nhỏ, trong khi vẫn duy trì thiết kế Flat Premium.
+
+### 1. Phân tích Các Vấn đề Hiện tại trên Mobile
+- **Khung Điều hướng (Navigation):** Sidebar hiện tại đang chiếm diện tích ngang hoặc bị co ép khó nhìn trên màn hình nhỏ. Cần chuyển thành dạng Offcanvas (Menu trượt ngang) điều khiển bằng nút Hamburger.
+- **Thanh Công cụ ngang (Topbar):** Nút thông báo, chat và thanh tìm kiếm có thể dẫn đến tràn màn hình. Ô tìm kiếm cần linh hoạt: thu gọn thành 1 nút kính lúp, chỉ mở rộng ra khi bấm vào (hoặc đưa vào menu).
+- **Trải nghiệm Kanban & Bảng tin:** Bảng Task dạng cột song song dễ làm UI bị bóp méo. Cảnh báo cuộn ngang quá khó trên điện thoại.
+- **Giao diện Nhắn tin (Chat SPA):** Giao diện chat hai cột (danh sách user và hộp thoại) sẽ bị ép bẹp trên điện thoại. Cần thiết kế trên điện thoại hiển thị 1 màn hình: danh sách user trước, nhấn vào mới vào hộp chat.
+- **Dashboard & Báo cáo:** Khối lượng thống kê quá dày cần stack thành 1 cột dọc (flex-column) thay vì cố phân bổ lưới lưới nhiều cột trên Mobile.
+- **Nộp Task & Cập nhật Trạng thái:** Các Form modal quá to, bị cuộn chồng méo mó. Cải tiến độ cao modal form.
+- **Không gian hiển thị (Paddings):** Các khoảng trắng (`gap`, `padding: 1.5rem`) tạo cho Desktop cần thu hẹp lại (`padding: 1rem` hoặc `0.75rem`) trên mobile để nhường diện tích cho nội dung.
+- **Kích thước Cảm ứng (Touch Targets):** Các nút bấm và input cần có độ cao tối thiểu 44px để dễ chạm.
+
+### 2. Chi tiết Triển khai
+- **Cơ chế Offcanvas Sidebar (`views/layouts/header.php`, `style.css`):**
+  - Cập nhật CSS: Trên màn hình dưới `992px` (điện thoại, tablet), ẩn `.sidebar` gốc và chuyển nó sang cơ chế `.offcanvas`. 
+  - Đặt một nút Hamburger (Menu toggle) phía trước tiêu đề trang ở `.top-bar-sticky` để bật tắt menu.
+- **Tinh chỉnh Topbar (Mobile Header):**
+  - Giảm `font-size` của tiêu đề (Page Title) trên màn hình nhỏ.
+  - Ẩn khung tìm kiếm dài (`.topbar-search-form`), chuyển thành một icon Search riêng biệt, khi nhấn vào mới làm mờ nền hiển thị ô nhập liệu hoặc hiện dropdown.
+- **Tối ưu Bảng tin Social (`views/social/index.php`):**
+  - Giảm padding của `.relioo-card` từ `p-4` xuống `p-3` trên mobile. Đoạn padding ở màng lưới Feed cũng được giảm xuống `gap-2` hoặc `gap-3`.
+  - Fix modal chi tiết bài viết to thành `modal-fullscreen-sm-down` để xem mượt hơn, tránh cuộn kép tốn diện tích.
+- **Xử lý Kanban Board & Nộp Task (`views/tasks/index.php`, modal nộp task):**
+  - Sử dụng CSS `.flex-nowrap` kèm `.overflow-x-auto` và `scroll-snap-type: x mandatory` để tạo trải nghiệm vuốt ngang các cột mượt mà.
+  - Áp dụng class `.modal-fullscreen-sm-down` hoặc `.modal-dialog-scrollable` vào các hộp thoại cập nhật trạng thái / xin nghỉ (leave / submit task) trên di động để gõ bàn phím không bị lấp form.
+- **Giao diện Chat (`views/chat/index.php`):**
+  - Ẩn cột danh sách user khi mở hộp chat và cung cấp một nút 'Back' để quay lại danh sách user (hoặc sử dụng Bootstrap offcanvas cho danh sách user trên màn hình <=768px).
+- **Dashboard (`views/dashboard.php`):**
+  - Stack cấu trúc thành Col-12 cho mọi widget thống kê khi xem trên smartphone. Nút call-to-action cần full-width.
+
+### 3. File tác động dự kiến
+- `assets/css/style.css` (hoặc `public/css/style.css` tùy cấu trúc)
+- `views/layouts/header.php`
+- `views/tasks/index.php`
+- `views/social/index.php`
+- `views/chat/index.php`
+- `views/dashboard/index.php` (hoặc `views/dashboard.php`)
+
+---
+**Trạng thái:** Đã bắt đầu thực thi theo yêu cầu người dùng.

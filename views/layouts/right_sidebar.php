@@ -1,4 +1,4 @@
-<aside class="right-sidebar">
+<aside class="right-sidebar d-none d-xl-flex flex-column gap-3">
     <!-- Box: Bảng xếp hạng (TÍNH NĂNG MỚI TỪ PROCEDURE) - Chỉ hiện ở Social -->
     <?php if (($currentAction ?? '') === 'social' && !empty($leaderboard)): ?>
         <div class="relioo-card p-0 border-0 shadow-sm overflow-hidden bg-white">

@@ -7,13 +7,13 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #212529; color: #fff; }
-        .login-card { background-color: #343a40; border: 1px solid #495057; border-radius: 1rem; box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.5); }
-        .brand-logo { font-weight: 700; color: #17a2b8; font-size: 2.2rem; letter-spacing: -1px; display: flex; align-items: center; justify-content: center; gap: 12px; }
-        .form-control { background-color: #495057; color: #fff; border-color: #6c757d; }
-        .form-control:focus { background-color: #495057; color: #fff; border-color: #17a2b8; box-shadow: 0 0 0 0.25rem rgba(23, 162, 184, 0.25); }
+        .login-card { background-color: #343a40; border: 1px solid #495057; border-radius: 1.5rem; box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.5); }
+        .brand-logo { font-weight: 700; color: #ff4d4f; font-size: 2.5rem; letter-spacing: -1px; display: flex; align-items: center; justify-content: center; gap: 12px; }
+        .form-control { background-color: #495057; color: #fff; border-color: #6c757d; border-radius: 0.75rem; }
+        .form-control:focus { background-color: #495057; color: #fff; border-color: #ff4d4f; box-shadow: 0 0 0 0.25rem rgba(255, 77, 79, 0.25); }
         .form-floating > label { color: #ced4da; }
-        .btn-primary { background-color: #17a2b8; border-color: #17a2b8; color: #fff; }
-        .btn-primary:hover, .btn-primary:focus { background-color: #138496; border-color: #117a8b; }
+        .btn-primary { background-color: #ff4d4f; border-color: #ff4d4f; color: #fff; border-radius: 50rem; padding: 0.75rem; }
+        .btn-primary:hover, .btn-primary:focus { background-color: #e63e40; border-color: #e63e40; }
     </style>
 </head>
 <body class="d-flex align-items-center py-4 min-vh-100">

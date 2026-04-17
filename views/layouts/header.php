@@ -225,8 +225,12 @@
             <!-- Topbar (Search, Notifications, Chat, Logout) - Balanced 3-Section Layout -->
             <div class="top-bar-sticky">
                 <!-- Left: Page Title / Channel Name -->
-                <div class="flex-shrink-0" style="min-width: 220px;">
-                    <h3 class="fw-bold mb-0 text-dark"><?php echo htmlspecialchars($pageTitle ?? 'Tổng quan'); ?></h3>
+                <div class="flex-shrink-0 d-flex align-items-center" style="min-width: 200px;">
+                    <!-- Hamburger Menu Button (Mobile Only) -->
+                    <button class="btn btn-light border-0 shadow-sm d-lg-none me-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" style="width:40px; height:40px;">
+                        <i class="bi bi-list fs-5"></i>
+                    </button>
+                    <h3 class="fw-bold mb-0 text-dark fs-4"><?php echo htmlspecialchars($pageTitle ?? 'Tổng quan'); ?></h3>
                 </div>
 
                 <!-- Spacer -->
