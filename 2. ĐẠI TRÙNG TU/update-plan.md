@@ -224,8 +224,7 @@ Theo phản hồi của User, Trưởng phòng (Role 2) cần giữ lại các T
 ---
 **NẾU BẠN DUYỆT SỬA LỖI NÀY, VUI LÒNG PHẢN HỒI "Proceed".**
 
-
-
+---
 
 ## Giai đoạn 9: Tích hợp Markdown cho Mạng xã hội
 
@@ -261,3 +260,58 @@ Theo phản hồi của User, Trưởng phòng (Role 2) cần giữ lại các T
 *   [x] Cập nhật `Subtask` model: Thêm/Sửa các phương thức lấy dữ liệu có hỗ trợ tham số `project_id`.
 *   [x] Cập nhật `TaskController`: Truyền bộ lọc `projectIdFilter` vào logic lấy Subtask cho mọi phân quyền (CEO, Leader, Staff).
 *   [x] Kiểm thử: Xác nhận bảng "Tiến độ" (Kanban) hiển thị chính xác theo context dự án.
+
+---
+
+## Giai đoạn 12: Thiết kế Phân quyền Admin Tối cao & Không gian Doanh nghiệp (Multi-tenant) [ĐANG LÊN KẾ HOẠCH]
+
+**Mục tiêu:** Nâng cấp hệ thống từ đơn doanh nghiệp sang mô hình cung cấp dịch vụ (SaaS/Multi-tenant). Xây dựng cơ chế để CEO đăng ký không gian làm việc (Workspace) riêng, và thiết lập quyền Admin (`role_id = 4`) đóng vai trò quản lý cao nhất toàn hệ thống.
+
+### 1. Phân tích Yêu cầu Mới
+- **Luồng Đăng ký (CEO):** Trang đăng nhập sẽ có thêm nút "Đăng ký tạo không gian doanh nghiệp". Form yêu cầu: Tên công ty, Lĩnh vực, Thông tin CEO (Họ tên, Email, SĐT, Mật khẩu mong muốn).
+- **Phân quyền Admin (`role_id = 4`):**
+  - **Quản lý Cấp phép:** Admin duyệt các đơn đăng ký. Khi được duyệt, hệ thống tạo bản ghi Công ty, và tạo tài khoản cho CEO được gắn với Công ty đó.
+  - **Thao tác Dữ liệu (Super User):** Admin có quyền lực cao nhất, không bị giới hạn bởi không gian của một công ty cụ thể, có thể xem, sửa, xóa bất kỳ dữ liệu nào (Users, Projects, Posts...) trên toàn hệ thống.
+- **Kiến trúc Dữ liệu (Multi-tenant):**
+  - Dữ liệu của các công ty phải được cô lập hoàn toàn. Nhân viên/CEO công ty A không thể xem dữ liệu (bài đăng, task, phòng ban) của công ty B.
+
+### 2. Thiết kế Cơ sở Dữ liệu (Database Design)
+- **Tạo bảng mới `companies` (Doanh nghiệp):**
+  - `id` (INT, PK, AUTO_INCREMENT)
+  - `company_name` (VARCHAR 255)
+  - `industry` (VARCHAR 255)
+  - `ceo_name` (VARCHAR 255), `ceo_email` (VARCHAR 255), `ceo_phone` (VARCHAR 20)
+  - `status` (ENUM: 'pending', 'approved', 'rejected') - Mặc định 'pending'.
+  - `created_at`, `updated_at` (DATETIME)
+- **Nâng cấp Cấu trúc Đa doanh nghiệp (Multi-tenant Migration):**
+  - Thêm cột `company_id` (INT, FK tới `companies`) vào toàn bộ các bảng nòng cốt: `users`, `departments`, `projects`, `tasks`, `posts`, `comments`, `notifications`.
+  - Quản trị viên (Admin) sẽ có `company_id = NULL` vì họ là người của toàn hệ thống.
+
+### 3. Thiết kế Chức năng (Backend & Frontend)
+#### 3.1. Luồng Đăng ký Không gian Doanh nghiệp
+- Thêm link/button "Đăng ký tạo không gian doanh nghiệp" tại `views/auth/login.php`.
+- Xây dựng giao diện `views/auth/register_company.php`.
+- Cập nhật `AuthController.php` thêm phương thức tiếp nhận form, lưu dữ liệu tạm vào bảng `companies` với trạng thái `pending`.
+
+#### 3.2. Dashboard dành cho Admin & Xét duyệt
+- **Cổng Đăng Nhập Ẩn (Secret Portal):** Tạo một đường dẫn riêng biệt (ví dụ: `/?action=admin_secret_portal`) trỏ tới `views/admin_super/login.php` để Admin đăng nhập. Tại trang đăng nhập thường, nếu nhập tài khoản Admin sẽ bị từ chối hoặc báo lỗi không tồn tại để tránh lộ.
+- Sau khi đăng nhập thành công qua cổng ẩn, điều hướng về `/views/admin_super/dashboard.php`.
+- Xây dựng bảng hiển thị các `companies` đang ở trạng thái `pending`.
+- **Logic Duyệt (Approve):**
+  - Đổi trạng thái `companies.status = 'approved'`.
+  - Tự động tạo 1 bản ghi vào bảng `users` (`role_id = 1` - CEO, `company_id` vừa duyệt, mật khẩu lấy từ form đăng ký).
+
+#### 3.3. Cô lập Dữ liệu (Workspace Isolation)
+- Khi User đăng nhập thành công, lưu `$_SESSION['company_id']`.
+- **Cập nhật SQL Models & Stored Procedures:** Rà soát và thêm điều kiện `WHERE company_id = :company_id` vào TẤT CẢ các câu lệnh SQL (chọn phòng ban, hiển thị bài viết, hiển thị dự án).
+- **Đặc quyền Admin:** Nếu `$_SESSION['role_id'] == 4`, các câu lệnh SQL sẽ tự động bỏ qua điều kiện lọc `company_id`, cho phép Admin truy vấn chéo toàn hệ thống và thực hiện các thao tác quản trị cao cấp.
+
+### 4. Các file bị tác động dự kiến
+- **Database:** Script ALTER quy mô lớn (`06_multi_tenant.sql`).
+- **Models:** `Company.php` (mới), cập nhật tất cả models hiện có (`User`, `Department`, `Project`, `Post`...).
+- **Controllers:** `AuthController.php`, `AdminController.php` (viết lại/cập nhật), `CompanyController.php`.
+- **Views:** Tạo `views/auth/register_company.php`, `views/admin_super/` (bao gồm `login.php` và `dashboard.php`) cho phân quyền Admin. Cập nhật `login.php`.
+- **Stored Procedures:** Bắt buộc phải được ALTER để thêm nhận tham số `p_company_id`.
+
+---
+**NẾU BẠN DUYỆT KẾ HOẠCH NÀY, VUI LÒNG PHẢN HỒI LẠI TRONG KHUNG CHAT LÀ "Proceed" HOẶC "Đồng ý", TÔI SẼ BẮT ĐẦU CODE CÁC THAY ĐỔI.**

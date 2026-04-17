@@ -4,6 +4,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Department.php';
 require_once __DIR__ . '/../models/Role.php';
+require_once __DIR__ . '/../models/AuditLog.php';
 
 class AdminController {
     
@@ -14,6 +15,219 @@ class AdminController {
             header("Location: index.php?action=dashboard");
             exit;
         }
+    }
+
+    private function checkSuperAdminAccess() {
+        if(!isset($_SESSION['user_id']) || $_SESSION['role_id'] != 4) {
+            header("Location: index.php?action=admin_secret_portal");
+            exit;
+        }
+    }
+
+    public function superAdminDashboard() {
+        $this->checkSuperAdminAccess();
+        $pageTitle = "Bảng điều khiển Hệ thống (SaaS)";
+        
+        require_once __DIR__ . '/../models/Company.php';
+        $companyModel = new Company();
+        $pendingCompanies = $companyModel->getPendingCompanies();
+        $stats = $companyModel->getSystemStats();
+        
+        require_once __DIR__ . '/../views/admin_super/dashboard.php';
+    }
+
+    public function manageCompanies() {
+        $this->checkSuperAdminAccess();
+        $pageTitle = "Quản lý Không gian Doanh nghiệp";
+        
+        require_once __DIR__ . '/../models/Company.php';
+        $companyModel = new Company();
+        
+        $limit = 10;
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $offset = ($page - 1) * $limit;
+        
+        $companies = $companyModel->getAllCompanies($limit, $offset);
+        $totalCount = $companyModel->getTotalCompaniesCount();
+        $totalPages = ceil($totalCount / $limit);
+        
+        require_once __DIR__ . '/../views/admin_super/companies.php';
+    }
+
+    public function apiUpdateCompany() {
+        $this->checkSuperAdminAccess();
+        header('Content-Type: application/json');
+        
+        $id = $_POST['id'] ?? null;
+        if(!$id) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu ID']);
+            exit;
+        }
+        
+        $data = [
+            'company_name' => $_POST['company_name'] ?? '',
+            'industry' => $_POST['industry'] ?? '',
+            'max_users' => $_POST['max_users'] ?? 100,
+            'max_projects' => $_POST['max_projects'] ?? 50,
+            'max_departments' => $_POST['max_departments'] ?? 10,
+            'status' => $_POST['status'] ?? 'approved'
+        ];
+        
+        require_once __DIR__ . '/../models/Company.php';
+        $companyModel = new Company();
+        if($companyModel->updateCompany($id, $data)) {
+            echo json_encode(['success' => true, 'message' => 'Cập nhật thành công!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi hệ thống']);
+        }
+        exit;
+    }
+
+    public function apiDeleteCompany() {
+        $this->checkSuperAdminAccess();
+        header('Content-Type: application/json');
+        
+        $id = $_POST['id'] ?? null;
+        if(!$id) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu ID']);
+            exit;
+        }
+        
+        require_once __DIR__ . '/../models/Company.php';
+        $companyModel = new Company();
+        if($companyModel->deleteCompany($id)) {
+            echo json_encode(['success' => true, 'message' => 'Đã xóa không gian doanh nghiệp!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi khi xóa']);
+        }
+        exit;
+    }
+
+    public function apiBroadcast() {
+        $this->checkSuperAdminAccess();
+        header('Content-Type: application/json');
+        
+        $content = $_POST['content'] ?? '';
+        $target = $_POST['target'] ?? 'all'; // all, ceos
+        
+        if(empty($content)) {
+            echo json_encode(['success' => false, 'message' => 'Nội dung thông báo trống!']);
+            exit;
+        }
+        
+        $database = new Database();
+        $db = $database->getConnection();
+
+        AuditLog::log($db, 'GLOBAL_BROADCAST', 'System', null, "Gửi thông báo toàn hệ thống tới: $target");
+        
+        // Lấy danh sách user IDs dựa trên target
+        $query = "SELECT id, company_id FROM users WHERE is_active = 1";
+        if($target == 'ceos') {
+            $query .= " AND role_id = 1";
+        }
+        $stmt = $db->query($query);
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        require_once __DIR__ . '/NotificationController.php';
+        foreach($users as $user) {
+            NotificationController::pushNotification(
+                $db,
+                'GLOBAL_BROADCAST',
+                $_SESSION['user_id'],
+                "[HỆ THỐNG]: " . $content,
+                "index.php?action=dashboard",
+                [$user['id']],
+                $user['company_id']
+            );
+        }
+        
+        echo json_encode(['success' => true, 'message' => 'Đã gửi thông báo cho ' . count($users) . ' người dùng!']);
+        exit;
+    }
+
+    public function auditLogs() {
+        $this->checkSuperAdminAccess();
+        $pageTitle = "Nhật ký Hoạt động Hệ thống";
+        
+        $database = new Database();
+        $db = $database->getConnection();
+        $logModel = new AuditLog($db);
+        
+        $limit = 50;
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $offset = ($page - 1) * $limit;
+        
+        $logs = $logModel->getAll($limit, $offset);
+        $totalCount = $logModel->getTotalCount();
+        $totalPages = ceil($totalCount / $limit);
+        
+        require_once __DIR__ . '/../views/admin_super/audit_logs.php';
+    }
+
+    public function apiApproveCompany() {
+        $this->checkSuperAdminAccess();
+        header('Content-Type: application/json');
+        
+        $id = $_POST['id'] ?? null;
+        if(!$id) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu ID công ty']);
+            exit;
+        }
+        
+        require_once __DIR__ . '/../models/Company.php';
+        $companyModel = new Company();
+        $company = $companyModel->getCompanyById($id);
+        
+        if(!$company) {
+            echo json_encode(['success' => false, 'message' => 'Công ty không tồn tại']);
+            exit;
+        }
+        
+        // 1. Update status to approved
+        if($companyModel->approve($id)) {
+            // 2. Create CEO user
+            $database = new Database();
+            $db = $database->getConnection();
+            
+            $username = strtolower(explode('@', $company['ceo_email'])[0]) . '_' . $id;
+            
+            $query = "INSERT INTO users (username, password_hash, full_name, email, role_id, company_id, is_active) 
+                      VALUES (:username, :password_hash, :full_name, :email, 1, :company_id, 1)";
+            $stmt = $db->prepare($query);
+            $stmt->bindParam(':username', $username);
+            $stmt->bindParam(':password_hash', $company['ceo_password_hash']);
+            $stmt->bindParam(':full_name', $company['ceo_name']);
+            $stmt->bindParam(':email', $company['ceo_email']);
+            $stmt->bindParam(':company_id', $id);
+            $stmt->execute();
+
+            AuditLog::log($db, 'APPROVE_COMPANY', 'Company', $id, "Duyệt công ty: " . $company['company_name']);
+            
+            echo json_encode(['success' => true, 'message' => 'Duyệt thành công! Đã tạo tài khoản CEO: ' . $username]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi khi duyệt công ty']);
+        }
+        exit;
+    }
+
+    public function apiRejectCompany() {
+        $this->checkSuperAdminAccess();
+        header('Content-Type: application/json');
+        
+        $id = $_POST['id'] ?? null;
+        if(!$id) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu ID công ty']);
+            exit;
+        }
+        
+        require_once __DIR__ . '/../models/Company.php';
+        $companyModel = new Company();
+        if($companyModel->reject($id)) {
+            echo json_encode(['success' => true, 'message' => 'Đã từ chối đơn đăng ký']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi hệ thống']);
+        }
+        exit;
     }
 
     public function users() {
@@ -30,25 +244,26 @@ class AdminController {
         if ($currentPage < 1) $currentPage = 1;
         $offset = ($currentPage - 1) * $limit;
         
+        $companyId = $_SESSION['company_id'];
         // Search Logic - chỉ search khi có query, không load tất cả
         $searchQuery = $_GET['q'] ?? '';
         if (!empty($searchQuery)) {
             // Search users - chỉ search theo query được cung cấp
-            $totalUsers = $userModel->getSearchCount($searchQuery);
+            $totalUsers = $userModel->getSearchCount($searchQuery, $companyId);
             $totalPages = ceil($totalUsers / $limit);
-            $stmt = $userModel->searchUsers($searchQuery, $limit, $offset);
+            $stmt = $userModel->searchUsers($searchQuery, $companyId, $limit, $offset);
         } else {
             // Get all users - chỉ khi không có search query mới load
-            $totalUsers = $userModel->getTotalCount();
+            $totalUsers = $userModel->getTotalCount($companyId);
             $totalPages = ceil($totalUsers / $limit);
-            $stmt = $userModel->getAllUsersWithDetails($limit, $offset);
+            $stmt = $userModel->getAllUsersWithDetails($companyId, $limit, $offset);
         }
         
         $usersList = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Lấy danh sách phòng ban và vai trò cho Modal Thêm mới
         $deptModel = new Department($db);
-        $depts = $deptModel->getAll(); // Modal need all depts
+        $depts = $deptModel->getAll($companyId); // Modal need all depts
         $deptList = $depts->fetchAll(PDO::FETCH_ASSOC);
 
         $roleModel = new Role($db);
@@ -87,7 +302,14 @@ class AdminController {
         }
 
         try {
-            if ($userModel->create($data)) {
+            require_once __DIR__ . '/../models/Company.php';
+            $companyModel = new Company();
+            if (!$companyModel->checkQuota($_SESSION['company_id'], 'users')) {
+                echo json_encode(['success' => false, 'message' => 'Lỗi: Công ty của bạn đã đạt giới hạn nhân sự tối đa!']);
+                exit;
+            }
+
+            if ($userModel->create($data, $_SESSION['company_id'])) {
                 echo json_encode(['success' => true, 'message' => 'Thêm nhân viên thành công!']);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Không thể thêm nhân viên. Vui lòng thử lại.']);
@@ -135,7 +357,7 @@ class AdminController {
             exit;
         }
 
-        if ($userModel->update($id, $data)) {
+        if ($userModel->update($id, $data, $_SESSION['company_id'])) {
             echo json_encode(['success' => true, 'message' => 'Cập nhật nhân viên thành công!']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Không thể cập nhật thông tin.']);
@@ -163,7 +385,7 @@ class AdminController {
         $db = $database->getConnection();
         $userModel = new User($db);
 
-        if ($userModel->delete($id)) {
+        if ($userModel->delete($id, $_SESSION['company_id'])) {
             echo json_encode(['success' => true, 'message' => 'Xóa nhân viên thành công!']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Không thể xóa nhân viên.']);
@@ -187,18 +409,19 @@ class AdminController {
         if ($currentPage < 1) $currentPage = 1;
         $offset = ($currentPage - 1) * $limit;
 
+        $companyId = $_SESSION['company_id'];
         // Search Logic
         $searchQuery = $_GET['q'] ?? '';
         if (!empty($searchQuery)) {
             // Search departments
-            $totalDepts = $deptModel->getSearchCount($searchQuery);
+            $totalDepts = $deptModel->getSearchCount($searchQuery, $companyId);
             $totalPages = ceil($totalDepts / $limit);
-            $stmt = $deptModel->searchDepartments($searchQuery, $limit, $offset);
+            $stmt = $deptModel->searchDepartments($searchQuery, $companyId, $limit, $offset);
         } else {
             // Get all departments
-            $totalDepts = $deptModel->getTotalCount();
+            $totalDepts = $deptModel->getTotalCount($companyId);
             $totalPages = ceil($totalDepts / $limit);
-            $stmt = $deptModel->getAll($limit, $offset);
+            $stmt = $deptModel->getAll($companyId, $limit, $offset);
         }
         
         $deptList = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -230,7 +453,14 @@ class AdminController {
             exit;
         }
 
-        if ($deptModel->create($data)) {
+        require_once __DIR__ . '/../models/Company.php';
+        $companyModel = new Company();
+        if (!$companyModel->checkQuota($_SESSION['company_id'], 'departments')) {
+            echo json_encode(['success' => false, 'message' => 'Lỗi: Công ty của bạn đã đạt giới hạn số lượng phòng ban!']);
+            exit;
+        }
+
+        if ($deptModel->create($data, $_SESSION['company_id'])) {
             echo json_encode(['success' => true, 'message' => 'Khởi tạo đơn vị thành công!']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi hệ thống khi tạo phòng ban']);
@@ -267,7 +497,7 @@ class AdminController {
             exit;
         }
 
-        if ($deptModel->update($id, $data)) {
+        if ($deptModel->update($id, $data, $_SESSION['company_id'])) {
             echo json_encode(['success' => true, 'message' => 'Cập nhật phòng ban thành công!']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi hệ thống khi cập nhật phòng ban']);
@@ -295,7 +525,7 @@ class AdminController {
         
         // B1: Kiểm tra xem phòng ban còn nhân viên không
         $userModel = new User($db);
-        $empCount = $userModel->getCountByDepartment($id);
+        $empCount = $userModel->getCountByDepartment($id, $_SESSION['company_id']);
 
         if ($empCount > 0) {
             echo json_encode([
@@ -307,7 +537,7 @@ class AdminController {
 
         // B2: Thực hiện xóa
         $deptModel = new Department($db);
-        if ($deptModel->delete($id)) {
+        if ($deptModel->delete($id, $_SESSION['company_id'])) {
             echo json_encode(['success' => true, 'message' => 'Đã xóa phòng ban thành công']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi hệ thống khi xóa phòng ban']);

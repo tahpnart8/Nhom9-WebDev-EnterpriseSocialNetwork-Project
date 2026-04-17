@@ -42,25 +42,26 @@ class TaskController
 
         $projectIdFilter = $_GET['project_id'] ?? null;
         $projects = [];
+        $companyId = $_SESSION['company_id'];
 
         // === Phân quyền: Bảng TIẾN ĐỘ (subtask cá nhân cho staff) ===
         if ($roleId == 1 || $roleId == 4) {
             if (!$projectIdFilter) {
                 // CEO view projects
-                $projects = $projectModel->getAll();
+                $projects = $projectModel->getAll($companyId);
                 require_once __DIR__ . '/../views/tasks/projects.php';
                 return;
             } else {
-                $subtasks = $subtaskModel->getByProject($projectIdFilter); // Sửa: gọi getByProject
-                $tasks = $taskModel->getAll($projectIdFilter); // pass project_id
+                $subtasks = $subtaskModel->getByProject($projectIdFilter, $companyId); // Sửa: gọi getByProject
+                $tasks = $taskModel->getAll($companyId, $projectIdFilter); // pass project_id
             }
         } elseif ($roleId == 2) {
             // Leader: Always fetch projects for the tab
-            $projects = $projectModel->getByDepartment($deptId);
-            $subtasks = $subtaskModel->getByDepartment($deptId, $projectIdFilter); // Sửa: truyền projectIdFilter
-            $tasks = $taskModel->getByDepartment($deptId, $projectIdFilter);
+            $projects = $projectModel->getByDepartment($deptId, $companyId);
+            $subtasks = $subtaskModel->getByDepartment($deptId, $companyId, $projectIdFilter); // Sửa: truyền projectIdFilter
+            $tasks = $taskModel->getByDepartment($deptId, $companyId, $projectIdFilter);
         } else {
-            $subtasks = $subtaskModel->getByAssignee($userId, $projectIdFilter); // Sửa: truyền projectIdFilter
+            $subtasks = $subtaskModel->getByAssignee($userId, $companyId, $projectIdFilter); // Sửa: truyền projectIdFilter
             $tasks = [];
         }
 
@@ -87,7 +88,7 @@ class TaskController
             // Staff: Batch lấy tất cả tasks cùng lúc (tránh N+1 loop)
             $taskIds = array_unique(array_column($subtasks, 'task_id'));
             if (!empty($taskIds)) {
-                $allTasks = $taskModel->getTasksByIds($taskIds);
+                $allTasks = $taskModel->getTasksByIds($taskIds, $companyId);
                 // Lấy TẤT CẢ subtasks trong các tasks đó bằng 1 query
                 $placeholders = implode(',', array_fill(0, count($taskIds), '?'));
                 $stmtAll = $this->db->prepare("SELECT s.*, u.full_name as assignee_name
@@ -134,7 +135,7 @@ class TaskController
         $userModel = new User($this->db);
         $staffList = [];
         if ($roleId == 1 || $roleId == 2 || $roleId == 4) {
-            $staffStmt = $userModel->getAllUsersWithDetails();
+            $staffStmt = $userModel->getAllUsersWithDetails($_SESSION['company_id']);
             $staffList = $staffStmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
@@ -196,10 +197,11 @@ class TaskController
 
         $taskModel = new Task($this->db);
         $subtaskModel = new Subtask($this->db);
+        $companyId = $_SESSION['company_id'];
 
         $this->db->beginTransaction();
         try {
-            $taskId = $taskModel->create($deptId, $projectId, $_SESSION['user_id'], $title, $description, $priority, $deadline);
+            $taskId = $taskModel->create($deptId, $projectId, $_SESSION['user_id'], $title, $description, $priority, $deadline, $companyId);
             if ($taskId === 'DUPLICATE')
                 throw new Exception('Lỗi: Task này đã tồn tại và chưa hoàn thành (Phát hiện trùng lặp).');
             if (!$taskId)
@@ -264,7 +266,7 @@ class TaskController
         $taskModel = new Task($this->db);
         $taskId = $_POST['task_id'] ?? 0;
 
-        if ($taskModel->delete($taskId)) {
+        if ($taskModel->delete($taskId, $_SESSION['company_id'])) {
             echo json_encode(['success' => true, 'message' => 'Đã xóa Task và tất cả công việc con!']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi xóa Task!']);
@@ -296,7 +298,7 @@ class TaskController
         }
 
         $taskModel = new Task($this->db);
-        if ($taskModel->update($taskId, $title, $description, $priority, $deadline, $projectId)) {
+        if ($taskModel->update($taskId, $title, $description, $priority, $deadline, $_SESSION['company_id'], $projectId)) {
             echo json_encode(['success' => true, 'message' => 'Cập nhật Task thành công!']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi cập nhật Task!']);
@@ -328,7 +330,8 @@ class TaskController
         }
 
         $subtaskModel = new Subtask($this->db);
-        $oldSubtask = $subtaskModel->getById($subtaskId);
+        $companyId = $_SESSION['company_id'];
+        $oldSubtask = $subtaskModel->getById($subtaskId, $companyId);
 
         if ($subtaskModel->update($subtaskId, $title, $description, $assigneeId, $deadline, $priority)) {
             // Nếu đổi người thực hiện, thông báo cho người mới
@@ -359,11 +362,12 @@ class TaskController
         $subtaskId = $_POST['subtask_id'] ?? 0;
         $notes = htmlspecialchars(trim($_POST['notes'] ?? ''));
         $fileUrl = null;
+        $companyId = $_SESSION['company_id'];
 
-        $subtask = $subtaskModel->getById($subtaskId);
+        $subtask = $subtaskModel->getById($subtaskId, $companyId);
         if (!$subtask) {
             echo json_encode(['success' => false, 'message' => 'Không tìm thấy subtask!']);
-            exit;
+            return;
         }
         if ($subtask['assignee_id'] != $_SESSION['user_id']) {
             echo json_encode(['success' => false, 'message' => 'Bạn không có quyền!']);
@@ -397,14 +401,15 @@ class TaskController
 
         if ($subtaskModel->submitEvidence($subtaskId, $notes, $fileUrl)) {
             $taskModel = new Task($this->db);
-            $task = $taskModel->getById($subtask['task_id']);
+            $task = $taskModel->getById($subtask['task_id'], $companyId);
             NotificationController::pushNotification(
                 $this->db,
                 'task_approval',
                 $_SESSION['user_id'],
                 "Nhân viên " . $_SESSION['full_name'] . " đã gửi duyệt subtask: " . $subtask['title'],
                 "index.php?action=tasks&subtask_id=" . $subtaskId,
-                [$task['created_by_user_id']]
+                [$task['created_by_user_id']],
+                $companyId
             );
             echo json_encode(['success' => true, 'message' => 'Đã gửi duyệt công việc!']);
         } else {
@@ -426,11 +431,12 @@ class TaskController
 
         $subtaskModel = new Subtask($this->db);
         $subtaskId = $_POST['subtask_id'] ?? 0;
-        $subtask = $subtaskModel->getById($subtaskId);
+        $companyId = $_SESSION['company_id'];
+        $subtask = $subtaskModel->getById($subtaskId, $companyId);
 
         if (!$subtask) {
             echo json_encode(['success' => false, 'message' => 'Không tìm thấy!']);
-            exit;
+            return;
         }
 
         // Chặn duyệt subtask trễ hạn
@@ -446,7 +452,8 @@ class TaskController
                 $_SESSION['user_id'],
                 "Subtask '" . $subtask['title'] . "' đã được DUYỆT! Vui lòng kéo subtask sang cột Hoàn thành và viết báo cáo AI.",
                 "index.php?action=tasks",
-                [$subtask['assignee_id']]
+                [$subtask['assignee_id']],
+                $companyId
             );
             echo json_encode(['success' => true, 'message' => 'Đã duyệt! (Chờ nhân viên viết báo cáo)']);
         } else {
@@ -469,12 +476,13 @@ class TaskController
         $subtaskModel = new Subtask($this->db);
         $subtaskId = $_POST['subtask_id'] ?? 0;
         $reason = htmlspecialchars($_POST['reason'] ?? 'Cần thực hiện lại.');
+        $companyId = $_SESSION['company_id'];
 
         // Chặn từ chối subtask trễ hạn
-        $subtask = $subtaskModel->getById($subtaskId);
+        $subtask = $subtaskModel->getById($subtaskId, $companyId);
         if (!empty($subtask['deadline']) && $subtask['deadline'] < date('Y-m-d H:i:s') && $subtask['status'] != 'Done') {
             echo json_encode(['success' => false, 'message' => 'Subtask đã trễ hạn! Vui lòng gia hạn thay vì từ chối.']);
-            exit;
+            return;
         }
 
         if ($subtaskModel->reject($subtaskId, $reason)) {
@@ -485,7 +493,8 @@ class TaskController
                 $_SESSION['user_id'],
                 "Subtask '" . $subtask['title'] . "' bị TỪ CHỐI: $reason",
                 "index.php?action=tasks&subtask_id=" . $subtaskId,
-                [$subtask['assignee_id']]
+                [$subtask['assignee_id']],
+                $companyId
             );
             $this->syncTaskStatus($subtask['task_id']);
             echo json_encode(['success' => true, 'message' => 'Đã từ chối!']);
@@ -506,7 +515,8 @@ class TaskController
         }
         $subtaskModel = new Subtask($this->db);
         $subtaskId = $_POST['subtask_id'] ?? 0;
-        $subtask = $subtaskModel->getById($subtaskId);
+        $companyId = $_SESSION['company_id'];
+        $subtask = $subtaskModel->getById($subtaskId, $companyId);
         if ($subtask && $subtaskModel->delete($subtaskId)) {
             $this->syncTaskStatus($subtask['task_id']);
             echo json_encode(['success' => true]);
@@ -525,11 +535,12 @@ class TaskController
         $subtaskModel = new Subtask($this->db);
         $subtaskId = $_POST['subtask_id'] ?? 0;
         $status = $_POST['status'] ?? '';
+        $companyId = $_SESSION['company_id'];
 
-        $subtask = $subtaskModel->getById($subtaskId);
+        $subtask = $subtaskModel->getById($subtaskId, $companyId);
         if (!$subtask) {
             echo json_encode(['success' => false, 'message' => 'Lỗi dữ liệu!']);
-            exit;
+            return;
         }
 
         // Kiểm tra trễ hạn (Overdue check)
@@ -567,16 +578,17 @@ class TaskController
                 echo json_encode(['success' => false, 'message' => 'confirm_pending']);
                 exit;
             }
-            if ($subtaskModel->updateStatus($subtaskId, 'Pending')) {
+            if ($subtaskModel->updateStatus($subtaskId, 'Pending', $companyId)) {
                 $taskModel = new Task($this->db);
-                $task = $taskModel->getById($subtask['task_id']);
+                $task = $taskModel->getById($subtask['task_id'], $companyId);
                 NotificationController::pushNotification(
                     $this->db,
                     'task_approval',
                     $_SESSION['user_id'],
                     "Nhân viên " . $_SESSION['full_name'] . " đã gửi duyệt subtask: " . $subtask['title'],
                     "index.php?action=tasks&subtask_id=" . $subtaskId,
-                    [$task['created_by_user_id']]
+                    [$task['created_by_user_id']],
+                    $companyId
                 );
                 echo json_encode(['success' => true]);
             } else {
@@ -591,7 +603,7 @@ class TaskController
             exit;
         }
 
-        if ($subtaskModel->updateStatus($subtaskId, $status)) {
+        if ($subtaskModel->updateStatus($subtaskId, $status, $companyId)) {
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi DB!']);
@@ -614,7 +626,8 @@ class TaskController
     {
         $subtaskModel = new Subtask($this->db);
         $taskModel = new Task($this->db);
-        $allSubs = $subtaskModel->getByTaskId($task_id);
+        $companyId = $_SESSION['company_id'];
+        $allSubs = $subtaskModel->getByTaskId($task_id, $companyId);
         if (empty($allSubs))
             return;
         $allDone = true;
@@ -626,9 +639,9 @@ class TaskController
                 $anyProgress = true;
         }
         if ($allDone)
-            $taskModel->updateStatus($task_id, 'Done');
+            $taskModel->updateStatus($task_id, 'Done', $_SESSION['company_id']);
         elseif ($anyProgress)
-            $taskModel->updateStatus($task_id, 'In Progress');
+            $taskModel->updateStatus($task_id, 'In Progress', $_SESSION['company_id']);
     }
 
     // ========== API: TẠO SUBTASK (batch) ==========
@@ -645,6 +658,7 @@ class TaskController
         $subtaskModel = new Subtask($this->db);
         $taskId = $_POST['task_id'] ?? 0;
         $today = date('Y-m-d');
+        $companyId = $_SESSION['company_id'];
 
         // Batch mode
         $titles = $_POST['subtask_title'] ?? null;
@@ -678,7 +692,7 @@ class TaskController
                 }
             }
             $taskModel = new Task($this->db);
-            $task = $taskModel->getById($taskId);
+            $task = $taskModel->getById($taskId, $companyId);
             foreach ($notifyUserIds as $uid) {
                 NotificationController::pushNotification(
                     $this->db,
@@ -686,7 +700,8 @@ class TaskController
                     $_SESSION['user_id'],
                     "Bạn được giao $created việc mới trong Task: " . ($task['title'] ?? ''),
                     "index.php?action=tasks",
-                    [$uid]
+                    [$uid],
+                    $companyId
                 );
             }
             $this->syncTaskStatus($taskId);
@@ -717,14 +732,15 @@ class TaskController
         }
         if ($subtaskId) {
             $taskModel = new Task($this->db);
-            $task = $taskModel->getById($taskId);
+            $task = $taskModel->getById($taskId, $companyId);
             NotificationController::pushNotification(
                 $this->db,
                 'task_assigned',
                 $_SESSION['user_id'],
                 "Bạn được giao việc mới: $title (Task: " . ($task['title'] ?? '') . ")",
                 "index.php?action=tasks",
-                [$assigneeId]
+                [$assigneeId],
+                $companyId
             );
             $this->syncTaskStatus($taskId);
             echo json_encode(['success' => true, 'message' => 'Giao việc thành công!', 'subtask_id' => $subtaskId]);
@@ -741,7 +757,7 @@ class TaskController
         header('Content-Type: application/json');
         $subtaskModel = new Subtask($this->db);
         $subtaskId = $_GET['id'] ?? 0;
-        $subtask = $subtaskModel->getById($subtaskId);
+        $subtask = $subtaskModel->getById($subtaskId, $_SESSION['company_id']);
         if ($subtask) {
             $stmt = $this->db->prepare("SELECT * FROM subtask_attachments WHERE subtask_id = :id ORDER BY uploaded_at DESC");
             $stmt->execute([':id' => $subtaskId]);
@@ -762,7 +778,8 @@ class TaskController
         $taskModel = new Task($this->db);
         $subtaskModel = new Subtask($this->db);
         $taskId = $_GET['id'] ?? 0;
-        $task = $taskModel->getById($taskId);
+        $companyId = $_SESSION['company_id'];
+        $task = $taskModel->getById($taskId, $companyId);
         if (!$task) {
             echo json_encode(['success' => false, 'message' => 'Không tìm thấy Task!']);
             exit;
@@ -791,13 +808,14 @@ class TaskController
         $subtaskModel = new Subtask($this->db);
         $subtaskId = $_POST['subtask_id'] ?? 0;
         $newDeadline = $_POST['new_deadline'] ?? null;
+        $companyId = $_SESSION['company_id'];
 
         if (empty($newDeadline) || $newDeadline < date('Y-m-d')) {
             echo json_encode(['success' => false, 'message' => 'Vui lòng chọn ngày gia hạn hợp lệ (không trong quá khứ)!']);
-            exit;
+            return;
         }
 
-        $subtask = $subtaskModel->getById($subtaskId);
+        $subtask = $subtaskModel->getById($subtaskId, $companyId);
         if (!$subtask) {
             echo json_encode(['success' => false, 'message' => 'Không tìm thấy subtask!']);
             exit;

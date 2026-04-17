@@ -8,57 +8,70 @@ class Subtask {
     }
 
     // Lấy subtask theo Task ID (cho Leader xem tổng quan)
-    public function getByTaskId($task_id) {
+    public function getByTaskId($task_id, $company_id = null) {
         $query = "SELECT s.*, u.full_name as assignee_name
                   FROM " . $this->table_name . " s
                   JOIN users u ON s.assignee_id = u.id
-                  WHERE s.task_id = :task_id
-                  ORDER BY s.created_at ASC";
+                  JOIN tasks t ON s.task_id = t.id
+                  WHERE s.task_id = :task_id";
+        
+        if ($company_id) {
+            $query .= " AND t.company_id = :company_id";
+        }
+        $query .= " ORDER BY s.created_at ASC";
+
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':task_id', $task_id);
+        if ($company_id) {
+            $stmt->bindParam(':company_id', $company_id);
+        }
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // CEO xem tất cả Subtask toàn công ty (đã hỗ trợ lọc theo Project)
-    public function getAll() {
+    public function getAll($company_id) {
         $query = "SELECT s.*, t.title as task_title, t.priority, u.full_name as assignee_name
                   FROM " . $this->table_name . " s
                   JOIN tasks t ON s.task_id = t.id
                   JOIN users u ON s.assignee_id = u.id
+                  WHERE t.company_id = :company_id
                   ORDER BY s.deadline ASC";
         $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':company_id', $company_id);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // Lấy subtask theo Dự án (cho CEO/Admin)
-    public function getByProject($project_id) {
+    public function getByProject($project_id, $company_id) {
         $query = "SELECT s.*, t.title as task_title, t.priority, u.full_name as assignee_name
                   FROM " . $this->table_name . " s
                   JOIN tasks t ON s.task_id = t.id
                   JOIN users u ON s.assignee_id = u.id
-                  WHERE t.project_id = :project_id
+                  WHERE t.project_id = :project_id AND t.company_id = :company_id
                   ORDER BY s.deadline ASC";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':project_id', $project_id);
+        $stmt->bindParam(':company_id', $company_id);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // Lấy subtask theo phòng ban (cho Leader), hỗ trợ lọc Project
-    public function getByDepartment($department_id, $project_id = null) {
+    public function getByDepartment($department_id, $company_id, $project_id = null) {
         $query = "SELECT s.*, t.title as task_title, t.priority, u.full_name as assignee_name
                   FROM " . $this->table_name . " s
                   JOIN tasks t ON s.task_id = t.id
                   JOIN users u ON s.assignee_id = u.id
-                  WHERE t.department_id = :dept_id";
+                  WHERE t.department_id = :dept_id AND t.company_id = :company_id";
         if ($project_id) {
             $query .= " AND t.project_id = :project_id";
         }
         $query .= " ORDER BY s.deadline ASC";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':dept_id', $department_id);
+        $stmt->bindParam(':company_id', $company_id);
         if ($project_id) {
             $stmt->bindParam(':project_id', $project_id);
         }
@@ -67,14 +80,22 @@ class Subtask {
     }
 
     // Lấy subtask theo ID
-    public function getById($subtask_id) {
+    public function getById($subtask_id, $company_id = null) {
         $query = "SELECT s.*, t.title as task_title, t.priority, u.full_name as assignee_name
                   FROM " . $this->table_name . " s
                   JOIN tasks t ON s.task_id = t.id
                   JOIN users u ON s.assignee_id = u.id
                   WHERE s.id = :id";
+        
+        if ($company_id) {
+            $query .= " AND t.company_id = :company_id";
+        }
+
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $subtask_id);
+        if ($company_id) {
+            $stmt->bindParam(':company_id', $company_id);
+        }
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -90,18 +111,19 @@ class Subtask {
     }
 
     // Lấy subtask được giao cho nhân viên cụ thể (Staff view), hỗ trợ lọc Project
-    public function getByAssignee($user_id, $project_id = null) {
+    public function getByAssignee($user_id, $company_id, $project_id = null) {
         $query = "SELECT s.*, t.title as task_title, t.priority, u.full_name as assignee_name
                   FROM " . $this->table_name . " s
                   JOIN tasks t ON s.task_id = t.id
                   JOIN users u ON s.assignee_id = u.id
-                  WHERE s.assignee_id = :user_id";
+                  WHERE s.assignee_id = :user_id AND t.company_id = :company_id";
         if ($project_id) {
             $query .= " AND t.project_id = :project_id";
         }
         $query .= " ORDER BY s.deadline ASC";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':user_id', $user_id);
+        $stmt->bindParam(':company_id', $company_id);
         if ($project_id) {
             $stmt->bindParam(':project_id', $project_id);
         }

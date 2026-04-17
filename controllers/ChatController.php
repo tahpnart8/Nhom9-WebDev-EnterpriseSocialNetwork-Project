@@ -57,11 +57,10 @@ class ChatController {
             $msgModel->updateLastRead($activeConvId, $_SESSION['user_id']);
         }
 
-        // Tối ưu hóa tải cho SPA
         $conversations = $msgModel->getConversations($_SESSION['user_id']);
         $allUsers = [];
         if (!$isAjaxNav) {
-            $allUsersStmt = $userModel->getAllUsersWithDetails();
+            $allUsersStmt = $userModel->getAllUsersWithDetails($_SESSION['company_id']);
             $allUsers = $allUsersStmt->fetchAll(PDO::FETCH_ASSOC);
         }
         

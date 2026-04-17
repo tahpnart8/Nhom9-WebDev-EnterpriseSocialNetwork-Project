@@ -34,14 +34,15 @@ class ProjectController {
         }
 
         $projectId = $_POST['project_id'] ?? '';
-        $projectData = $this->projectModel->getById($projectId);
+        $companyId = $_SESSION['company_id'];
+        $projectData = $this->projectModel->getById($projectId, $companyId);
         if (!$projectData) {
             echo json_encode(['success' => false, 'message' => 'Không tìm thấy dự án!']);
             return;
         }
 
         // Lấy tất cả Task của dự án để làm ngữ cảnh
-        $tasks = $this->taskModel->getAll($projectId);
+        $tasks = $this->taskModel->getAll($companyId, $projectId);
         $taskContext = "";
         foreach ($tasks as $t) {
             // Lấy thêm summary AI của từng task nếu có
@@ -137,7 +138,14 @@ Yêu cầu:
             return;
         }
 
-        $projectId = $this->projectModel->create($title, $description, $_SESSION['user_id'], $dept_ids);
+        require_once __DIR__ . '/../models/Company.php';
+        $companyModel = new Company();
+        if (!$companyModel->checkQuota($_SESSION['company_id'], 'projects')) {
+            echo json_encode(['success' => false, 'message' => 'Lỗi: Công ty của bạn đã đạt giới hạn số lượng dự án tối đa!']);
+            exit;
+        }
+
+        $projectId = $this->projectModel->create($title, $description, $_SESSION['user_id'], $dept_ids, $_SESSION['company_id']);
         if ($projectId) {
             echo json_encode(['success' => true, 'message' => 'Tạo dự án thành công.']);
         } else {
@@ -162,7 +170,7 @@ Yêu cầu:
             return;
         }
 
-        $result = $this->projectModel->update($id, $title, $description, $dept_ids);
+        $result = $this->projectModel->update($id, $title, $description, $dept_ids, $_SESSION['company_id']);
         if ($result) {
             echo json_encode(['success' => true, 'message' => 'Cập nhật dự án thành công.']);
         } else {
@@ -178,7 +186,7 @@ Yêu cầu:
         }
 
         $id = $_POST['project_id'] ?? '';
-        if ($this->projectModel->delete($id)) {
+        if ($this->projectModel->delete($id, $_SESSION['company_id'])) {
             echo json_encode(['success' => true, 'message' => 'Xoá dự án thành công.']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi khi xoá dự án.']);
@@ -194,6 +202,7 @@ Yêu cầu:
 
         $projectId = $_POST['project_id'] ?? '';
         $aiContent = $_POST['ai_content'] ?? ''; // Nội dung báo cáo đã chỉnh sửa bởi CEO
+        $companyId = $_SESSION['company_id'];
 
         if (empty($projectId)) {
             echo json_encode(['success' => false, 'message' => 'Thiếu ID dự án.']);
@@ -205,14 +214,14 @@ Yêu cầu:
             return;
         }
 
-        $projectData = $this->projectModel->getById($projectId);
+        $projectData = $this->projectModel->getById($projectId, $companyId);
         if (!$projectData || $projectData['status'] == 'Completed') {
             echo json_encode(['success' => false, 'message' => 'Dự án không tồn tại hoặc đã hoàn thành.']);
             return;
         }
 
         // Get tasks to verify
-        $tasks = $this->taskModel->getAll($projectId);
+        $tasks = $this->taskModel->getAll($companyId, $projectId);
         $allApproved = true;
         foreach ($tasks as $t) {
             if ($t['approval_status'] !== 'Approved') {
@@ -227,12 +236,12 @@ Yêu cầu:
         }
 
         // 1. Update Project Status
-        $this->projectModel->updateStatus($projectId, 'Completed');
+        $this->projectModel->updateStatus($projectId, 'Completed', $companyId);
 
         // 2. Post to Social (channel: public)
         $aiTag = "<div class='mt-3 border-top pt-2'><small class='text-muted'><i class='bi bi-robot me-1'></i> Hỗ trợ bởi Relioo AI</small></div>";
         $postContentHtml = "<div class='ai-post project-summary-post'><h4 class='fw-bold text-success mb-3'>🎉 TỔNG KẾT HOÀN THÀNH DỰ ÁN: " . htmlspecialchars($projectData['title']) . " 🎉</h4>" . nl2br(htmlspecialchars($aiContent)) . $aiTag . "</div>";
-        $this->postModel->create($_SESSION['user_id'], null, $postContentHtml, 'public');
+        $this->postModel->create($_SESSION['user_id'], null, $postContentHtml, 'public', $companyId);
 
         echo json_encode(['success' => true, 'message' => 'Dự án đã hoàn thành và bài tổng kết đã được xuất bản!']);
     }
@@ -243,7 +252,7 @@ Yêu cầu:
             echo json_encode(['success' => false]);
             return;
         }
-        $project = $this->projectModel->getById($id);
+        $project = $this->projectModel->getById($id, $_SESSION['company_id']);
         if ($project) {
             echo json_encode(['success' => true, 'data' => $project]);
         } else {

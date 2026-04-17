@@ -5,7 +5,7 @@ $departments = [];
 if ($roleId == 1) {
     require_once __DIR__ . '/../../models/Department.php';
     $deptModel = new Department($this->db);
-    $departments = $deptModel->getAll();
+    $departments = $deptModel->getAll($_SESSION['company_id']);
 }
 ?>
 <?php require_once __DIR__ . '/../layouts/header.php'; ?>

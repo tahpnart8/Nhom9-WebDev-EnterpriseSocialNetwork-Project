@@ -7,6 +7,7 @@ class User {
     public $username;
     public $password_hash;
     public $role_id;
+    public $company_id;
     public $department_id;
     public $full_name;
     public $avatar_url;
@@ -16,7 +17,7 @@ class User {
     }
 
     public function login($username, $password) {
-        $query = "SELECT id, username, password_hash, role_id, department_id, full_name, avatar_url, is_active FROM " . $this->table_name . " WHERE username = :username LIMIT 1";
+        $query = "SELECT id, username, password_hash, role_id, company_id, department_id, full_name, avatar_url, is_active FROM " . $this->table_name . " WHERE username = :username LIMIT 1";
 
         $stmt = $this->conn->prepare($query);
         
@@ -34,6 +35,7 @@ class User {
                 $this->id = $row['id'];
                 $this->username = $row['username'];
                 $this->role_id = $row['role_id'];
+                $this->company_id = $row['company_id'];
                 $this->department_id = $row['department_id'];
                 $this->full_name = $row['full_name'];
                 $this->avatar_url = $row['avatar_url'];
@@ -44,11 +46,12 @@ class User {
     }
 
     // Danh sách cho Admin sử dụng FETCH JOIN kèm Phân trang
-    public function getAllUsersWithDetails($limit = null, $offset = null) {
+    public function getAllUsersWithDetails($company_id, $limit = null, $offset = null) {
         $query = "SELECT u.id, u.username, u.full_name, u.email, u.avatar_url, u.department_id, u.role_id, d.dept_name, r.role_name, u.is_active 
                   FROM " . $this->table_name . " u 
                   LEFT JOIN departments d ON u.department_id = d.id 
                   LEFT JOIN roles r ON u.role_id = r.id
+                  WHERE u.company_id = :company_id
                   ORDER BY u.id ASC";
         
         if ($limit !== null && $offset !== null) {
@@ -56,6 +59,7 @@ class User {
         }
 
         $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':company_id', $company_id);
         
         if ($limit !== null && $offset !== null) {
             $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
@@ -66,21 +70,28 @@ class User {
         return $stmt;
     }
 
-    public function getTotalCount() {
-        $query = "SELECT COUNT(*) FROM " . $this->table_name;
+    public function getTotalCount($company_id) {
+        $query = "SELECT COUNT(*) FROM " . $this->table_name . " WHERE company_id = :company_id";
         $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':company_id', $company_id);
         $stmt->execute();
         return $stmt->fetchColumn();
     }
-    public function getById($id) {
+    public function getById($id, $company_id = null) {
         $query = "SELECT u.id, u.username, u.full_name, u.email, u.phone, u.avatar_url, u.cover_url, u.birthdate, u.hide_birthdate, u.location, u.link_facebook, u.link_instagram, u.link_tiktok, u.is_active, d.dept_name, r.role_name, u.created_at
                   FROM " . $this->table_name . " u
                   LEFT JOIN departments d ON u.department_id = d.id
                   LEFT JOIN roles r ON u.role_id = r.id
-                  WHERE u.id = :id
-                  LIMIT 1";
+                  WHERE u.id = :id";
+        if ($company_id) {
+            $query .= " AND u.company_id = :company_id";
+        }
+        $query .= " LIMIT 1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $id);
+        if ($company_id) {
+            $stmt->bindParam(':company_id', $company_id);
+        }
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -106,6 +117,10 @@ class User {
             $query .= ", cover_url = :cover_url";
         }
         $query .= " WHERE id = :id";
+        // Profile update typically doesn't need company_id check if ID is unique, 
+        // but for multi-tenant safety we should ensure the user belongs to the company.
+        // However, usually we update the 'current user' Profile.
+        // I'll keep it simple for now as it's usually own-profile.
         
         $stmt = $this->conn->prepare($query);
         
@@ -130,10 +145,10 @@ class User {
         return $stmt->execute();
     }
 
-    public function create($data) {
+    public function create($data, $company_id) {
         $query = "INSERT INTO " . $this->table_name . " 
-                  (username, full_name, email, department_id, role_id, is_active, password_hash) 
-                  VALUES (:username, :full_name, :email, :department_id, :role_id, :is_active, :password_hash)";
+                  (username, full_name, email, department_id, role_id, is_active, password_hash, company_id) 
+                  VALUES (:username, :full_name, :email, :department_id, :role_id, :is_active, :password_hash, :company_id)";
         
         $stmt = $this->conn->prepare($query);
         
@@ -147,28 +162,33 @@ class User {
         $stmt->bindParam(':role_id', $data['role_id']);
         $stmt->bindParam(':is_active', $data['is_active']);
         $stmt->bindParam(':password_hash', $password_hash);
+        $stmt->bindParam(':company_id', $company_id);
         
         return $stmt->execute();
     }
 
-    public function search($keyword) {
-        $query = "CALL sp_SearchUsers(:keyword)";
+    public function search($keyword, $company_id) {
+        $query = "SELECT u.id, u.full_name, u.avatar_url, d.dept_name, r.role_name, u.username
+                  FROM " . $this->table_name . " u
+                  LEFT JOIN departments d ON u.department_id = d.id
+                  LEFT JOIN roles r ON u.role_id = r.id
+                  WHERE (u.full_name LIKE :keyword OR u.username LIKE :keyword)
+                  AND u.company_id = :company_id";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':keyword', $keyword);
+        $stmt->bindValue(':keyword', '%' . $keyword . '%');
+        $stmt->bindParam(':company_id', $company_id);
         $stmt->execute();
-        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
-        return $results;
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function update($id, $data) {
+    public function update($id, $data, $company_id) {
         $query = "UPDATE " . $this->table_name . " 
                   SET full_name = :full_name, 
                       email = :email, 
                       department_id = :department_id, 
                       role_id = :role_id, 
                       is_active = :is_active 
-                  WHERE id = :id";
+                  WHERE id = :id AND company_id = :company_id";
         
         $stmt = $this->conn->prepare($query);
         
@@ -178,24 +198,27 @@ class User {
         $stmt->bindParam(':role_id', $data['role_id']);
         $stmt->bindParam(':is_active', $data['is_active']);
         $stmt->bindParam(':id', $id);
+        $stmt->bindParam(':company_id', $company_id);
         
         return $stmt->execute();
     }
 
-    public function delete($id) {
-        $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
+    public function delete($id, $company_id) {
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = :id AND company_id = :company_id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $id);
+        $stmt->bindParam(':company_id', $company_id);
         return $stmt->execute();
     }
 
-    public function searchUsers($keyword, $limit = null, $offset = null) {
+    public function searchUsers($keyword, $company_id, $limit = null, $offset = null) {
         // Tối ưu: chỉ tìm theo tên, tài khoản, phòng ban - không tìm email
         $query = "SELECT u.id, u.username, u.full_name, u.email, u.avatar_url, u.department_id, u.role_id, d.dept_name, r.role_name, u.is_active 
                    FROM " . $this->table_name . " u 
                    LEFT JOIN departments d ON u.department_id = d.id 
                    LEFT JOIN roles r ON u.role_id = r.id
-                   WHERE u.full_name LIKE :keyword OR u.username LIKE :keyword OR d.dept_name LIKE :keyword
+                   WHERE (u.full_name LIKE :keyword OR u.username LIKE :keyword OR d.dept_name LIKE :keyword)
+                   AND u.company_id = :company_id
                    ORDER BY u.full_name ASC";
         
         if ($limit !== null && $offset !== null) {
@@ -204,6 +227,7 @@ class User {
         
         $stmt = $this->conn->prepare($query);
         $stmt->bindValue(':keyword', '%' . $keyword . '%');
+        $stmt->bindParam(':company_id', $company_id);
         
         if ($limit !== null && $offset !== null) {
             $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
@@ -214,21 +238,24 @@ class User {
         return $stmt;
     }
 
-    public function getSearchCount($keyword) {
+    public function getSearchCount($keyword, $company_id) {
         $query = "SELECT COUNT(*) FROM " . $this->table_name . " u 
                    LEFT JOIN departments d ON u.department_id = d.id 
-                   WHERE u.full_name LIKE :keyword OR u.username LIKE :keyword OR d.dept_name LIKE :keyword";
+                   WHERE (u.full_name LIKE :keyword OR u.username LIKE :keyword OR d.dept_name LIKE :keyword)
+                   AND u.company_id = :company_id";
         
         $stmt = $this->conn->prepare($query);
         $stmt->bindValue(':keyword', '%' . $keyword . '%');
+        $stmt->bindParam(':company_id', $company_id);
         $stmt->execute();
         return $stmt->fetchColumn();
     }
 
-    public function getCountByDepartment($deptId) {
-        $query = "SELECT COUNT(*) FROM " . $this->table_name . " WHERE department_id = :dept_id";
+    public function getCountByDepartment($deptId, $company_id) {
+        $query = "SELECT COUNT(*) FROM " . $this->table_name . " WHERE department_id = :dept_id AND company_id = :company_id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':dept_id', $deptId);
+        $stmt->bindParam(':company_id', $company_id);
         $stmt->execute();
         return $stmt->fetchColumn();
     }

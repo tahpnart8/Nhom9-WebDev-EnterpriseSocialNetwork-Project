@@ -20,8 +20,9 @@ class NotificationController {
         }
 
         $model = new Notification($this->db);
-        $unreadCount = $model->countUnread($_SESSION['user_id']);
-        $items = $model->getAllForUser($_SESSION['user_id']);
+        $companyId = $_SESSION['company_id'];
+        $unreadCount = $model->countUnread($_SESSION['user_id'], $companyId);
+        $items = $model->getAllForUser($_SESSION['user_id'], $companyId);
 
         echo json_encode(['unread_count' => (int)$unreadCount, 'items' => $items]);
         exit;
@@ -62,8 +63,10 @@ class NotificationController {
     }
 
     // Helper tĩnh
-    public static function pushNotification($db, $type, $triggerUserId, $content, $targetUrl, $recipientIds) {
+    public static function pushNotification($db, $type, $triggerUserId, $content, $targetUrl, $recipientIds, $company_id = null) {
         $model = new Notification($db);
-        return $model->create($type, $triggerUserId, $content, $targetUrl, $recipientIds);
+        // Nếu không truyền company_id, lấy từ session nếu có
+        $c_id = $company_id ?? ($_SESSION['company_id'] ?? null);
+        return $model->create($type, $triggerUserId, $content, $targetUrl, $c_id, $recipientIds);
     }
 }

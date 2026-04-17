@@ -29,11 +29,12 @@ class SocialController {
         if (($channel === 'department') && ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 4)) {
             require_once __DIR__ . '/../models/Department.php';
             $deptModel = new Department($this->db);
-            $departments = $deptModel->getAll()->fetchAll(PDO::FETCH_ASSOC);
+            $departments = $deptModel->getAll($_SESSION['company_id'])->fetchAll(PDO::FETCH_ASSOC);
         }
 
         // Fetch feed using Role ID & Department ID & Current User ID
-        $feed = $postModel->getFeed($_SESSION['role_id'], $_SESSION['department_id'] ?? null, $_SESSION['user_id'], $channel, $dept_id_filter, $searchQuery);
+        $companyId = $_SESSION['company_id'];
+        $feed = $postModel->getFeed($_SESSION['role_id'], $_SESSION['department_id'] ?? null, $_SESSION['user_id'], $companyId, $channel, $dept_id_filter, $searchQuery);
         
         // Lấy Bảng xếp hạng (Leaderboard) sử dụng Procedure (TÍNH NĂNG MỚI)
         $leaderboard = [];
@@ -61,8 +62,9 @@ class SocialController {
         $searchQuery = $_GET['q'] ?? '';
         $channel = $_GET['channel'] ?? 'public';
         $dept_id_filter = $_GET['dept_id'] ?? null;
+        $companyId = $_SESSION['company_id'];
 
-        $posts = $postModel->getFeed($_SESSION['role_id'], $_SESSION['department_id'] ?? null, $_SESSION['user_id'], $channel, $dept_id_filter, $searchQuery);
+        $posts = $postModel->getFeed($_SESSION['role_id'], $_SESSION['department_id'] ?? null, $_SESSION['user_id'], $companyId, $channel, $dept_id_filter, $searchQuery);
         
         echo json_encode(['success' => true, 'data' => $posts]);
         exit;
@@ -99,7 +101,7 @@ class SocialController {
             exit;
         }
 
-        $postId = $postModel->create($author_id, $department_id, htmlspecialchars($content), $visibility);
+        $postId = $postModel->create($author_id, $department_id, htmlspecialchars($content), $visibility, $_SESSION['company_id']);
         
         if ($postId) {
             if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
@@ -126,7 +128,8 @@ class SocialController {
         header('Content-Type: application/json');
         $postModel = new Post($this->db);
         $postId = $_POST['post_id'] ?? 0;
-        $post = $postModel->getById($postId);
+        $companyId = $_SESSION['company_id'];
+        $post = $postModel->getById($postId, $companyId);
 
         if (!$post) {
             echo json_encode(['success' => false, 'message' => 'Bài viết không tồn tại!']);
@@ -137,7 +140,7 @@ class SocialController {
         $isAdminOrCEO = ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 4);
 
         if ($isAuthor || $isAdminOrCEO) {
-            if ($postModel->delete($postId)) {
+            if ($postModel->delete($postId, $companyId)) {
                 echo json_encode(['success' => true, 'message' => 'Đã xóa bài viết.']);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Lỗi CSDL!']);
@@ -158,8 +161,9 @@ class SocialController {
         $postModel = new Post($this->db);
         $postId = $_POST['post_id'] ?? 0;
         $content = $_POST['content'] ?? '';
+        $companyId = $_SESSION['company_id'];
 
-        $post = $postModel->getById($postId);
+        $post = $postModel->getById($postId, $companyId);
         if (!$post) {
             echo json_encode(['success' => false, 'message' => 'Bài viết không tồn tại!']);
             exit;
@@ -170,7 +174,7 @@ class SocialController {
             exit;
         }
 
-        if ($postModel->update($postId, htmlspecialchars($content))) {
+        if ($postModel->update($postId, htmlspecialchars($content), $companyId)) {
             echo json_encode(['success' => true, 'message' => 'Đã cập nhật bài viết.']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi CSDL!']);
@@ -189,7 +193,8 @@ class SocialController {
         $action = $postModel->toggleReaction($postId, $_SESSION['user_id']);
         if ($action) {
             require_once __DIR__ . '/NotificationController.php';
-            $post = $postModel->getById($postId);
+            $companyId = $_SESSION['company_id'];
+            $post = $postModel->getById($postId, $companyId);
             $targetUrl = "index.php?action=social&post_id=" . $postId;
 
             if ($action === 'added') {
@@ -201,13 +206,14 @@ class SocialController {
                         $_SESSION['user_id'], 
                         $_SESSION['full_name'] . " đã thích bài viết của bạn.", 
                         $targetUrl, 
-                        [$post['author_id']]
+                        [$post['author_id']],
+                        $companyId
                     );
                 }
             } else if ($action === 'deleted') {
                 // Gỡ thông báo nếu là bỏ thích
                 $notiModel = new Notification($this->db);
-                $notiModel->removeSocialNotification('SOCIAL_LIKE', $_SESSION['user_id'], $targetUrl);
+                $notiModel->removeSocialNotification('SOCIAL_LIKE', $_SESSION['user_id'], $targetUrl, $companyId);
             }
             echo json_encode(['success' => true]);
         } else {
@@ -221,7 +227,7 @@ class SocialController {
         header('Content-Type: application/json');
         $postId = $_GET['post_id'] ?? 0;
         $commentModel = new Comment($this->db);
-        $comments = $commentModel->getByPostId($postId, $_SESSION['user_id'] ?? 0);
+        $comments = $commentModel->getByPostId($postId, $_SESSION['user_id'] ?? 0, $_SESSION['company_id']);
         echo json_encode(['success' => true, 'data' => $comments]);
         exit;
     }
@@ -244,12 +250,13 @@ class SocialController {
         }
         
         $commentModel = new Comment($this->db);
-        $newCommentId = $commentModel->create($postId, $_SESSION['user_id'], htmlspecialchars($content), $parentId);
+        $companyId = $_SESSION['company_id'];
+        $newCommentId = $commentModel->create($postId, $_SESSION['user_id'], htmlspecialchars($content), $companyId, $parentId);
         if ($newCommentId) {
             // Gửi thông báo đến chủ bài viết hoặc chủ bình luận cha
             require_once __DIR__ . '/NotificationController.php';
             $postModel = new Post($this->db);
-            $post = $postModel->getById($postId);
+            $post = $postModel->getById($postId, $companyId);
             
             if ($post && $post['author_id'] != $_SESSION['user_id']) {
                 NotificationController::pushNotification(
@@ -258,7 +265,8 @@ class SocialController {
                     $_SESSION['user_id'],
                     $_SESSION['full_name'] . " đã bình luận về bài viết của bạn.",
                     "index.php?action=social&post_id=" . $postId . "#comment-" . $newCommentId,
-                    [$post['author_id']]
+                    [$post['author_id']],
+                    $companyId
                 );
             }
 
@@ -293,8 +301,9 @@ class SocialController {
         $commentId = $_POST['comment_id'] ?? 0;
         $content = trim($_POST['content'] ?? '');
         $commentModel = new Comment($this->db);
+        $companyId = $_SESSION['company_id'];
 
-        $comment = $commentModel->getById($commentId);
+        $comment = $commentModel->getById($commentId, $companyId);
         if (!$comment || $comment['user_id'] != $_SESSION['user_id']) {
             echo json_encode(['success' => false, 'message' => 'Không có quyền sửa!']);
             exit;
@@ -305,7 +314,7 @@ class SocialController {
             exit;
         }
 
-        if ($commentModel->update($commentId, htmlspecialchars($content))) {
+        if ($commentModel->update($commentId, htmlspecialchars($content), $companyId)) {
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false]);
@@ -320,8 +329,9 @@ class SocialController {
 
         $commentId = $_POST['comment_id'] ?? 0;
         $commentModel = new Comment($this->db);
+        $companyId = $_SESSION['company_id'];
 
-        $comment = $commentModel->getById($commentId);
+        $comment = $commentModel->getById($commentId, $companyId);
         if (!$comment) {
             echo json_encode(['success' => false, 'message' => 'Bình luận không tồn tại!']);
             exit;
@@ -334,11 +344,11 @@ class SocialController {
             $postId = $comment['post_id'];
             $targetUrl = "index.php?action=social&post_id=" . $postId . "#comment-" . $commentId;
             
-            if ($commentModel->delete($commentId)) {
+            if ($commentModel->delete($commentId, $companyId)) {
                 // Gỡ thông báo bình luận nếu có
                 require_once __DIR__ . '/../models/Notification.php';
                 $notiModel = new Notification($this->db);
-                $notiModel->removeSocialNotification('SOCIAL_COMMENT', $comment['user_id'], $targetUrl);
+                $notiModel->removeSocialNotification('SOCIAL_COMMENT', $comment['user_id'], $targetUrl, $companyId);
                 
                 echo json_encode(['success' => true]);
             } else {
@@ -397,16 +407,17 @@ class SocialController {
                   ) cmt_count ON cmt_count.post_id = p.id
                   WHERE p.id = :post_id";
         $stmt = $this->db->prepare($query);
+        $companyId = $_SESSION['company_id'];
         $stmt->execute([':current_user' => $_SESSION['user_id'], ':post_id' => $postId]);
         $post = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if (!$post) {
-            echo json_encode(['success' => false, 'message' => 'Bài viết đã bị xóa!']);
+        if (!$post || $post['company_id'] != $companyId) {
+            echo json_encode(['success' => false, 'message' => 'Bài viết đã bị xóa hoặc không thuộc công ty bạn!']);
             exit;
         }
 
         // 2. Lấy bình luận
-        $comments = $commentModel->getByPostId($postId, $_SESSION['user_id']);
+        $comments = $commentModel->getByPostId($postId, $_SESSION['user_id'], $companyId);
         
         echo json_encode([
             'success' => true,

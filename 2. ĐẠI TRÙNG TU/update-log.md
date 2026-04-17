@@ -136,3 +136,33 @@ Chuyển đổi quy trình quản lý "phẳng" (Task-Subtask) sang quy trình c
     - **Controllers (TaskController.php):**
         - Điều chỉnh hàm `index()` để truyền đúng `projectIdFilter` vào tất cả các luồng lấy dữ liệu Subtask.
 - **Kết quả:** Bảng Kanban (Tiến độ) giờ đây hiển thị dữ liệu chính xác và tập trung. Khi CEO vào một dự án cụ thể, họ chỉ thấy các công việc con của dự án đó, giúp quản lý tập trung và hiệu quả hơn.
+
+---
+### Giai đoạn 12: Thiết kế Phân quyền Admin Tối cao & Không gian Doanh nghiệp [17/04/2026]
+- **Mục tiêu:** Nâng cấp hệ thống thành mô hình SaaS/Multi-tenant, thiết lập quyền Super Admin (`role_id = 4`) và xây dựng luồng đăng ký không gian doanh nghiệp riêng cho các CEO.
+- **Thay đổi chính:**
+    - **Database Migration (`06_multi_tenant.sql`):** 
+        - Tạo bảng `companies` lưu trữ thông tin doanh nghiệp đăng ký.
+        - Thêm trường `company_id` vào toàn bộ các bảng nòng cốt (`users`, `departments`, `projects`, `tasks`, `posts`, `comments`, `notifications`) để cô lập dữ liệu.
+        - Tạo sẵn tài khoản Super Admin với `company_id = NULL`.
+    - **Models (`User`, `Company`):**
+        - Tạo mới `Company.php` xử lý logic thêm mới và duyệt đơn đăng ký của doanh nghiệp.
+        - Cập nhật `User.php` để lấy trường `company_id` khi đăng nhập, gán vào Session.
+    - **Controllers (`AuthController`, `AdminController`):**
+        - `AuthController`: Phát triển API `registerCompany`, xử lý điều hướng `showAdminLogin` qua **Cổng Đăng Nhập Ẩn**, chặn Admin đăng nhập qua cổng thường.
+        - `AdminController`: Thêm giao diện `superAdminDashboard` để Admin quản lý các đơn đăng ký. Viết logic `apiApproveCompany` (duyệt đơn và tạo tự động tài khoản CEO) và `apiRejectCompany`.
+---
+### Giai đoạn 13: Củng cố Cô lập Dữ liệu & Nâng cấp Super Admin [17/04/2026]
+- **Mục tiêu:** Hoàn tất việc tách biệt dữ liệu hoàn toàn giữa các doanh nghiệp (Multi-tenancy) và triển khai bộ công cụ quản trị hệ thống cao cấp.
+- **Thay đổi chính:**
+    - **Cô lập dữ liệu (Multi-tenant Enforcement):**
+        - Cập nhật toàn bộ các Model nòng cốt (`Project`, `Task`, `Department`, `User`, `Post`, `Comment`, `Notification`) để bắt buộc lọc theo `company_id`.
+        - Điều chỉnh tất cả Controller (`TaskController`, `SocialController`, `AdminController`, `ChatController`, `NotificationController`) để lấy `company_id` từ Session và truyền vào Model.
+        - Phát triển script `07_data_fix.sql` để gán quyền sở hữu dữ liệu cho toàn bộ bản ghi cũ trong database.
+    - **Nâng cấp Super Admin Space (5 Tính năng lớn):**
+        - **1. Dashboard Analytics:** Thống kê tổng quan hệ thống (Tổng công ty, User, Dự án, Công việc) ngay tại màn hình chính Super Admin.
+        - **2. Quản lý Không gian (Workspace Manager):** Thêm trang quản lý tập trung danh sách công ty, hỗ trợ Chỉnh sửa thông tin, Thay đổi hạn ngạch hoặc Xóa vĩnh viễn không gian doanh nghiệp.
+        - **3. Hệ thống Hạn ngạch (Resource Quotas):** Triển khai giới hạn tối đa Nhân sự, Dự án và Phòng ban cho từng công ty. Kiểm soát ngay khi khởi tạo để đảm bảo tài nguyên hệ thống.
+        - **4. Global Broadcasting:** Chức năng gửi thông báo khẩn cấp từ hệ thống tới toàn bộ User hoặc chỉ đích danh các CEO.
+        - **5. System Audit Logs:** Xây dựng mô hình `AuditLog` ghi lại mọi hành động quan trọng (Phê duyệt công ty, Gửi thông báo, Xóa dữ liệu) để phục vụ việc giám soát.
+- **Kết quả:** Hệ thống Relioo giờ đây là một nền tảng SaaS thực thụ. Dữ liệu của các công ty hoàn toàn độc lập, CEO không còn thấy dữ liệu của nhau, và Super Admin đã có bộ công cụ quản trị chuyên nghiệp để vận hành toàn bộ nền tảng.

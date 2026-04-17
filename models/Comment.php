@@ -8,7 +8,7 @@ class Comment {
     }
 
     // Lấy danh sách bình luận của một bài viết (kèm thông tin user và số lượt tim)
-    public function getByPostId($post_id, $current_user_id) {
+    public function getByPostId($post_id, $current_user_id, $company_id = null) {
         $query = "SELECT c.*, u.full_name, u.avatar_url,
                   COALESCE(cr_count.like_count, 0) as like_count,
                   CASE WHEN my_cr.comment_id IS NOT NULL THEN 1 ELSE 0 END as is_liked
@@ -18,11 +18,19 @@ class Comment {
                       SELECT comment_id, COUNT(*) as like_count FROM comment_reactions GROUP BY comment_id
                   ) cr_count ON cr_count.comment_id = c.id
                   LEFT JOIN comment_reactions my_cr ON my_cr.comment_id = c.id AND my_cr.user_id = :current_user
-                  WHERE c.post_id = :post_id
-                  ORDER BY c.created_at ASC";
+                  WHERE c.post_id = :post_id";
+        
+        if ($company_id) {
+            $query .= " AND c.company_id = :company_id";
+        }
+        $query .= " ORDER BY c.created_at ASC";
+
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':post_id', $post_id);
         $stmt->bindParam(':current_user', $current_user_id);
+        if ($company_id) {
+            $stmt->bindParam(':company_id', $company_id);
+        }
         $stmt->execute();
         
         $all_comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -50,13 +58,14 @@ class Comment {
     }
 
     // Thêm bình luận mới
-    public function create($post_id, $user_id, $content, $parent_id = NULL) {
-        $query = "INSERT INTO " . $this->table_name . " (post_id, user_id, content, parent_comment_id) 
-                  VALUES (:post_id, :user_id, :content, :parent_id)";
+    public function create($post_id, $user_id, $content, $company_id, $parent_id = NULL) {
+        $query = "INSERT INTO " . $this->table_name . " (post_id, user_id, content, parent_comment_id, company_id) 
+                  VALUES (:post_id, :user_id, :content, :parent_id, :company_id)";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':post_id', $post_id);
         $stmt->bindParam(':user_id', $user_id);
         $stmt->bindParam(':content', $content);
+        $stmt->bindParam(':company_id', $company_id);
         
         if ($parent_id == NULL) {
             $stmt->bindValue(':parent_id', NULL, PDO::PARAM_NULL);
@@ -71,28 +80,36 @@ class Comment {
     }
 
     // Lấy bình luận theo ID
-    public function getById($comment_id) {
+    public function getById($comment_id, $company_id = null) {
         $query = "SELECT * FROM " . $this->table_name . " WHERE id = :id";
+        if ($company_id) {
+            $query .= " AND company_id = :company_id";
+        }
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $comment_id);
+        if ($company_id) {
+            $stmt->bindParam(':company_id', $company_id);
+        }
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     // Cập nhật nội dung bình luận
-    public function update($comment_id, $content) {
-        $query = "UPDATE " . $this->table_name . " SET content = :content WHERE id = :id";
+    public function update($comment_id, $content, $company_id) {
+        $query = "UPDATE " . $this->table_name . " SET content = :content WHERE id = :id AND company_id = :company_id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':content', $content);
         $stmt->bindParam(':id', $comment_id);
+        $stmt->bindParam(':company_id', $company_id);
         return $stmt->execute();
     }
 
     // Xóa bình luận
-    public function delete($comment_id) {
-        $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
+    public function delete($comment_id, $company_id) {
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = :id AND company_id = :company_id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $comment_id);
+        $stmt->bindParam(':company_id', $company_id);
         return $stmt->execute();
     }
 

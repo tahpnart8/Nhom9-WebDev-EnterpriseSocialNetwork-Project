@@ -48,6 +48,21 @@ $routes = [
     'login' => [$authController, 'showLogin'],
     'login_submit' => [$authController, 'login'],
     'logout' => [$authController, 'logout'],
+    
+    'admin_secret_portal' => [$authController, 'showAdminLogin'],
+    'admin_login_submit' => [$authController, 'adminLogin'],
+    'register_company' => [$authController, 'showRegisterCompany'],
+    'register_company_submit' => [$authController, 'registerCompany'],
+    
+    'admin_dashboard' => [$adminController, 'superAdminDashboard'],
+    'manage_companies' => [$adminController, 'manageCompanies'],
+    'api_approve_company' => [$adminController, 'apiApproveCompany'],
+    'api_reject_company' => [$adminController, 'apiRejectCompany'],
+    'api_update_company' => [$adminController, 'apiUpdateCompany'],
+    'api_delete_company' => [$adminController, 'apiDeleteCompany'],
+    'api_broadcast' => [$adminController, 'apiBroadcast'],
+    'audit_logs' => [$adminController, 'auditLogs'],
+
     'dashboard' => [$dashboardController, 'index'],
 
     'admin_users' => [$adminController, 'users'],

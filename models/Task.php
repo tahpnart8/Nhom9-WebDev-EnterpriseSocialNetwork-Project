@@ -8,7 +8,7 @@ class Task {
     }
 
     // Lấy tất cả Task thuộc phòng ban (cho Leader / Staff trong phòng đó)
-    public function getByDepartment($department_id, $project_id = null) {
+    public function getByDepartment($department_id, $company_id, $project_id = null) {
         $query = "SELECT t.*, u.full_name as creator_name, p.title as project_title,
                   COALESCE(sc.subtask_count, 0) as subtask_count,
                   COALESCE(sc.done_count, 0) as done_count
@@ -20,15 +20,16 @@ class Task {
                              SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as done_count
                       FROM subtasks GROUP BY task_id
                   ) sc ON sc.task_id = t.id
-                  WHERE t.department_id = :dept_id";
+                  WHERE t.department_id = :dept_id AND t.company_id = :company_id";
         
         if ($project_id) {
             $query .= " AND t.project_id = :project_id";
         }
         $query .= " ORDER BY t.created_at DESC";
-
+ 
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':dept_id', $department_id);
+        $stmt->bindParam(':company_id', $company_id);
         if ($project_id) {
             $stmt->bindParam(':project_id', $project_id);
         }
@@ -37,7 +38,7 @@ class Task {
     }
 
     // CEO xem tất cả Task toàn công ty (Hoặc filter theo project)
-    public function getAll($project_id = null) {
+    public function getAll($company_id, $project_id = null) {
         $query = "SELECT t.*, u.full_name as creator_name, d.dept_name, p.title as project_title,
                   COALESCE(sc.subtask_count, 0) as subtask_count,
                   COALESCE(sc.done_count, 0) as done_count
@@ -49,14 +50,16 @@ class Task {
                       SELECT task_id, COUNT(*) as subtask_count,
                              SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as done_count
                       FROM subtasks GROUP BY task_id
-                  ) sc ON sc.task_id = t.id";
+                  ) sc ON sc.task_id = t.id
+                  WHERE t.company_id = :company_id";
         
         if ($project_id) {
-            $query .= " WHERE t.project_id = :project_id";
+            $query .= " AND t.project_id = :project_id";
         }
         $query .= " ORDER BY t.created_at DESC";
 
         $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':company_id', $company_id);
         if ($project_id) {
             $stmt->bindParam(':project_id', $project_id);
         }
@@ -65,13 +68,14 @@ class Task {
     }
 
     // Tạo Task mới (Leader / CEO)
-    public function create($department_id, $project_id, $created_by, $title, $description, $priority, $deadline) {
+    public function create($department_id, $project_id, $created_by, $title, $description, $priority, $deadline, $company_id) {
         $checkQuery = "SELECT id FROM " . $this->table_name . " 
                        WHERE department_id = :dept_id 
                          AND project_id <=> :project_id
                          AND title = :title 
                          AND description = :desc 
                          AND deadline <=> :deadline
+                         AND company_id = :company_id
                          AND status != 'Done'";
         $checkStmt = $this->conn->prepare($checkQuery);
         $checkStmt->execute([
@@ -79,7 +83,8 @@ class Task {
             ':project_id' => $project_id,
             ':title' => $title,
             ':desc' => $description,
-            ':deadline' => $deadline
+            ':deadline' => $deadline,
+            ':company_id' => $company_id
         ]);
         
         if ($row = $checkStmt->fetch(PDO::FETCH_ASSOC)) {
@@ -87,8 +92,8 @@ class Task {
         }
 
         $query = "INSERT INTO " . $this->table_name . " 
-                  (department_id, project_id, created_by_user_id, title, description, priority, deadline) 
-                  VALUES (:dept_id, :project_id, :created_by, :title, :desc, :priority, :deadline)";
+                  (department_id, project_id, created_by_user_id, company_id, title, description, priority, deadline) 
+                  VALUES (:dept_id, :project_id, :created_by, :company_id, :title, :desc, :priority, :deadline)";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':dept_id', $department_id);
         
@@ -99,6 +104,7 @@ class Task {
         }
 
         $stmt->bindParam(':created_by', $created_by);
+        $stmt->bindParam(':company_id', $company_id);
         $stmt->bindParam(':title', $title);
         $stmt->bindParam(':desc', $description);
         $stmt->bindParam(':priority', $priority);
@@ -110,7 +116,7 @@ class Task {
     }
 
     // Cập nhật Task
-    public function update($task_id, $title, $description, $priority, $deadline, $project_id = null) {
+    public function update($task_id, $title, $description, $priority, $deadline, $company_id, $project_id = null) {
         $query = "UPDATE " . $this->table_name . " 
                   SET title = :title, 
                       description = :desc, 
@@ -118,7 +124,7 @@ class Task {
                       deadline = :deadline,
                       project_id = :project_id,
                       updated_at = CURRENT_TIMESTAMP 
-                  WHERE id = :id";
+                  WHERE id = :id AND company_id = :company_id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':title', $title);
         $stmt->bindParam(':desc', $description);
@@ -129,26 +135,28 @@ class Task {
         } else {
             $stmt->bindParam(':project_id', $project_id);
         }
+        $stmt->bindParam(':company_id', $company_id);
         $stmt->bindParam(':id', $task_id);
         return $stmt->execute();
     }
 
     // Cập nhật trạng thái Task
-    public function updateStatus($task_id, $status) {
-        $query = "UPDATE " . $this->table_name . " SET status = :status WHERE id = :id";
+    public function updateStatus($task_id, $status, $company_id) {
+        $query = "UPDATE " . $this->table_name . " SET status = :status WHERE id = :id AND company_id = :company_id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':status', $status);
         $stmt->bindParam(':id', $task_id);
+        $stmt->bindParam(':company_id', $company_id);
         return $stmt->execute();
     }
 
     // Cập nhật trạng thái Approval của Task (Trình CEO)
-    public function updateApprovalStatus($task_id, $approval_status, $ai_post_id = null) {
+    public function updateApprovalStatus($task_id, $approval_status, $company_id, $ai_post_id = null) {
         $query = "UPDATE " . $this->table_name . " SET approval_status = :approval_status";
         if ($ai_post_id !== null) {
              $query .= ", ai_report_post_id = :post_id";
         }
-        $query .= " WHERE id = :id";
+        $query .= " WHERE id = :id AND company_id = :company_id";
         
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':approval_status', $approval_status);
@@ -156,12 +164,13 @@ class Task {
             $stmt->bindParam(':post_id', $ai_post_id);
         }
         $stmt->bindParam(':id', $task_id);
+        $stmt->bindParam(':company_id', $company_id);
         return $stmt->execute();
     }
 
     // Lấy Task theo ID
     // Lấy nhiều Tasks cùng lúc (Batch — tránh N+1)
-    public function getTasksByIds($ids) {
+    public function getTasksByIds($ids, $company_id) {
         if (empty($ids)) return [];
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $query = "SELECT t.*, u.full_name as creator_name, d.dept_name, p.title as project_title,
@@ -176,13 +185,15 @@ class Task {
                              SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) as done_count
                       FROM subtasks GROUP BY task_id
                   ) sc ON sc.task_id = t.id
-                  WHERE t.id IN ($placeholders)";
+                  WHERE t.id IN ($placeholders) AND t.company_id = ?";
         $stmt = $this->conn->prepare($query);
-        $stmt->execute(array_values($ids));
+        $params = array_values($ids);
+        $params[] = $company_id;
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getById($task_id) {
+    public function getById($task_id, $company_id = null) {
         $query = "SELECT t.*, u.full_name as creator_name, d.dept_name, p.title as project_title,
                   COALESCE(sc.subtask_count, 0) as subtask_count,
                   COALESCE(sc.done_count, 0) as done_count
@@ -196,17 +207,26 @@ class Task {
                       FROM subtasks GROUP BY task_id
                   ) sc ON sc.task_id = t.id
                   WHERE t.id = :id";
+        
+        if ($company_id) {
+            $query .= " AND t.company_id = :company_id";
+        }
+
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $task_id);
+        if ($company_id) {
+            $stmt->bindParam(':company_id', $company_id);
+        }
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     // Xóa Task (cascade xóa subtasks, attachments)
-    public function delete($task_id) {
-        $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
+    public function delete($task_id, $company_id) {
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = :id AND company_id = :company_id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $task_id);
+        $stmt->bindParam(':company_id', $company_id);
         return $stmt->execute();
     }
 
