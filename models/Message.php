@@ -1,10 +1,7 @@
 <?php
-class Message {
-    private $conn;
+require_once __DIR__ . '/BaseModel.php';
 
-    public function __construct($db) {
-        $this->conn = $db;
-    }
+class Message extends BaseModel {
 
     // Lấy hoặc tạo cuộc hội thoại Direct giữa 2 người
     public function getOrCreateConversation($userId1, $userId2) {

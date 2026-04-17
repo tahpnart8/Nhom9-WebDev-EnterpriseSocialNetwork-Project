@@ -1,11 +1,8 @@
 <?php
-class Post {
-    private $conn;
-    public $table_name = "posts";
+require_once __DIR__ . '/BaseModel.php';
 
-    public function __construct($db) {
-        $this->conn = $db;
-    }
+class Post extends BaseModel {
+    protected string $table_name = "posts";
 
     public function create($author_id, $department_id, $content, $visibility, $company_id) {
         $query = "INSERT INTO " . $this->table_name . " (author_id, department_id, content_html, visibility, company_id) 

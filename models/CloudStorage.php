@@ -1,7 +1,14 @@
 <?php
+/**
+ * CloudStorage — Service upload ảnh lên ImgBB Cloud.
+ * API key đọc từ biến môi trường IMGBB_API_KEY, có fallback mặc định.
+ */
 class CloudStorage {
-    // API Key miễn phí từ hệ thống ImgBB (Nền tảng Cloud chuyên lưu trữ ảnh)
-    private $apiKey = "08bd48385edd61af756fc15040768c86"; 
+    private string $apiKey;
+
+    public function __construct() {
+        $this->apiKey = getenv('IMGBB_API_KEY') ?: '08bd48385edd61af756fc15040768c86';
+    }
 
     public function uploadImage($filePath) {
         $ch = curl_init();

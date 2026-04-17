@@ -1,21 +1,13 @@
 <?php
-class User {
-    private $conn;
-    private $table_name = "users";
+require_once __DIR__ . '/BaseModel.php';
 
-    public $id;
-    public $username;
-    public $password_hash;
-    public $role_id;
-    public $company_id;
-    public $department_id;
-    public $full_name;
-    public $avatar_url;
+class User extends BaseModel {
+    protected string $table_name = "users";
 
-    public function __construct($db) {
-        $this->conn = $db;
-    }
-
+    /**
+     * Xác thực đăng nhập. Trả về mảng thông tin user nếu thành công, false nếu thất bại.
+     * @return array|false
+     */
     public function login($username, $password) {
         $query = "SELECT id, username, password_hash, role_id, company_id, department_id, full_name, avatar_url, is_active FROM " . $this->table_name . " WHERE username = :username LIMIT 1";
 
@@ -32,14 +24,15 @@ class User {
             
             // Check password and if account is active
             if(password_verify($password, $row['password_hash']) && $row['is_active'] == 1) {
-                $this->id = $row['id'];
-                $this->username = $row['username'];
-                $this->role_id = $row['role_id'];
-                $this->company_id = $row['company_id'];
-                $this->department_id = $row['department_id'];
-                $this->full_name = $row['full_name'];
-                $this->avatar_url = $row['avatar_url'];
-                return true;
+                return [
+                    'id' => $row['id'],
+                    'username' => $row['username'],
+                    'role_id' => $row['role_id'],
+                    'company_id' => $row['company_id'],
+                    'department_id' => $row['department_id'],
+                    'full_name' => $row['full_name'],
+                    'avatar_url' => $row['avatar_url']
+                ];
             }
         }
         return false;

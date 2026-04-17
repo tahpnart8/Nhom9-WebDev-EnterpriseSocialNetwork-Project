@@ -1,11 +1,8 @@
 <?php
-class Task {
-    private $conn;
-    public $table_name = "tasks";
+require_once __DIR__ . '/BaseModel.php';
 
-    public function __construct($db) {
-        $this->conn = $db;
-    }
+class Task extends BaseModel {
+    protected string $table_name = "tasks";
 
     // Lấy tất cả Task thuộc phòng ban (cho Leader / Staff trong phòng đó)
     public function getByDepartment($department_id, $company_id, $project_id = null) {

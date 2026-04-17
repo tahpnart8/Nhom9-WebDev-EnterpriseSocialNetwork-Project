@@ -1,15 +1,9 @@
 <?php
 
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/BaseController.php';
 require_once __DIR__ . '/../models/Notification.php';
 
-class NotificationController {
-    private $db;
-
-    public function __construct() {
-        $database = new Database();
-        $this->db = $database->getConnection();
-    }
+class NotificationController extends BaseController {
 
     // API: Lấy TẤT CẢ thông báo (đã đọc + chưa đọc) + unread_count
     public function fetchAll() {

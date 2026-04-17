@@ -1,11 +1,8 @@
 <?php
-class AuditLog {
-    private $conn;
-    private $table_name = "audit_logs";
+require_once __DIR__ . '/BaseModel.php';
 
-    public function __construct($db) {
-        $this->conn = $db;
-    }
+class AuditLog extends BaseModel {
+    protected string $table_name = "audit_logs";
 
     public static function log($db, $action_type, $entity_type, $entity_id = null, $details = null, $company_id = null) {
         $user_id = $_SESSION['user_id'] ?? null;

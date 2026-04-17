@@ -1,9 +1,40 @@
 <?php
+/**
+ * Database Connection - Singleton Pattern
+ * Đảm bảo chỉ có DUY NHẤT 1 kết nối DB trong toàn bộ vòng đời request.
+ */
 class Database {
-    public $conn;
+    private static ?Database $instance = null;
+    private ?PDO $conn = null;
 
-    public function getConnection() {
-        $this->conn = null;
+    /**
+     * Constructor cho phép tạo instance mới (backward compatibility).
+     * Nhưng khuyến khích dùng Database::getInstance() để tái sử dụng kết nối.
+     */
+    public function __construct() {
+        // Nếu đã có kết nối từ Singleton, tái sử dụng luôn
+        if (self::$instance !== null && self::$instance->conn !== null) {
+            $this->conn = self::$instance->conn;
+        }
+    }
+
+    /**
+     * Lấy Singleton instance duy nhất.
+     */
+    public static function getInstance(): self {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    /**
+     * Lấy kết nối PDO (tạo mới nếu chưa có, tái sử dụng nếu đã có).
+     */
+    public function getConnection(): PDO {
+        if ($this->conn !== null) {
+            return $this->conn;
+        }
 
         // Đọc biến môi trường từ file .env (nếu có)
         $env = [];
@@ -33,6 +64,13 @@ class Database {
             $this->conn->exec("SET time_zone = '+07:00';");
         } catch(PDOException $exception) {
             die("Lỗi kết nối CSDL! <br> Host đang thử: <b>$host</b> <br> Database: <b>$db</b> <br> Lỗi: " . $exception->getMessage());
+        }
+
+        // Lưu vào Singleton để các instance khác tái sử dụng
+        if (self::$instance === null) {
+            self::$instance = $this;
+        } else {
+            self::$instance->conn = $this->conn;
         }
 
         return $this->conn;

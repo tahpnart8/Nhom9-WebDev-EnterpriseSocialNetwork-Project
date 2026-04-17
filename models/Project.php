@@ -1,11 +1,8 @@
 <?php
-class Project {
-    private $conn;
-    public $table_name = "projects";
+require_once __DIR__ . '/BaseModel.php';
 
-    public function __construct($db) {
-        $this->conn = $db;
-    }
+class Project extends BaseModel {
+    protected string $table_name = "projects";
 
     // Get all projects with assigned departments (For CEO)
     public function getAll($company_id, $status = null) {

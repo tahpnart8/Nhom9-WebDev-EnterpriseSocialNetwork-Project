@@ -1,16 +1,10 @@
 <?php
 
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/BaseController.php';
 require_once __DIR__ . '/../models/Post.php';
 require_once __DIR__ . '/../models/Comment.php';
 
-class SocialController {
-    private $db;
-
-    public function __construct() {
-        $database = new Database();
-        $this->db = $database->getConnection();
-    }
+class SocialController extends BaseController {
 
     public function index() {
         if(!isset($_SESSION['user_id'])) {

@@ -1,11 +1,8 @@
 <?php
-class Subtask {
-    private $conn;
-    public $table_name = "subtasks";
+require_once __DIR__ . '/BaseModel.php';
 
-    public function __construct($db) {
-        $this->conn = $db;
-    }
+class Subtask extends BaseModel {
+    protected string $table_name = "subtasks";
 
     // Lấy subtask theo Task ID (cho Leader xem tổng quan)
     public function getByTaskId($task_id, $company_id = null) {

@@ -1,28 +1,22 @@
 <?php
-require_once 'config/database.php';
-require_once 'models/Project.php';
-require_once 'models/Task.php';
-require_once 'models/Department.php';
-require_once 'models/Post.php';
+require_once __DIR__ . '/BaseController.php';
+require_once __DIR__ . '/../models/Project.php';
+require_once __DIR__ . '/../models/Task.php';
+require_once __DIR__ . '/../models/Department.php';
+require_once __DIR__ . '/../models/Post.php';
 
-class ProjectController {
-    private $db;
-    private $projectModel;
-    private $taskModel;
-    private $deptModel;
-    private $postModel;
+class ProjectController extends BaseController {
+    private Project $projectModel;
+    private Task $taskModel;
+    private Department $deptModel;
+    private Post $postModel;
 
     public function __construct() {
-        $database = new Database();
-        $this->db = $database->getConnection();
+        parent::__construct();
         $this->projectModel = new Project($this->db);
         $this->taskModel = new Task($this->db);
         $this->deptModel = new Department($this->db);
         $this->postModel = new Post($this->db);
-    }
-
-    private function getEnvVar($key) {
-        return getenv($key) ?: ($_ENV[$key] ?? '');
     }
 
     // ========== API: TẠO NHÁP TỔNG KẾT DỰ ÁN (CEO xem trước) ==========
@@ -79,41 +73,20 @@ Yêu cầu:
 - Chỉ trả về nội dung (raw text), không giải thích.
 - Chú ý: Đây là bài đăng bảng tin chung cho mọi người cùng đọc, không phải thư gửi cá nhân.";
 
-        $data = [
-            'model' => 'llama-3.3-70b-versatile',
-            'messages' => [
-                ['role' => 'system', 'content' => 'Bạn là Giám đốc điều hành (CEO). Hãy viết bài tổng kết dự án bằng tiếng Việt chuyên nghiệp.'],
-                ['role' => 'user', 'content' => $prompt]
-            ],
-            'temperature' => 0.8
-        ];
+        require_once __DIR__ . '/../models/GroqAIService.php';
+        $groqService = new GroqAIService($apiKey);
+        $result = $groqService->generate(
+            'Bạn là Giám đốc điều hành (CEO). Hãy viết bài tổng kết dự án bằng tiếng Việt chuyên nghiệp.',
+            $prompt,
+            0.8
+        );
 
-        $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $apiKey, 'Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-
-        $response = curl_exec($ch);
-        if ($response === false) {
-            $error = curl_error($ch);
-            curl_close($ch);
-            echo json_encode(['success' => false, 'message' => 'Lỗi kết nối AI: ' . $error]);
-            return;
-        }
-        curl_close($ch);
-
-        $result = json_decode($response, true);
-        if (!isset($result['choices'][0]['message']['content'])) {
-            $errMsg = $result['error']['message'] ?? 'Phản hồi từ AI không hợp lệ.';
-            echo json_encode(['success' => false, 'message' => 'Lỗi từ AI: ' . $errMsg]);
+        if (!$result['success']) {
+            echo json_encode(['success' => false, 'message' => $result['error']]);
             return;
         }
 
-        $aiContent = $result['choices'][0]['message']['content'];
-        echo json_encode(['success' => true, 'data' => $aiContent]);
+        echo json_encode(['success' => true, 'data' => $result['content']]);
     }
 
     private function generateProjectSummaryAI($projectData, $tasksData) {
@@ -139,7 +112,7 @@ Yêu cầu:
         }
 
         require_once __DIR__ . '/../models/Company.php';
-        $companyModel = new Company();
+        $companyModel = new Company($this->db);
         if (!$companyModel->checkQuota($_SESSION['company_id'], 'projects')) {
             echo json_encode(['success' => false, 'message' => 'Lỗi: Công ty của bạn đã đạt giới hạn số lượng dự án tối đa!']);
             exit;

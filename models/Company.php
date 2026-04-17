@@ -1,14 +1,8 @@
 <?php
-require_once dirname(__DIR__) . '/config/database.php';
+require_once __DIR__ . '/BaseModel.php';
 
-class Company {
-    private $conn;
-    public $table_name = "companies";
-
-    public function __construct() {
-        $database = new Database();
-        $this->conn = $database->getConnection();
-    }
+class Company extends BaseModel {
+    protected string $table_name = "companies";
 
     public function create($data) {
         $query = "INSERT INTO " . $this->table_name . " 

@@ -1,24 +1,11 @@
 <?php
 
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/BaseController.php';
 require_once __DIR__ . '/../models/Message.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/CloudStorage.php';
 
-class ChatController {
-    private $db;
-
-    public function __construct() {
-        $database = new Database();
-        $this->db = $database->getConnection();
-    }
-
-    private function checkAuth() {
-        if (!isset($_SESSION['user_id'])) {
-            header("Location: index.php?action=login");
-            exit;
-        }
-    }
+class ChatController extends BaseController {
 
     // Trang Chat chính
     public function index() {

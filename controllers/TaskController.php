@@ -1,28 +1,13 @@
 <?php
 
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/BaseController.php';
 require_once __DIR__ . '/../models/Task.php';
 require_once __DIR__ . '/../models/Subtask.php';
 require_once __DIR__ . '/../models/User.php';
-require_once __DIR__ . '/../controllers/NotificationController.php';
+require_once __DIR__ . '/NotificationController.php';
 
-class TaskController
+class TaskController extends BaseController
 {
-    private $db;
-
-    public function __construct()
-    {
-        $database = new Database();
-        $this->db = $database->getConnection();
-    }
-
-    private function checkAuth()
-    {
-        if (!isset($_SESSION['user_id'])) {
-            header("Location: index.php?action=login");
-            exit;
-        }
-    }
 
     // ========== TRANG CHÍNH ==========
     public function index()
@@ -940,19 +925,7 @@ class TaskController
         exit;
     }
 
-    // ========== HELPER: LẤY BIẾN MÔI TRƯỜNG ==========
-    private function getEnvVar($key)
-    {
-        $envFile = __DIR__ . '/../.env';
-        if (file_exists($envFile)) {
-            $content = file_get_contents($envFile);
-            // Regex tìm Key=Value, bỏ qua khoảng trắng và dấu ngoặc kép
-            if (preg_match("/^" . preg_quote($key, '/') . "\s*=\s*(.*)$/m", $content, $matches)) {
-                return trim($matches[1], " \t\n\r\0\x0B\"'");
-            }
-        }
-        return getenv($key) ?: ($_ENV[$key] ?? '');
-    }
+
 
     // ========== API: GENERATE REPORT BẰNG AI (LLaMA via Groq) ==========
     public function generateSubtaskReport()
@@ -989,51 +962,23 @@ class TaskController
             . "- Lưu ý lần sau: " . $q3 . "\n\n"
             . "Hãy viết bài báo cáo ngắn gọn gọn nhẹ.";
 
-        $postData = [
-            'model' => 'llama-3.3-70b-versatile',
-            'messages' => [
-                ['role' => 'system', 'content' => $systemPrompt],
-                ['role' => 'user', 'content' => $userPrompt]
-            ],
-            'temperature' => 0.7,
-            'max_tokens' => 500
-        ];
+        require_once __DIR__ . '/../models/GroqAIService.php';
+        $groqService = new GroqAIService($apiKey);
+        
+        $result = $groqService->generate(
+            $systemPrompt,
+            $userPrompt,
+            0.7,
+            500,
+            30
+        );
 
-        $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $apiKey,
-            'Content-Type: application/json'
-        ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        // Bypass SSL verification on Windows/XAMPP (no CA bundle)
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-
-        $response = curl_exec($ch);
-        $curlError = curl_error($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($response === false) {
-            echo json_encode(['success' => false, 'message' => 'Lỗi kết nối Groq API: ' . $curlError]);
+        if (!$result['success']) {
+            echo json_encode(['success' => false, 'message' => $result['error']]);
             exit;
         }
 
-        if ($httpCode !== 200) {
-            $errBody = json_decode($response, true);
-            $errMsg = $errBody['error']['message'] ?? ('HTTP ' . $httpCode);
-            echo json_encode(['success' => false, 'message' => 'Lỗi Groq API: ' . $errMsg]);
-            exit;
-        }
-
-        $result = json_decode($response, true);
-        $aiContent = $result['choices'][0]['message']['content'] ?? 'Không thể tạo nội dung.';
-
-        echo json_encode(['success' => true, 'data' => $aiContent]);
+        echo json_encode(['success' => true, 'data' => $result['content']]);
         exit;
     }
 
@@ -1080,7 +1025,7 @@ class TaskController
         $aiTag = "<div class='mt-3 border-top pt-2'><small class='text-muted'><i class='bi bi-robot me-1'></i> Hỗ trợ bởi Relioo AI</small></div>";
         $postContentHtml = "<div class='ai-post'><h6 class='fw-bold text-primary mb-2'>🚀 Báo cáo tiến độ: " . htmlspecialchars($subtask['title']) . "</h6>" . nl2br(htmlspecialchars($aiContent)) . $aiTag . "</div>";
 
-        $postId = $postModel->create($_SESSION['user_id'], $_SESSION['department_id'], $postContentHtml, 'Department');
+        $postId = $postModel->create($_SESSION['user_id'], $_SESSION['department_id'], $postContentHtml, 'Department', $_SESSION['company_id']);
         if ($postId) {
             $this->db->prepare("UPDATE posts SET is_ai_generated = 1, task_report_id = ? WHERE id = ?")->execute([$reportId, $postId]);
         }
@@ -1131,51 +1076,23 @@ class TaskController
         $systemPrompt = "Bạn là Trưởng phòng. Dưới đây là các báo cáo chi tiết từ nhân viên về từng hạng mục của dự án. Hãy tổng hợp thành một bài đăng tổng kết dự án dài không quá 1000 chữ. Yêu cầu: Nêu bật kết quả, biểu dương team, văn phong truyền cảm hứng để đăng lên mạng xã hội nội bộ.";
         $userPrompt = "Tên dự án: " . $task['title'] . "\n\nDữ liệu báo cáo chi tiết:\n" . $context;
 
-        $postData = [
-            'model' => 'llama-3.3-70b-versatile',
-            'messages' => [
-                ['role' => 'system', 'content' => $systemPrompt],
-                ['role' => 'user', 'content' => $userPrompt]
-            ],
-            'temperature' => 0.7,
-            'max_tokens' => 1500
-        ];
+        require_once __DIR__ . '/../models/GroqAIService.php';
+        $groqService = new GroqAIService($apiKey);
+        
+        $result = $groqService->generate(
+            $systemPrompt,
+            $userPrompt,
+            0.7,
+            1500,
+            60
+        );
 
-        $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $apiKey,
-            'Content-Type: application/json'
-        ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        // Bypass SSL verification on Windows/XAMPP
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-
-        $response = curl_exec($ch);
-        $curlError = curl_error($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($response === false) {
-            echo json_encode(['success' => false, 'message' => 'Lỗi kết nối Groq API: ' . $curlError]);
+        if (!$result['success']) {
+            echo json_encode(['success' => false, 'message' => $result['error']]);
             exit;
         }
 
-        if ($httpCode !== 200) {
-            $errBody = json_decode($response, true);
-            $errMsg = $errBody['error']['message'] ?? ('HTTP ' . $httpCode);
-            echo json_encode(['success' => false, 'message' => 'Lỗi Groq API: ' . $errMsg]);
-            exit;
-        }
-
-        $result = json_decode($response, true);
-        $aiContent = $result['choices'][0]['message']['content'] ?? 'Không thể tổng hợp báo cáo.';
-
-        echo json_encode(['success' => true, 'data' => $aiContent]);
+        echo json_encode(['success' => true, 'data' => $result['content']]);
         exit;
     }
 
@@ -1214,7 +1131,7 @@ class TaskController
         $postContentHtml = "<div class='ai-post'><h5 class='fw-bold text-success mb-2'>🏆 Tổng kết dự án: " . htmlspecialchars($task['title']) . "</h5>" . nl2br(htmlspecialchars($aiContent)) . $aiTag . "</div>";
 
         // Đăng vào Department
-        $postId1 = $postModel->create($_SESSION['user_id'], $_SESSION['department_id'], $postContentHtml, 'Department');
+        $postId1 = $postModel->create($_SESSION['user_id'], $_SESSION['department_id'], $postContentHtml, 'Department', $_SESSION['company_id']);
         if ($postId1) {
             $this->db->prepare("UPDATE posts SET is_ai_generated = 1, task_report_id = ? WHERE id = ?")->execute([$reportId, $postId1]);
         }
@@ -1320,29 +1237,21 @@ Yêu cầu văn phong:
 - Văn phong trang trọng, đầy đủ, mạch lạc nhưng vẫn mang tính khích lệ team.
 - Chỉ trả về nội dung báo cáo chính thức (raw text), không thêm lời chào của AI.";
 
-        $postData = [
-            'model' => 'llama-3.3-70b-versatile',
-            'messages' => [
-                ['role' => 'system', 'content' => $systemPrompt],
-                ['role' => 'user', 'content' => $context]
-            ],
-            'temperature' => 0.7
-        ];
+        require_once __DIR__ . '/../models/GroqAIService.php';
+        $groqService = new GroqAIService($apiKey);
+        
+        $result = $groqService->generate(
+            $systemPrompt,
+            $context,
+            0.7
+        );
 
-        $ch = curl_init('https://api.groq.com/openai/v1/chat/completions');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $apiKey, 'Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        if (!$result['success']) {
+            echo json_encode(['success' => false, 'message' => $result['error']]);
+            exit;
+        }
 
-        $response = curl_exec($ch);
-        curl_close($ch);
-        $result = json_decode($response, true);
-        $aiContent = $result['choices'][0]['message']['content'] ?? 'Dự án đã hoàn thành tốt đẹp.';
-
-        echo json_encode(['success' => true, 'data' => $aiContent]);
+        echo json_encode(['success' => true, 'data' => $result['content']]);
         exit;
     }
 
@@ -1391,7 +1300,7 @@ Yêu cầu văn phong:
         $postContentHtml = "<div class='ai-post'><h6 class='fw-bold text-primary mb-2'><i class='bi bi-file-earmark-check'></i> BÁO CÁO CÔNG VIỆC: " . htmlspecialchars($task['title']) . "</h6>" . nl2br(htmlspecialchars($aiContent)) . $aiTag . "</div>";
         
         // Trưởng phòng hoàn thành task thì bài đăng CHỈ đăng lên kênh phòng ban (Department)
-        $postId = $postModel->create($_SESSION['user_id'], $_SESSION['department_id'], $postContentHtml, 'Department');
+        $postId = $postModel->create($_SESSION['user_id'], $_SESSION['department_id'], $postContentHtml, 'Department', $_SESSION['company_id']);
 
         // Cập nhật trạng thái Task
         $taskModel->updateApprovalStatus($taskId, 'Submitted', $postId);

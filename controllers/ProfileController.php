@@ -1,23 +1,10 @@
 <?php
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/BaseController.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Post.php';
 require_once __DIR__ . '/../models/CloudStorage.php';
 
-class ProfileController {
-    private $db;
-
-    public function __construct() {
-        $database = new Database();
-        $this->db = $database->getConnection();
-    }
-
-    private function checkAuth() {
-        if (!isset($_SESSION['user_id'])) {
-            header("Location: index.php?action=login");
-            exit;
-        }
-    }
+class ProfileController extends BaseController {
 
     public function index() {
         $this->checkAuth();

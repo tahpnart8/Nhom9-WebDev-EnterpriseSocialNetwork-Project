@@ -1,11 +1,8 @@
 <?php
-class Role {
-    private $conn;
-    public $table_name = "roles";
+require_once __DIR__ . '/BaseModel.php';
 
-    public function __construct($db) {
-        $this->conn = $db;
-    }
+class Role extends BaseModel {
+    protected string $table_name = "roles";
 
     public function getAll() {
         $query = "SELECT id, role_name FROM " . $this->table_name . " ORDER BY id ASC";

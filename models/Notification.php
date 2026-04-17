@@ -1,10 +1,7 @@
 <?php
-class Notification {
-    private $conn;
+require_once __DIR__ . '/BaseModel.php';
 
-    public function __construct($db) {
-        $this->conn = $db;
-    }
+class Notification extends BaseModel {
 
     // Tạo thông báo và broadcast cho danh sách user
     public function create($type, $triggerUserId, $content, $targetUrl, $company_id, $recipientIds = []) {

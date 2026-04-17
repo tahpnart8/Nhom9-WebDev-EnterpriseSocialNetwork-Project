@@ -1,10 +1,10 @@
 <?php
 
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/BaseController.php';
 require_once __DIR__ . '/../models/Task.php';
 require_once __DIR__ . '/../models/Subtask.php';
 
-class DashboardController {
+class DashboardController extends BaseController {
     public function index() {
         // Yêu cầu đăng nhập
         if(!isset($_SESSION['user_id'])) {
@@ -17,10 +17,8 @@ class DashboardController {
             $pageTitle = "Tổng quan cá nhân";
         }
         
-        $database = new Database();
-        $db = $database->getConnection();
-        $taskModel = new Task($db);
-        $subtaskModel = new Subtask($db);
+        $taskModel = new Task($this->db);
+        $subtaskModel = new Subtask($this->db);
 
         $roleId = $_SESSION['role_id'];
         $userId = $_SESSION['user_id'];

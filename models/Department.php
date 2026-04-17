@@ -1,11 +1,8 @@
 <?php
-class Department {
-    private $conn;
-    public $table_name = "departments";
+require_once __DIR__ . '/BaseModel.php';
 
-    public function __construct($db) {
-        $this->conn = $db;
-    }
+class Department extends BaseModel {
+    protected string $table_name = "departments";
 
     public function getAll($company_id, $limit = null, $offset = null) {
         $query = "SELECT id, dept_name, description, created_at FROM " . $this->table_name . " WHERE company_id = :company_id ORDER BY id ASC";

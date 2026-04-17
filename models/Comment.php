@@ -1,11 +1,8 @@
 <?php
-class Comment {
-    private $conn;
-    private $table_name = "comments";
+require_once __DIR__ . '/BaseModel.php';
 
-    public function __construct($db) {
-        $this->conn = $db;
-    }
+class Comment extends BaseModel {
+    protected string $table_name = "comments";
 
     // Lấy danh sách bình luận của một bài viết (kèm thông tin user và số lượt tim)
     public function getByPostId($post_id, $current_user_id, $company_id = null) {

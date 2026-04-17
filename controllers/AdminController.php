@@ -1,35 +1,19 @@
 <?php
 
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/BaseController.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Department.php';
 require_once __DIR__ . '/../models/Role.php';
 require_once __DIR__ . '/../models/AuditLog.php';
 
-class AdminController {
-    
-    // Hàm bảo vệ Route Back-office (Chỉ Admin hoặc CEO vào được)
-    private function checkAdminAccess() {
-        if(!isset($_SESSION['user_id']) || ($_SESSION['role_id'] != 1 && $_SESSION['role_id'] != 4)) {
-            // Chuyển về báo lỗi hoặc dashboard
-            header("Location: index.php?action=dashboard");
-            exit;
-        }
-    }
-
-    private function checkSuperAdminAccess() {
-        if(!isset($_SESSION['user_id']) || $_SESSION['role_id'] != 4) {
-            header("Location: index.php?action=admin_secret_portal");
-            exit;
-        }
-    }
+class AdminController extends BaseController {
 
     public function superAdminDashboard() {
         $this->checkSuperAdminAccess();
         $pageTitle = "Bảng điều khiển Hệ thống (SaaS)";
         
         require_once __DIR__ . '/../models/Company.php';
-        $companyModel = new Company();
+        $companyModel = new Company($this->db);
         $pendingCompanies = $companyModel->getPendingCompanies();
         $stats = $companyModel->getSystemStats();
         
@@ -41,7 +25,7 @@ class AdminController {
         $pageTitle = "Quản lý Không gian Doanh nghiệp";
         
         require_once __DIR__ . '/../models/Company.php';
-        $companyModel = new Company();
+        $companyModel = new Company($this->db);
         
         $limit = 10;
         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -74,7 +58,7 @@ class AdminController {
         ];
         
         require_once __DIR__ . '/../models/Company.php';
-        $companyModel = new Company();
+        $companyModel = new Company($this->db);
         if($companyModel->updateCompany($id, $data)) {
             echo json_encode(['success' => true, 'message' => 'Cập nhật thành công!']);
         } else {
@@ -94,7 +78,7 @@ class AdminController {
         }
         
         require_once __DIR__ . '/../models/Company.php';
-        $companyModel = new Company();
+        $companyModel = new Company($this->db);
         if($companyModel->deleteCompany($id)) {
             echo json_encode(['success' => true, 'message' => 'Đã xóa không gian doanh nghiệp!']);
         } else {
@@ -115,8 +99,7 @@ class AdminController {
             exit;
         }
         
-        $database = new Database();
-        $db = $database->getConnection();
+        $db = $this->db;
 
         AuditLog::log($db, 'GLOBAL_BROADCAST', 'System', null, "Gửi thông báo toàn hệ thống tới: $target");
         
@@ -175,7 +158,7 @@ class AdminController {
         }
         
         require_once __DIR__ . '/../models/Company.php';
-        $companyModel = new Company();
+        $companyModel = new Company($this->db);
         $company = $companyModel->getCompanyById($id);
         
         if(!$company) {
@@ -186,8 +169,7 @@ class AdminController {
         // 1. Update status to approved
         if($companyModel->approve($id)) {
             // 2. Create CEO user
-            $database = new Database();
-            $db = $database->getConnection();
+            $db = $this->db;
             
             $username = strtolower(explode('@', $company['ceo_email'])[0]) . '_' . $id;
             
@@ -221,7 +203,7 @@ class AdminController {
         }
         
         require_once __DIR__ . '/../models/Company.php';
-        $companyModel = new Company();
+        $companyModel = new Company($this->db);
         if($companyModel->reject($id)) {
             echo json_encode(['success' => true, 'message' => 'Đã từ chối đơn đăng ký']);
         } else {
@@ -234,9 +216,7 @@ class AdminController {
         $this->checkAdminAccess();
         $pageTitle = "Quản lý Nhân sự";
         
-        $database = new Database();
-        $db = $database->getConnection();
-        $userModel = new User($db);
+        $userModel = new User($this->db);
         
         // Pagination Logic
         $limit = 5;
@@ -262,11 +242,11 @@ class AdminController {
         $usersList = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Lấy danh sách phòng ban và vai trò cho Modal Thêm mới
-        $deptModel = new Department($db);
+        $deptModel = new Department($this->db);
         $depts = $deptModel->getAll($companyId); // Modal need all depts
         $deptList = $depts->fetchAll(PDO::FETCH_ASSOC);
 
-        $roleModel = new Role($db);
+        $roleModel = new Role($this->db);
         $roles = $roleModel->getAll();
         $rolesList = $roles->fetchAll(PDO::FETCH_ASSOC);
 
@@ -282,9 +262,7 @@ class AdminController {
             exit;
         }
 
-        $database = new Database();
-        $db = $database->getConnection();
-        $userModel = new User($db);
+        $userModel = new User($this->db);
 
         $data = [
             'username' => $_POST['username'] ?? '',
@@ -303,7 +281,7 @@ class AdminController {
 
         try {
             require_once __DIR__ . '/../models/Company.php';
-            $companyModel = new Company();
+            $companyModel = new Company($this->db);
             if (!$companyModel->checkQuota($_SESSION['company_id'], 'users')) {
                 echo json_encode(['success' => false, 'message' => 'Lỗi: Công ty của bạn đã đạt giới hạn nhân sự tối đa!']);
                 exit;
@@ -340,9 +318,7 @@ class AdminController {
             exit;
         }
 
-        $database = new Database();
-        $db = $database->getConnection();
-        $userModel = new User($db);
+        $userModel = new User($this->db);
 
         $data = [
             'full_name' => $_POST['full_name'] ?? '',
@@ -381,9 +357,7 @@ class AdminController {
             exit;
         }
 
-        $database = new Database();
-        $db = $database->getConnection();
-        $userModel = new User($db);
+        $userModel = new User($this->db);
 
         if ($userModel->delete($id, $_SESSION['company_id'])) {
             echo json_encode(['success' => true, 'message' => 'Xóa nhân viên thành công!']);
@@ -397,11 +371,8 @@ class AdminController {
         $this->checkAdminAccess();
         $pageTitle = "Phòng ban / Đơn vị";
         
-        $database = new Database();
-        $db = $database->getConnection();
-        
-        $deptModel = new Department($db);
-        $taskModel = new Task($db);
+        $deptModel = new Department($this->db);
+        $taskModel = new Task($this->db);
 
         // Pagination Logic
         $limit = 5;
@@ -439,9 +410,7 @@ class AdminController {
             exit;
         }
 
-        $database = new Database();
-        $db = $database->getConnection();
-        $deptModel = new Department($db);
+        $deptModel = new Department($this->db);
 
         $data = [
             'dept_name' => $_POST['dept_name'] ?? '',
@@ -454,7 +423,7 @@ class AdminController {
         }
 
         require_once __DIR__ . '/../models/Company.php';
-        $companyModel = new Company();
+        $companyModel = new Company($this->db);
         if (!$companyModel->checkQuota($_SESSION['company_id'], 'departments')) {
             echo json_encode(['success' => false, 'message' => 'Lỗi: Công ty của bạn đã đạt giới hạn số lượng phòng ban!']);
             exit;
@@ -483,9 +452,7 @@ class AdminController {
             exit;
         }
 
-        $database = new Database();
-        $db = $database->getConnection();
-        $deptModel = new Department($db);
+        $deptModel = new Department($this->db);
 
         $data = [
             'dept_name' => $_POST['dept_name'] ?? '',
@@ -520,11 +487,8 @@ class AdminController {
             exit;
         }
 
-        $database = new Database();
-        $db = $database->getConnection();
-        
         // B1: Kiểm tra xem phòng ban còn nhân viên không
-        $userModel = new User($db);
+        $userModel = new User($this->db);
         $empCount = $userModel->getCountByDepartment($id, $_SESSION['company_id']);
 
         if ($empCount > 0) {
@@ -536,7 +500,7 @@ class AdminController {
         }
 
         // B2: Thực hiện xóa
-        $deptModel = new Department($db);
+        $deptModel = new Department($this->db);
         if ($deptModel->delete($id, $_SESSION['company_id'])) {
             echo json_encode(['success' => true, 'message' => 'Đã xóa phòng ban thành công']);
         } else {
